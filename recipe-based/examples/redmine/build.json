@@ -1,0 +1,91 @@
+{
+    "builders":
+    [
+        {
+        "type": "qemu",
+        "iso_url": "http://mirror.raystedman.net/centos/6/isos/x86_64/CentOS-6.8-x86_64-minimal.iso",
+        "iso_checksum": "0ca12fe5f28c2ceed4f4084b41ff8a0b",
+        "shutdown_command" : "shutdown -P now",
+        "iso_checksum_type": "md5",
+        "disk_discard": "unmap",
+        "output_directory": "output_centos_tdhtest",
+        "disk_size": 5000,
+        "format": "qcow2",
+        "headless": false,
+        "accelerator": "kvm",
+        "http_directory": "httpdir",
+        "http_port_min": 10082,
+        "http_port_max": 10089,
+        "ssh_host_port_min": 2222,
+        "ssh_host_port_max": 2229,
+        "ssh_username": "root",
+        "ssh_password": "alma",
+        "ssh_port": 22,
+        "ssh_timeout": "30m",
+        "vm_name": "tdhtest",
+        "net_device": "virtio-net",
+        "disk_interface": "virtio",
+        "boot_wait": "5s",
+        "boot_command":
+        [
+            "<tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/centos6-ks.cfg<enter><wait>"
+        ],
+        "qemuargs": [
+            ["-m", "1024"]
+        ]
+      }
+    ],
+    "_comment": "sudo: sorry, you must have a tty to run sudo --> remove visiblepw and requiretty from sudoers; disable udev for network devices",
+    "provisioners": 
+    [
+        {
+        "type": "shell",
+        "inline": [
+            "sleep 30",
+            "yum update",
+            "cat /etc/sudoers | grep -v visiblepw | grep -v requiretty > /tmp/foobar", 
+            "mv -f /tmp/foobar /etc/sudoers",
+            "mkdir -p /root/.ssh",
+            "chmod 700 /root/.ssh",
+            "echo 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDOxwuKuMXkhuUfTmJxBBiR5UbsHJpWpedS88fvTy6/y60UyDyrd+A6qR/9Ef/UHQe9x8YOSXPodBUr5eHTtG5sfPcu+j9HactVvttGBzPVvXQZHvu5sUsXNzGU9kka/H0uVpbJDnT955K3JO3uV7BBtmqRCAPGiNfaZsq6Tx2Wq1fHpqBIxr6NPyRZ6PG/IXjaNhMwk4KABxqWS/ONuyIQuRc1agmjCs/dTBoO7y0SKi5DrjCyMgGlHqPLHKN6icREXI5/9ztkL+KiD022p1+onxq4n/gtujVolvOXm8EHLSCCmxPPfvF3cyPI8ox+ZECr/wPk0HEgqG19dIAt0H4t' > /root/.ssh/authorized_keys",
+            "chmod 600 /root/.ssh/authorized_keys",
+            "mkdir /etc/udev/rules.d/DISABLED",
+            "if [ -f /etc/udev/rules.d/70-persistent-net.rules ]; then mv /etc/udev/rules.d/70-persistent-net.rules /etc/udev/rules.d/DISABLED; fi",
+            "ln -s /dev/null /etc/udev/rules.d/75-persistent-net-generator.rules",
+            "ln -s /dev/null /etc/udev/rules.d/70-persistent-net.rules",
+            "chkconfig kdump off",
+            "cat /etc/sysconfig/network-scripts/ifcfg-eth0 | grep -v UDEV | grep -v MACADDR | grep -v HWADDR | grep -v UUID > /tmp/ifcfg-eth0",
+            "mv -f /tmp/ifcfg-eth0 /etc/sysconfig/network-scripts/ifcfg-eth0"
+            ]
+        },
+        {
+        "type": "chef-solo",
+        "install_command": "curl -L https://www.chef.io/chef/install.sh | {{if .Sudo}}sudo{{end}} bash -s -- -v 12.13.37",
+        "cookbook_paths": ["cookbooks"],
+        "json": {
+            "nginx": {
+                "default_site_enabled": false 
+            },
+            "redmine": {
+                "host": "localhost",
+                "db": {
+                    "type": "postgresql",
+                    "password": "password"
+                }
+            },
+            "postgresql": {
+                "password": {
+                    "postgres": "password" 
+                }
+            }
+        },
+        "run_list": ["recipe[postgresql::server]", "recipe[redmine2]"]
+        },
+        {
+        "type": "shell",
+        "inline": [
+            "if [ -f /etc/nginx/conf.d/default.conf ]; then rm -rf /etc/nginx/conf.d/default.conf; fi"
+        ] 
+        }
+    ]
+}

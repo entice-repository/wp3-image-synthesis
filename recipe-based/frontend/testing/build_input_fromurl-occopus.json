@@ -1,0 +1,17 @@
+{
+    "build": {
+        "module": "packer",
+        "version": "1.0", 
+        "input": {
+             "zipurl": "http://localhost/packer-occopus.zip"
+        }
+    },
+    "test": {
+        "module": "exec-internal",
+        "version": "1.0",
+        "input": {
+              "command" : "run_test.sh",
+              "zipurl": "http://localhost/packer-test-dummy.zip"
+        }
+    }
+}

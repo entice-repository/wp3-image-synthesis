@@ -1,0 +1,8 @@
+source "https://supermarket.chef.io"
+
+metadata
+
+cookbook 'yum', '2.4.2'
+cookbook 'ohai', '< 4.0.0'
+cookbook 'rbenv', git: 'https://github.com/chef-rbenv/chef-rbenv.git', tag: "v0.8.0"
+cookbook 'redmine2',  '0.5.2'

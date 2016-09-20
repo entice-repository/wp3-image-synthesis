@@ -1,0 +1,20 @@
+#cloud-config
+
+ssh_authorized_keys: 
+### ssh_authorized_keys-placeholder
+
+packages: 
+- qemu-utils
+### packages-placeholder
+
+groups: 
+### groups-placeholder
+
+users:
+### users-placeholder
+
+write_files:
+### write_files-placeholder
+
+runcmd:
+### runcmd-placeholder

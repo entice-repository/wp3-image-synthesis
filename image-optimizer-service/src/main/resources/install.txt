@@ -1,0 +1,52 @@
+SERVICE INSTALL
+===============
+
+JAVA
+----
+
+$ apt-get update
+
+$ apt-get -y install default-jdk
+
+TOMCAT
+------
+
+$ apt-get -y install tomcat7 tomcat7-admin
+
+$ mcedit /var/lib/tomcat7/conf/tomcat-users.xml
+	<user username="optimizer" password="entice" roles="manager-gui"/>
+
+$ keytool -genkey -alias tomcat -keyalg RSA -keystore /etc/ssl/certs/java/cacerts (changeit)
+
+$ mcedit /var/lib/tomcat7/conf/server.xml
+
+    <Connector port="8443" protocol="org.apache.coyote.http11.Http11Protocol"
+               maxThreads="150" scheme="https" secure="true" SSLEnabled="true"
+               keystoreFile="/etc/ssl/certs/java/cacerts"
+               keystorePass="changeit"
+               clientAuth="false" sslProtocol="TLS" />
+
+
+$ cp mysql-connector-java-5.1.24.jar /usr/share/tomcat7/lib/
+$ service tomcat7 restart
+
+($ vi image-optimizer-service.war/WEB-INF/classes/image-optimizer-service.properties < set localEc2Endpoint, optimizerImageId, optimizerInstanceType)
+
+MYSQL
+-----
+
+$ apt-get -y install mysql-server
+
+$ mysql -u root -p
+create database optimizer;
+create user 'optimizer'@'localhost' IDENTIFIED BY 'entice';
+grant all privileges on optimizer.* TO 'optimizer'@'localhost';
+flush privileges;
+
+DEPLOY
+------
+
+$ cp optimizer-service.war /var/lib/tomcat7/webapps/
+
+USAGE
+-----

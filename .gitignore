@@ -1,0 +1,16 @@
+Cheffile.lock
+cookbooks
+tmp
+output_*
+packer_cache
+tdhtest
+.DS_Store
+target
+*.pyc
+*.swp
+.Python
+.classpath
+.settings
+*.zip
+
+env/
