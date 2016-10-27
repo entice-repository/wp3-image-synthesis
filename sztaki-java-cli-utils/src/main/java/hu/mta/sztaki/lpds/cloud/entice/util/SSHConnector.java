@@ -118,7 +118,7 @@ public class SSHConnector {
 				LocalLogger.myLogger.info("Detected unused port: " + portToTest);
 				final int portToOpen = portToTest;
 				// Request daemon execution
-				ThreadedExec t = new ThreadedExec(-1);
+				ThreadedExec t = new ThreadedExec(-1); // wait forever to complete remote execute
 				try {
 					Process ran = t.execProg(
 							"ssh -N -o ServerAliveInterval=5 -o ConnectTimeout=5 -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p "

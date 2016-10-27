@@ -25,7 +25,8 @@ import hu.mta.sztaki.lpds.cloud.entice.util.exception.ThreadTimeoutException;
 
 public class ThreadedExec extends ExecHelper {
 
-	private long timeout;
+	private final long timeout;
+	private long parentThread;
 
 	private Thread executor;
 
@@ -39,6 +40,13 @@ public class ThreadedExec extends ExecHelper {
 		this.timeout = timeout;
 	}
 
+	public ThreadedExec(long timeout, long parentThread) {
+		this(timeout);
+		this.parentThread = parentThread;
+	}
+	
+
+	
 	/**
 	 * Might leave the executor thread running forever (if the timeout was set
 	 * up as -1ms). The caller has to terminate the thread by destroying the non
@@ -59,8 +67,13 @@ public class ThreadedExec extends ExecHelper {
 					if (timeout == -1) {
 						LocalLogger.myLogger.info("Daemon execution stopped (" + retcode + "): " + execme);
 					}
+					if (retcode == 254) System.out.println("[T" + (parentThread % 100) + "] threaded execution ERROR ret code: " + retcode + " (too many trials) " + execme);
+					else if (retcode == 143) System.out.println("[T" + (parentThread % 100) + "] threaded execution ERROR ret code: " + retcode + " (process killed) " + execme); // 143 SIGTERM
+					else if (retcode != 0) System.out.println("[T" + (parentThread % 100) + "] threaded execution ERROR ret code: " + retcode + " " + execme);
+					
 				} catch (Exception e) {
 					LocalLogger.myLogger.warning("Threaded execution failed: " + e.getMessage());
+					System.out.println("[T" + (parentThread % 100) + "] threaded execution failed: " + e.getMessage().replaceAll("Exception",  "Exzeption"));
 					ex.add(e);
 				}
 			};
@@ -68,13 +81,16 @@ public class ThreadedExec extends ExecHelper {
 		executor.start();
 		if (timeout == -1) {
 			while (p.isEmpty()) {
-				Thread.sleep(100);
+				Thread.sleep(100); 
 			}
 		} else {
-			LocalLogger.myLogger.info("Timeout before: " + execme);
+//			LocalLogger.myLogger.info("Timeout before: " + execme);
+//			long start = System.currentTimeMillis();
 			executor.join(timeout);
-			LocalLogger.myLogger.info("Timeout after: " + execme);
+//			LocalLogger.myLogger.info("Timeout after: " + execme);
 			if (executor.isAlive()) {
+				System.out.println("[T" + (parentThread % 100) + "] threaded execution failed: executor is alive. Timeout: " + timeout + " " + execme);
+//				System.out.println("[T" + (parentThread % 100) + "] threaded execution failed: waited: " + (int)((System.currentTimeMillis() - start) /1000) + "s");
 				p.get(0).destroy();
 				LocalLogger.myLogger.info("DESTROY: " + execme);
 				throw new ThreadTimeoutException("Timeout while executing: " + execme, null);

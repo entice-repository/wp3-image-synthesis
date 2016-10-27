@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.InetAddress;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.EnumSet;
 import java.util.concurrent.TimeoutException;
 
@@ -32,7 +34,7 @@ public class RemoteExecutor {
 			ScriptError.REMEXEC_SCRIPTCOPY, ScriptError.REMEXEC_EXEC);
 
 	private final ExecHelper executor;
-
+	
 	static {
 		String kftemp = System.getProperty("hu.mta.sztaki.lpds.cloud.entice.util.sshkey");
 		if (kftemp == null) {
@@ -46,14 +48,18 @@ public class RemoteExecutor {
 		this.executor = executor;
 	}
 
+	// executes 5 times with 5 seconds delay the script on the remote host (see remoteexecute.sh)
 	public ExecHelper.ExecResult remoteExecute(String exechost, String execport, String login, InetAddress realIP, String key,
 			String execme, Writer output, boolean saveout, boolean wait)
 			throws IOException, InterruptedException, ScriptExecutionError {
-		return executor.execProg(
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] remote execute: " + execme + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		ExecHelper.ExecResult result = executor.execProg(
 				ExecHelper.transformScriptsLoc(remoteExecutorScript) + " " + (key == null ? keyfile : key) + " "
 						+ exechost + " " + execport + " " + (saveout ? "yes" : "no") + " "
 						+ (realIP != null ? realIP.getHostAddress() : "NOIPCHECK") + " " + execme + " " + (login == null ? "root" : login),
 				wait, output, saveout);
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] remote execute ret code: " + result + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		return result;
 	}
 
 	public int remoteExecWithRetry(int retries, String exechost, String execport, String login, InetAddress realIP, String key, 
@@ -67,12 +73,13 @@ public class RemoteExecutor {
 				output = new StringWriter();
 			}
 			try {
-				retcode = remoteExecute(exechost, execport, login, realIP, key, execme, output, saveout, true).getRetcode();
+//				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] remote execute retry: " + retries);
+				retcode = remoteExecute(exechost, execport, login, realIP, key, execme, output, saveout, true).getRetcode(); // takes 21 seconds on rsync error with 5 trials and 1 sec sleep in remoteexecute.sh
 			} catch (InterruptedException e) {
 			} catch (IOException e) {
 			}
 			LocalLogger.myLogger.info("Retry -" + retries + "- err:" + retcode);
-		} while (REMEXECERRORS.contains(ScriptError.mapError(retcode)) && retries-- >= 0);
+		} while (REMEXECERRORS.contains(ScriptError.mapError(retcode)) && --retries > 0);
 		if (retries <= 0) {
 			throw new TimeoutException("ExecwithRetryTimeout");
 		} else {

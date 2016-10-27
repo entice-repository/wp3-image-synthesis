@@ -41,7 +41,7 @@ rm $TEEFILE
 RETRIES=0
 while ! rsync --log-file=/dev/null -qLpz -e "ssh -qp $PORT $SSHOPTS" $SCRIPT $LOGIN@$IP:/root/$SCRIPTLOC 2>&1 >> /dev/null
 do
-	sleep 1
+	sleep 5
 	RETRIES=$((RETRIES+1))
 	[ $RETRIES -gt 5 ] && exit 254
 done
