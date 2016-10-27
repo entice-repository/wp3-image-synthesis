@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#	Copyright 2009-2010 Gabor Kecskemeti, University of Westminster, MTA SZTAKI
+#	Copyright 2009-2010 Gabor Kecskemeti, University of Westminster, MTA SZTAKI, Akos Hajnal, MTA SZTAKI
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ do
 	then
 		echo NC done, ssh start
 		ssh $SSHOPTS $LOGIN@$IP /sbin/ifconfig | grep $INTIP && exit 0
-	else
-		# Wait for some time to allow ssh to come up
-		sleep 10
-	fi 
+	fi
+	# Wait for some time to allow ssh to come up
+	sleep 10
 done
+exit 1

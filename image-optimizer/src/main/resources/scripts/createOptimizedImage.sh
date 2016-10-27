@@ -1,119 +1,130 @@
 #!/bin/bash
-set -x
 
-# parameters
-if [ "$#" -ne 3 ]; then
-	echo "Illegal number of parameters"
-	exit 243
-fi
-SOURCE_IMAGE_FILE=$1
-RMME_SCRIPT=$2
-OPTIMIZED_IMAGE_FILE=$3
-RMME_SCRIPT=/root/rmme
-SOURCE_IMAGE_FILE=/mnt/source-image.qcow2
+#	Copyright 2016 Akos Hajnal, MTA SZTAKI
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+#   Description: 
+#   - mounts source-image in writable mode (more precisely, the given partition as /)
+#   - executes removal script (rmme) 
+#   - invokes zerofree (after re-mounting in read-only mode)
+#   - converts image to the same format (qemu-img convert) to get rid of unused blocks
+#   - the result is: /mnt/optimized-image.qcow2
+
+#   Note: 
+#   - this optimization does not change disk size, nor partition sizes (fdisk)
+#   - this optimization does not chage file system size (resize2fs)
+#   - the result is increased free space (on the given partition)
+#   - less image file size (qcow2)
+#   - works on ext2, ext3 and ext4 file systems
+#   - frees up previously unused blocks too, not just current removables (rmme)
+
+if [ "$#" -lt 2 ]; then echo "Usage: createOptimizedImageZerofree <image-file> <mount-point> ([partition-number] || <lvm-volume-group> <lvm-logical-volume>)" ; exit 243 ; fi
+
 OPTIMIZED_IMAGE_FILE=/mnt/optimized-image.qcow2
-SOURCE_FILE_SYSTEM_DIR=/mnt/source-file-system
-OPTIMIZED_FILE_SYSTEM_DIR=/mnt/optimized-file-system
+DEVICE=/dev/nbd0
+RMME_FILE=/root/rmme
 
-# check parameters
-file $SOURCE_IMAGE_FILE | grep QCOW || { echo "ERROR: QCOW input image expected"; exit 243 ; }
+IMAGE_FILE=$1
+file $IMAGE_FILE | grep QCOW &> /dev/null || { echo "ERROR: QCOW input image expected"; exit 243 ; }
+
+MOUNT_POINT=$2
+mkdir -p $MOUNT_POINT
 
 # load mbd kernel module (server) to allow of attaching image files as network block devices (/dev/nbd0 - /dev/nbd15)
-modprobe -av nbd || { echo "ERROR: Cannot load NBD kernel module" ; exit 243 ; }
+echo Loading mbd kernel module ...
+modprobe -a nbd &> /dev/null || { echo "ERROR: Cannot load NBD kernel module" ; exit 243 ; }
+echo '  'mbd loaded
 
-# create working dirs
-mkdir -p $SOURCE_FILE_SYSTEM_DIR
-mkdir -p $OPTIMIZED_FILE_SYSTEM_DIR
+echo Attaching image $IMAGE_FILE as device $DEVICE ...
+qemu-nbd -c $DEVICE $IMAGE_FILE || { echo "ERROR: Could not attach $DEVICE" ; rmmod nbd &> /dev/null ; exit 243 ; }
+echo '  '$DEVICE attached 
 
-# === source image analysis ===
-qemu-nbd -c /dev/nbd0  $SOURCE_IMAGE_FILE || { echo "Could not attach original qcow2 file" ; exit 243 ; }
-SOURCE_IMAGE_SECTORS=`blockdev --getsize /dev/nbd0` # get number of sectors of the original image
-SOURCE_IMAGE_SIZE=$(((512*SOURCE_IMAGE_SECTORS+999999)/1000000)) # ceil of original image size (sectors * 512 bytes) in megabytes (10^6)
-sfdisk -d /dev/nbd0 > $SOURCE_IMAGE_FILE.partitions # save the table of partitions of the source image
-SOURCE_IMAGE_LAST_PARTITION_SIZE=`awk '/start/&&!/Id= 0/ {lastplen=$6}; END {print lastplen}' $SOURCE_IMAGE_FILE.partitions | cut -d, -f1` # size of the last partition (to be resized!)
-SOURCE_IMAGE_VOLUME_ID=`vgscan | awk -F\" '/Found volume/&&!/ubuntu-vg/ { print $2 }'` # "vg0", optimizer vm's vg is ubuntu (otherwise change ubuntu-vg!)
-vgcfgbackup -f $SOURCE_IMAGE_FILE.groups $SOURCE_IMAGE_VOLUME_ID
-vgchange -ay $SOURCE_IMAGE_VOLUME_ID
-# Here we should list Volumes and mount all that is mountable. now we assume just "root"'s presence
-mount /dev/$SOURCE_IMAGE_VOLUME_ID/root $SOURCE_FILE_SYSTEM_DIR
-FREE_SPACE_BEFORE_OPTIMIZATION=`df -Pm $SOURCE_FILE_SYSTEM_DIR | tail -1 | awk '{print $4}'`
+DEVICE_PARTITION=$DEVICE
+if [ "$#" -lt 4 ]; then
+  PARTITION_NUMBER=1
+  if [ "$#" -gt 2 ]; then PARTITION_NUMBER=$3 ; fi
+  DEVICE_PARTITION=$DEVICE"p"$PARTITION_NUMBER
+else
+  VOLUME_GROUP=$3
+  LOGICAL_VOLUME=$4
+  vgscan &> /dev/null
+  vgchange -a y $VOLUME_GROUP &> /dev/null
+  DEVICE_PARTITION=/dev/$VOLUME_GROUP/$LOGICAL_VOLUME
+fi
 
-# => variables: SOURCE_IMAGE_SIZE, FREE_SPACE_BEFORE_OPTIMIZATION, SOURCE_IMAGE_VOLUME_ID, SOURCE_IMAGE_LAST_PARTITION_SIZE, 
-# => files: $SOURCE_IMAGE_FILE.partitions, $SOURCE_IMAGE_FILE.groups
-# => source image mounted to $SOURCE_FILE_SYSTEM_DIR
+# phase 1: delete removables from source-image =============================================
 
-# === removal script execution ===
-$RMME_SCRIPT $SOURCE_FILE_SYSTEM_DIR/
-FREE_SPACE_AFTER_OPTIMIZATION=`df -Pm $SOURCE_FILE_SYSTEM_DIR | tail -1 | awk '{print $4}'`
+# mount (writable) --------------------
+echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(writable\) ...
+mount $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+echo '  '$MOUNT_POINT mounted
 
-# === new disk image creation ===
-OPTIMIZED_IMAGE_SIZE=$((SOURCE_IMAGE_SIZE - FREE_SPACE_AFTER_OPTIMIZATION + FREE_SPACE_BEFORE_OPTIMIZATION))
-qemu-img create -f qcow2 -o preallocation=off OPTIMIZED_IMAGE_FILE ${OPTIMIZED_IMAGE_SIZE}000000
-qemu-nbd -c /dev/nbd1 OPTIMIZED_IMAGE_FILE || { echo "Could not attach just created qcow2 file" ; exit 243 ; }
+# delete removables --------------------
+echo Deleting removables \(/root/rmme\) ...
+if [ -f $RMME_FILE ];
+then
+  $RMME_FILE $MOUNT_POINT
+else
+  { echo "ERROR: $RMME_FILE not found" ; umount $MOUNT_POINT &> /dev/null ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+fi
+echo '  'Removables deleted
 
-# === write optimized disk image content ===
+# unmount mount point --------------------
+echo Unmounting $MOUNT_POINT ...
+umount $MOUNT_POINT &> /dev/null || { echo "ERROR: Could not unmount $MOUNT_POINT" ; exit 243 ; }
+echo '  '$MOUNT_POINT unmounted
 
-#dd if=/dev/nbd0 of=/dev/nbd1 bs=512 count=1 #substituted below with the larger dd
-IMGFN_OPT_MARSH=`echo $IMGFN_OPT | sed s+/+\\\\\\\\/+g`
-OPT_NBDPID=`ps ux | awk "!/awk/&&/$IMGFN_OPT_MARSH/ {print \\$2}"`
-NEW_SECCOUNT=`blockdev --getsize /dev/nbd1`
+# phase 1: done =============================================
+# phase 2: zerofree, convert =============================================
 
-#Nasty stuff begins (wp image specific)
-NEW_LASTPARTLEN=`awk -v totlen=$NEW_SECCOUNT '/start/&&!/Id= 0/ {tot=totlen-$4 }; END {print tot}' $SOURCE_IMAGE_FILE.partitions`
-NEW_LASTPARTSTART=`awk '/start/&&!/Id= 0/ {lastplen=$4 }; END {print lastplen}' $SOURCE_IMAGE_FILE.partitions | cut -d, -f1`
-sed s/$SOURCE_IMAGE_LAST_PARTITION_SIZE/$NEW_LASTPARTLEN/ $SOURCE_IMAGE_FILE.partitions > $PARTLAYOUT_NEW
-dd if=/dev/nbd0 of=/dev/nbd1 bs=512 count=$NEW_LASTPARTSTART conv=noerror,sync #Overwrites mbr + first partition
+# mount (read-only) --------------------
+echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(read-only\) ...
+mount -o ro $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+echo '  '$MOUNT_POINT mounted
 
-sfdisk --force /dev/nbd1 < $PARTLAYOUT_NEW
-kill $OPT_NBDPID
+# zerofree --------------------
+echo Running zerofree on $DEVICE_PARTITION ...
+zerofree $DEVICE_PARTITION
+echo '  'done 
 
-qemu-nbd -c /dev/nbd1 $IMGFN_OPT  || { echo "Could not attach just created qcow2 file" ; exit 243 ; }
-OPT_NBDPID=`ps ux | awk "!/awk/&&/optimised/ {print \\$2}"`
-ls -l ${TARGET_DEVNAME}*
-DDPARTSOURCE=`awk '/bootable/ {print $1}' $SOURCE_IMAGE_FILE.partitions`
-DDPARTTARGET=`echo $DDPARTSOURCE | sed s+/dev/nbd0+/dev/nbd1+`
-VGPARTTARGET=`echo $DDPARTTARGET | sed s/p1$/p2/`
-#dd if=$DDPARTSOURCE of=$DDPARTTARGET bs=512 conv=noerror,sync # substituted above with the larger dd
-SWAPLEN=`lvdisplay $SOURCE_IMAGE_VOLUME_ID --units m | awk '/LV Name/ && !/swap/ {swapmarker=0}; /LV Name/ && /swap/ {swapmarker=1}; swapmarker==1&&/LV Size/ { print $3 }'`
-vgscan
-pvcreate $VGPARTTARGET
-VOLID_TEMP=${SOURCE_IMAGE_VOLUME_ID}-TEMP
-vgcreate $VOLID_TEMP $VGPARTTARGET
-lvcreate -L ${SWAPLEN}m -n swap $VOLID_TEMP
-lvcreate -l 100%FREE -n root $VOLID_TEMP
-mkswap /dev/$VOLID_TEMP/swap
-mkfs.ext4 -qF /dev/$VOLID_TEMP/root
-mount /dev/$VOLID_TEMP/root $OPTIMIZED_FILE_SYSTEM_DIR
-cp -ax $SOURCE_FILE_SYSTEM_DIR/* $OPTIMIZED_FILE_SYSTEM_DIR
-#Done copying. now we just need to clean up end ensure bootability
+# unmount --------------------
+echo Unmounting $MOUNT_POINT ...
+umount $MOUNT_POINT &> /dev/null || { echo "ERROR: Could not unmount $MOUNT_POINT" ; exit 243 ; }
+echo '  '$MOUNT_POINT unmounted
 
-umount $OPTIMIZED_FILE_SYSTEM_DIR
-umount $SOURCE_FILE_SYSTEM_DIR
-vgchange -an $SOURCE_IMAGE_VOLUME_ID
-vgchange -an $VOLID_TEMP
-qemu-nbd --disconnect /dev/nbd1
-rm $IMGFN_TEMP
+# unload logical volumes --------------------
+if [ "$#" -gt 3 ]; then
+  VOLUME_GROUP=$3
+  # remove logical volume(s)
+  vgchange -a n $VOLUME_GROUP &> /dev/null
+fi
 
-vgscan
-vgrename $VOLID_TEMP $SOURCE_IMAGE_VOLUME_ID
+# convert "optimized" source image to optimized image --------------------
+echo Converting $IMAGE_FILE to $OPTIMIZED_IMAGE_FILE ... 
+qemu-img convert -O qcow2 $IMAGE_FILE $OPTIMIZED_IMAGE_FILE
+echo '  '$OPTIMIZED_IMAGE_FILE created
 
-vgchange -ay $SOURCE_IMAGE_VOLUME_ID
-mount /dev/$SOURCE_IMAGE_VOLUME_ID/root $OPTIMIZED_FILE_SYSTEM_DIR
-mount $DDPARTTARGET ${OPTIMIZED_FILE_SYSTEM_DIR}/boot
-mount --bind /dev ${OPTIMIZED_FILE_SYSTEM_DIR}/dev
-cp $DMAP $DMAP_TEMP
-echo "(hd0) $DEVNAMEFIX" > $DMAP
-chroot $OPTIMIZED_FILE_SYSTEM_DIR grub-install $DEVNAMEFIX 
-cp $DMAP_TEMP $DMAP
-umount ${OPTIMIZED_FILE_SYSTEM_DIR}/dev
-umount ${OPTIMIZED_FILE_SYSTEM_DIR}/boot
-umount $OPTIMIZED_FILE_SYSTEM_DIR
-vgchange -an $SOURCE_IMAGE_VOLUME_ID
+# phase 2: done =============================================
 
-kill $OPT_NBDPID
+# disconnect VM image from device nbd0 
+echo Detaching $DEVICE ...
+qemu-nbd -d $DEVICE &> /dev/null || { echo "ERROR: Could not detach device $DEVICE" ; exit 243 ; }
+echo '  '$DEVICE detached
 
-cd -
-#Saving the image
-mv $IMGFN_OPT /mnt/optimized-image.qcow2
-#Dropping temporary data
-rm -r $basedir
+# unload mbd kernel module 
+echo Unloading nbd ...
+rmmod nbd &> /dev/null # || { echo "ERROR: Cannot unload NBD kernel module. See: lsmod." ; }
+echo '  'nbd unloaded
+
+echo Done

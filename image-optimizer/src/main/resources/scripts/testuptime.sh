@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #	Copyright 2009-2010 Gabor Kecskemeti, University of Westminster, MTA SZTAKI
 #
@@ -14,5 +14,5 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-read -d . upTime < /proc/uptime
+read -d . upTime < /proc/uptime # -d works under bash only!
 echo $upTime
