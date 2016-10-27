@@ -25,6 +25,8 @@ import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMManagementEx
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.InetAddress;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.concurrent.TimeoutException;
 
 public class VMTests {
@@ -37,7 +39,7 @@ public class VMTests {
 			Shrinker.myLogger.info("Checkuptime called on " + host);
 			StringWriter sw = new StringWriter();
 			if (RemoteExecutor.REMEXECERRORS
-					.contains(ScriptError.mapError(new RemoteExecutor(new ExecHelper()).remoteExecWithRetry(3, host,
+					.contains(ScriptError.mapError(new RemoteExecutor(new ExecHelper()).remoteExecWithRetry(1, host,
 							port, login, (InetAddress) null, (String) null, ExecHelper.transformScriptsLoc(vmUptimeCheck), sw, true)))) {
 				throw new TimeoutException("remoteExecFailed");
 			}
@@ -58,21 +60,44 @@ public class VMTests {
 		}
 	}
 
+	/*
+	 * try to read uptime for at most 4 minutes in every 10 sec (4*60/10=24 times)
+	 */
 	public static void restartTest(String host, String port, String login, int beforeRestart)
 			throws InterruptedException, IOException, VMManagementException {
 		Shrinker.myLogger.info("restartTest");
-		for (int i = 0; i < 5; i++) {
+		int delay = 10; // delay between poll in seconds
+		long timeout = 4 * 60; // 4 minutes in seconds
+		long rebootTime = System.currentTimeMillis();
+		do {  // continue up to 4 minutes
 			try {
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] uptime check (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 				int returncode = checkUptime(host, port, login);
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] uptime after restart: " + returncode + "s compared to " + beforeRestart + "s (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 				if (returncode < beforeRestart) {
 					Shrinker.myLogger.info("Restart detected");
+					System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart detected: " + returncode + " < " + beforeRestart);
 					return;
-				}
+				} 
+				// sometimes it happens that OpenNebula does not reboot the VM in spite of the reboot EC2 request (e.g., after deleting directory /usr/share)
+				// command line reboot however works, so should try in that way too the reboot, but what if EC2 reboot never will work again? maybe we should treat this as a fatal failure (as currently) 
+				/* if (i == 0) {
+					RemoteExecutor remoteExec = new RemoteExecutor(new ThreadedExec(60000));
+					try { 
+						Shrinker.myLogger.info("Rebooting from command line");
+						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] rebooting from shell...");
+						remoteExec.remoteExecute(host, port, login,
+								(InetAddress) null, (String) null, Shrinker.rebootScript, null, false, false)
+								.getRetcode();
+					} catch (Throwable x) { Shrinker.myLogger.warning("Reboot from command line failed: " + x.getMessage()); } 
+				} */
 			} catch (TimeoutException e) {
-
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] uptime timeout exzeption ");
 			}
-			Thread.sleep(10000);
-		}
+			Thread.sleep(delay * 1000l);
+			beforeRestart += delay;
+		} while (System.currentTimeMillis() - rebootTime < timeout * 1000l);
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart was unsuccessful: no uptime returned for " + timeout + "s or no decrease detected");
 		throw new VMManagementException("Restart was unsuccessful for " + host, null);
 	}
 }

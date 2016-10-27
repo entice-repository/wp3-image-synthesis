@@ -20,9 +20,7 @@ import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker.ShrinkingContext;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.grouping.GroupManager;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +43,7 @@ public class ItemPool {
 
 		public void run() {
 			Shrinker.myLogger.info("###phase: source file analysis");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ItemPool: reading source file system");
 			ShrinkingContext sc = Shrinker.getContext();
 			while ((!itemSource.isProcessingCompleted() || !itemSource.itemQueue.isEmpty()) && sc.isRunning()) {
 				if (itemPool.size() < POOLSIZE) {
@@ -83,9 +82,9 @@ public class ItemPool {
 		overallSize -= removable.length();
 	}
 
-	public List<File> getItemList() {
+	/*public List<File> getItemList() {
 		return Collections.unmodifiableList(itemPool);
-	}
+	}*/
 
 	public void processItemSource(Itemizer itemSource, ThreadGroup tg) throws IllegalStateException {
 		if (poolFiller != null && poolFiller.isAlive())

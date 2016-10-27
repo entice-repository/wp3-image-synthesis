@@ -180,6 +180,9 @@ public abstract class GroupManager {
 		return currGroup;
 	}
 
+	/*
+	 * return list of groups not in final state
+	 */
 	public List<Group> getGroups() {
 		ArrayList<Group> al = new ArrayList<Group>();
 		synchronized (GMBlocker) {
@@ -194,6 +197,7 @@ public abstract class GroupManager {
 	public void loadGroupStates() throws IOException {
 		Shrinker.ShrinkingContext sc = Shrinker.getContext();
 		Shrinker.myLogger.info("Loading group states from: " + sc.getGroupStatesFile());
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] trying to load group states from file: " + sc.getGroupStatesFile().getAbsolutePath() + "");
 		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(sc.getGroupStatesFile())));
 		String line = null;
 		while ((line = br.readLine()) != null) {
@@ -207,6 +211,7 @@ public abstract class GroupManager {
 		}
 		br.close();
 		Shrinker.myLogger.info("Group states successfully loaded from: " + sc.getGroupStatesFile());
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] group states loaded from file");
 	}
 
 	public void saveGroupStates() throws IOException {

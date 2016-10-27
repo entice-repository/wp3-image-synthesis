@@ -18,10 +18,11 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.validator;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.Vector;
@@ -63,6 +64,21 @@ public class ParallelValidatorThread extends Thread {
 		newthread = p;
 	}
 
+	// purge available groups: keep top directories and files having no parent group 
+	@SuppressWarnings("unused")
+	private void purge() {
+		boolean mod;
+		do {
+			mod = false;
+			for (Group g : availableGroups) {
+				if (purgeChildrenGroups(g)) {
+					mod = true;
+					break;
+				}
+			}
+		} while (mod);
+	}
+	
 	private boolean purgeChildrenGroups(Group g) {
 		boolean ret = false;
 		for (Group child : g.children) {
@@ -76,6 +92,7 @@ public class ParallelValidatorThread extends Thread {
 	public void run() {
 		String tgname = getThreadGroup().getName();
 		Vector<ParallelValidatorThread> siblings = null;
+		
 		synchronized (parallelvalidators) {
 			siblings = parallelvalidators.get(tgname);
 			if (siblings == null) {
@@ -95,16 +112,17 @@ public class ParallelValidatorThread extends Thread {
 			}
 			siblings.add(this);
 		}
-		List<Group> groups = availableGroups;
+		List<Group> groups = availableGroups; // copy of the list of groups not in final state
 		if (groups.size() > 0) {
 			Shrinker.myLogger.info("Parallel validation started!");
 			Shrinker.myLogger.info("Number of available groups before purge: " + groups.size());
-			Comparator<Group> comp = new Comparator<Group>() {
-				public int compare(Group o1, Group o2) {
-					Ranker r = Ranker.getRankerInstance();
-					return (int) Math.signum(r.rank(o2) - r.rank(o1));
-				}
-			};
+			
+//			for (Group g: groups) g.print();
+			
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ParallelValidatorThread: purging initial groups: " + groups.size() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+
+			// purge: keeps top-level groups only (delete all others having children)
+			// purge();
 			boolean mod;
 			do {
 				mod = false;
@@ -115,11 +133,25 @@ public class ParallelValidatorThread extends Thread {
 					}
 				}
 			} while (mod);
+			
 			Shrinker.myLogger.info("Number of available groups after purge: " + groups.size());
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ParallelValidatorThread: number of groups after purge: " + groups.size() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 
+			Comparator<Group> comp = new Comparator<Group>() {
+				public int compare(Group o1, Group o2) {
+					Ranker r = Ranker.getRankerInstance();
+					return (int) Math.signum(r.rank(o2) - r.rank(o1));
+				}
+			};
 			Collections.sort(groups, comp);
 			List<Group> removables = groups.subList(0, groups.size() > parallelVMs ? parallelVMs : groups.size());
 			Shrinker.myLogger.info(removables.toString());
+			
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ParallelValidatorThread: groups to remove:");
+			for (Group i: removables) {
+				System.out.println("  " + i.getId() + " (" + (i.children.isEmpty() ? "F" : "D") + ") " + i.getSize() + " bytes");
+			}
+			
 			unprocessedRemovables = removables;
 			ArrayList<SingleValidatorThread> validators = new ArrayList<SingleValidatorThread>();
 			for (Group removable : removables) {
@@ -132,6 +164,7 @@ public class ParallelValidatorThread extends Thread {
 				}
 			}
 			Shrinker.myLogger.info("***************************All validation threads have finished");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ParallelValidatorThread: all SingleValidatorThreads finished");
 			for (SingleValidatorThread validator : validators) {
 				SingleValidatorThread.ValidationState currentState = validator.getValidationState();
 				if (!currentState.equals(SingleValidatorThread.ValidationState.SUCCESS)) {
@@ -152,6 +185,12 @@ public class ParallelValidatorThread extends Thread {
 				SingleValidatorThread.ValidationState valstate;
 				do {
 					Shrinker.myLogger.info("Final validation required");
+			
+					StringBuilder sb = new StringBuilder();
+					for (Group g : removables) sb.append(g.getId() + " ");
+					String removablesString  = sb.toString();
+
+					System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ParallelValidatorThread: performing combined validation on: " + removablesString);
 					SingleValidatorThread finalValidator = new SingleValidatorThread(getThreadGroup(), removables);
 					try {
 						finalValidator.join();
@@ -192,9 +231,11 @@ public class ParallelValidatorThread extends Thread {
 						raf.writeBytes(g.genRemover());
 						raf.close();
 					} catch (IOException e) {
-						Shrinker.myLogger.severe("Failed to updte the remover script: " + e.getMessage());
+						Shrinker.myLogger.severe("Failed to update the remover script: " + e.getMessage());
 					}
 					g.setTestState(Group.GroupState.REMOVAL_SUCCESS);
+					Shrinker.myLogger.info("###removable: " + g.getId());
+
 				}
 			}
 		}

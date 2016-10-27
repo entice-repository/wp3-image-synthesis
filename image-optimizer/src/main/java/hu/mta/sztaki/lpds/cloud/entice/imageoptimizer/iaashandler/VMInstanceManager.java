@@ -70,7 +70,7 @@ public class VMInstanceManager extends Thread {
 	}
 
 	public static AtomicInteger reinitFailures = new AtomicInteger();
-	public static final int REINIT_LIMIT = 100;
+	public static final int REINIT_LIMIT = 10; // maximum number of unsuccessful VM start
 	
 	public VMInstanceManager(ThreadGroup tg, int maxvm) {
 		super(tg, "VMInstanceManager");
@@ -88,7 +88,8 @@ public class VMInstanceManager extends Thread {
 		super.finalize();
 	}
 
-	public VirtualMachine getNewVM() throws VMManagementException {
+	@SuppressWarnings("unused")
+	private VirtualMachine getNewVM() throws VMManagementException {
 		String threadName = Thread.currentThread().getName();
 		Shrinker.myLogger.info("New VM request " + threadName);
 		while (sc.isRunning() && isAlive()) {
@@ -141,7 +142,62 @@ public class VMInstanceManager extends Thread {
 		return null;
 	}
 
-	public VirtualMachine getNextAvailableVM() {
+	public VirtualMachine getNewVMAndAcquire() throws VMManagementException {
+		String threadName = Thread.currentThread().getName();
+		Shrinker.myLogger.info("New VM request " + threadName);
+		while (sc.isRunning() && isAlive()) {
+			synchronized (vms) {
+				boolean createvm = false;
+				Collections.shuffle(vms);
+				for (InstanceAllocationData iad : vms) {
+					if (iad.vm.getState().equals(VirtualMachine.VMState.FREE)) {
+						createvm = true;
+						if (iad.getAllocations() == 0) {
+							iad.newAllocation();
+							iad.vm.setAcquired(); // acquire immediately
+							return iad.vm;
+						}
+					}
+				}
+				if (createvm) {
+					InstanceAllocationData maxiad = new InstanceAllocationData(null);
+					for (InstanceAllocationData iad : vms) {
+						if (iad.vm.getState().equals(VirtualMachine.VMState.FREE)) {
+							if (maxiad.getAllocations() <= iad.getAllocations()) {
+								maxiad = iad;
+							}
+						}
+					}
+					if (maxiad.vm != null) {
+						maxiad.vm.terminate();
+					}
+				}
+			}
+			int maxtestcount = 1000;
+			newvmwaiterloop: while (sc.isRunning() && isAlive()) {
+				synchronized (vms) {
+					for (InstanceAllocationData iad : vms) {
+						if (iad.vm.getState().equals(VirtualMachine.VMState.FREE)) {
+							if (iad.getAllocations() == 0) {
+								break newvmwaiterloop;
+							}
+						}
+					}
+				}
+				if (maxtestcount-- < 0) {
+					break;
+				}
+				try {
+					sleep(new java.util.Random().nextInt(1000));
+				} catch (InterruptedException e) {
+				}
+			}
+		}
+		return null;
+	}
+
+	@SuppressWarnings("unused")
+	private VirtualMachine getNextAvailableVM() {
 		String threadName = Thread.currentThread().getName();
 		Shrinker.myLogger.info("VM request " + threadName);
 		while (sc.isRunning() && isAlive()) {
@@ -161,7 +217,29 @@ public class VMInstanceManager extends Thread {
 		}
 		return null;
 	}
+	
+	public VirtualMachine getAndAcquireNextAvailableVM() {
+		String threadName = Thread.currentThread().getName();
+		Shrinker.myLogger.info("VM request (get and acquire) " + threadName);
+		while (sc.isRunning() && isAlive()) {
+			synchronized (vms) {
+				Collections.shuffle(vms);
+				for (InstanceAllocationData iad : vms) {
+					if (iad.vm.getState().equals(VirtualMachine.VMState.FREE)) {
+						iad.newAllocation();
+						iad.vm.setAcquired(); // acquire immediately
+						return iad.vm;
+					}
+				}
+			}
+			try {
+				sleep(new java.util.Random().nextInt(1000));
+			} catch (InterruptedException e) {}
+		}
+		return null;
+	}
 
+	
 	@Override
 	public void run() {
 		long beats = 0, lastreport = 0;
@@ -282,6 +360,8 @@ public class VMInstanceManager extends Thread {
 			vms.removeAllElements();
 			Shrinker.myLogger.info("All VMs terminated.");
 			terminated = true;
+			
+			Shrinker.myLogger.info("###phase: done");
 		} catch (VMManagementException e) {
 			System.err.println(e.getMessage());
 			e.printStackTrace();

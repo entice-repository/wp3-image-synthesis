@@ -15,8 +15,8 @@
  */
 package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget;
 
-import java.util.Arrays;
-import java.util.Hashtable;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
@@ -69,6 +69,8 @@ public class EC2VirtualMachine extends VirtualMachine {
 
 	public static final int TERMINATE_TIMEOUT = 10 * 60 * 1000; // 10 mins in millis
 	public static final String TERMINATED_STATE = "terminated";
+	
+	private String ip;
 	
 	/**
 	 * @param vaid
@@ -159,8 +161,11 @@ public class EC2VirtualMachine extends VirtualMachine {
 			Shrinker.myLogger.info("Started instance (" + getImageId() + "/" + instanceType + "@" + endpoint + "): "
 					+ getInstanceIds());
 			
-			super.vmsStarted.incrementAndGet();
+			VirtualMachine.vmsStarted.incrementAndGet();
 			
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + instanceIds.get(0) + " " + this.ip +" (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			this.ip = null;
+			this.setPrivateIP(null);
 			return instanceIds.get(0);
 		} catch (AmazonServiceException x) {
 			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
@@ -181,13 +186,16 @@ public class EC2VirtualMachine extends VirtualMachine {
 			describeInstance(true);
 			RebootInstancesRequest rebootInstancesRequest = new RebootInstancesRequest();
 			rebootInstancesRequest.withInstanceIds(getInstanceIds());
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM reboot: " + getInstanceId() + " " + this.ip + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			this.amazonEC2Client.rebootInstances(rebootInstancesRequest);
 			Shrinker.myLogger.info("Reboot request dispatched for instance " + getInstanceId());
 		} catch (AmazonServiceException x) {
 			Shrinker.myLogger.info("rebootInstance error: " + x.getMessage());
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] reboot instance AmazonServiceExzeption: " + x.getMessage()); // don't print the word exception
 			throw new VMManagementException("runInstance exception", x);
 		} catch (AmazonClientException x) {
 			Shrinker.myLogger.info("rebootInstance error: " + x.getMessage());
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] reboot instance AmazonClientExzeption: " + x.getMessage()); // don't print the word exception
 			throw new VMManagementException("runInstance exception", x);
 		}
 	}
@@ -243,6 +251,8 @@ public class EC2VirtualMachine extends VirtualMachine {
 			Shrinker.myLogger.info("terminateInstance error: " + x.getMessage());
 			throw new VMManagementException("terminateInstance exception", x);
 		}
+		
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.ip + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	@Override
@@ -257,7 +267,12 @@ public class EC2VirtualMachine extends VirtualMachine {
 		if (this.state != null && !"pending".equals(this.state) && !"running".equals(this.state)) {
 			throw new VMManagementException("VM failed, state: " + this.state, null);
 		}
-		return super.getIP();
+		String prevIP = this.ip;
+		this.ip = super.getIP();
+		if (prevIP == null && this.ip != null) 
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM " + getInstanceId() + " has IP " + this.ip);
+	
+		return this.ip;
 	}
 
 	@Override

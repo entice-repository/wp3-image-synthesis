@@ -22,27 +22,30 @@ import java.io.File;
 
 public class DirectoryGroupManager extends GroupManager {
 
+	// returns the Group with id groupRoot.toString(), creates it first if didn't exist (parent set as the parent directory of the file, moutpoint has not parent)  
 	public Group getGroup(File groupRoot) {
 		return getGroup(groupRoot.toString(), groupRoot.equals(Shrinker
 				.getContext().getMountPoint()) ? null : getGroup(groupRoot
 				.getParentFile()));
 	}
 
+	// adds this file to the group representing the file itself, and add this group as a child of the group corresponding to the parent directory  
 	private void addToGroup(File group, File addition) {
-		Group currGroup = getGroup(group);
-		currGroup.addToGroup(addition);
+		Group currGroup = getGroup(group); // create a group for the file itself
+		currGroup.addToGroup(addition); // increments group size with file size
 		if (!group.equals(Shrinker.getContext().getMountPoint())) {
-			getGroup(group.getParentFile()).children.add(currGroup);
+			getGroup(group.getParentFile()).children.add(currGroup); // add this group to its parent
 		}
 	}
 
 	@Override
+	// create all groups (the fie itself, all parents), add the file to all these groups (itself, all parents) up to mount point
 	public void addFile(File addition) {
-		addToGroup(addition, addition);
+		addToGroup(addition, addition); // create group for the container directory (if not yet exists) then add this file to this group
 		File parentDir = addition;
 		do {
 			parentDir = parentDir.getParentFile();
-			addToGroup(parentDir, addition);
+			addToGroup(parentDir, addition); // add the file to all groups of all container directories up to mount point (recursively) 
 		} while (!Shrinker.getContext().getMountPoint().equals(parentDir));
 	}
 

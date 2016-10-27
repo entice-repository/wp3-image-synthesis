@@ -120,6 +120,10 @@ public abstract class VirtualMachine {
 		return substate;
 	}
 
+	public VMSubState getSubState() {
+		return substate;
+	}
+	
 	/**
 	 * Releases the VM thus sets its state back to free for other uses. </br>
 	 * WARNING! After calling this function, the connection between the VM and

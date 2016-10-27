@@ -19,6 +19,8 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.Vector;
@@ -42,6 +44,7 @@ public class Shrinker extends Thread {
 	public static Logger myLogger = Logger.getLogger("ASD.Shrinker");
 	public static final String intermediateVAcreator = "scripts/makeWPImage.sh";
 	public static final String rsyncTest = "scripts/rsynctest.sh";
+	public static final String rebootScript = "scripts/reboot.sh";
 	public static final String noSSHSetup = "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.NoSSH";
 	public static final String removeScript = "rmme";
 	public static final String removalScriptPrelude = "#!/bin/sh\nexec 5>&1 6>&2 >> /dev/null 2>&1\n ROOT=$1 \n [ -z \"$1\" ] && ROOT=/ \n [ \"/reposi*\" = `echo /reposi*` ] || { [ \"$ROOT\" = \"/\" ] && exit 238 ; }\n true\n";
@@ -169,20 +172,34 @@ public class Shrinker extends Thread {
 		// We pool some extra VMs for effectiveness
 		String sshSetup = System.getProperty(Shrinker.noSSHSetup);
 		myLogger.info("SSH is " + (sshSetup == null ? "" : "not") + " used for shrinking");
-		VMInstanceManager vmim = new VMInstanceManager(getThreadGroup(), sshSetup == null
-				? Math.min((int) (ParallelValidatorThread.parallelVMs * 1.25), Integer.parseInt(maxParallelCPUcount))
-				: 0);
+		/*VMInstanceManager vmim = */ 
+		new VMInstanceManager(getThreadGroup(), 
+				sshSetup == null ? 
+						Math.min((int) (ParallelValidatorThread.parallelVMs * 1.25), Integer.parseInt(maxParallelCPUcount)) // this is the normal case
+						: 0);
+		
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker: waiting for ending itemizer (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		while (!pool.isPoolFull()) {
-			try {
-				sleep(100);
-			} catch (InterruptedException e1) {
-			}
+			try { sleep(100); } catch (InterruptedException e1) {}
 		}
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker: itemizer done (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+
 		Shrinker.myLogger.info("###phase: initial grouping");
 		if (dgm instanceof DirectoryGroupManager) {
-			dgm.getGroup(sc.getMountPoint().toString()).setTestState(Group.GroupState.CORE_GROUP);
-			// dgm.getGroup(mountPoint.toString() + "/dev").setTestState(
-			// Group.GroupState.CORE_GROUP);
+			try {
+				dgm.getGroup(sc.getMountPoint().toString()).setTestState(Group.GroupState.CORE_GROUP);
+			} catch (NullPointerException x) {
+				System.out.println("Exception: Nothing to optimize, no files found in image");
+				System.exit(1);
+			} // files in mount point at all
+			try {
+				dgm.getGroup(sc.getMountPoint().toString() + "/dev").setTestState(Group.GroupState.CORE_GROUP);
+			} catch (NullPointerException x) {
+			} // no such path
+			try {
+				dgm.getGroup(sc.getMountPoint().toString() + "/boot").setTestState(Group.GroupState.CORE_GROUP);
+			} catch (NullPointerException x) {
+			} // no such path
 			try {
 				dgm.getGroup(sc.getMountPoint().toString() + "/bin").setTestState(Group.GroupState.CORE_GROUP);
 			} catch (NullPointerException x) {
@@ -223,9 +240,9 @@ public class Shrinker extends Thread {
 		Shrinker.myLogger.info("###phase: optimizing file system");
 
 		boolean stoppingCriterion = false;
-		while (((nextGroups = dgm.getGroups()).size() > 0) 
-				&& ((double) dgm.getRemainingSize() / (double) (dgm.getTotalSize())) > 0.01
-				&& !stoppingCriterion) {
+		while (  (nextGroups = dgm.getGroups()).size() > 0  // nextGroups: copy of the list of groups not in final state 
+				 && ((double) dgm.getRemainingSize() / (double) (dgm.getTotalSize())) > 0.01
+				 && !stoppingCriterion) {
 			ParallelValidatorThread matureThread = new ParallelValidatorThread(nextGroups);
 			matureThread.start();
 			try {
@@ -326,15 +343,15 @@ public class Shrinker extends Thread {
 		}
 		Shrinker.myLogger.info("Shutdown request!");
 		sc.running = false;
+		Shrinker.myLogger.info("###phase: shutting down worker VMs");
 		VMFactory.instance.terminateFactory();
 		// createIntermediateVM("FINAL"); NOTE: it invokes final image creation,
 		// now it is invoked from outside
-		Shrinker.myLogger.info("###phase: done");
 	}
 
 	private void createIntermediateVM(String itID) {
 		ExecHelper eh = new ExecHelper();
-		ShrinkingContext sc = getContext();
+		/*ShrinkingContext sc = getContext(); */ // unused
 		// String newVAid = Obsolete.genVAid(itID);
 		Shrinker.myLogger.info("###phase: final image creation");
 		Shrinker.myLogger.info("Creating new partially optimized VA with VAid: " /* + newVAid */);
@@ -369,6 +386,7 @@ public class Shrinker extends Thread {
 	}
 
 	public static void main(final String[] args) throws Exception {
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker started (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.info("###phase: starting");
 		final ThreadGroup tg = new ThreadGroup("Shrinking");
 		final Thread[] shrinkerThread = new Thread[1];
@@ -406,5 +424,6 @@ public class Shrinker extends Thread {
 			System.out.println(e.getMessage());
 			e.printStackTrace();
 		}
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 }

@@ -18,7 +18,9 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker.ShrinkingContext;
@@ -31,7 +33,7 @@ public class Itemizer {
 
 	private File processingState;
 	private boolean stopprocessing = false;
-	private int offercounter = 0;
+//	private int offercounter = 0;
 
 	private class ItemizingThread extends Thread {
 		public ItemizingThread(ThreadGroup tg) {
@@ -39,6 +41,7 @@ public class Itemizer {
 		}
 
 		public void run() {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Itemizer thread started (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			ShrinkingContext sc = Shrinker.getContext();
 			while (!stopprocessing && processFiles() && sc.isRunning()) {
 				try {
@@ -47,6 +50,7 @@ public class Itemizer {
 				}
 			}
 			Shrinker.myLogger.info("Itemizer thread finished");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Itemizer thread ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		}
 	}
 
@@ -62,10 +66,11 @@ public class Itemizer {
 		Shrinker.myLogger.finest("Acquired mount point: " + mp);
 		File[] list = mp.listFiles();
 		Shrinker.myLogger.finest("Received list: " + list);
-		processingState = list[0];
+		if (list.length > 0) processingState = list[0]; // processingState left null - when no files or subdirectories under mountpoint
+		else Shrinker.myLogger.warning("No files or subdirectories found at mount point");
 		Shrinker.myLogger.finest("Starting point set as " + processingState);
 		processingThread.start();
-		Shrinker.myLogger.finest("Thread started");
+		Shrinker.myLogger.finest("Itemizer thread started");
 	}
 
 	public boolean isProcessingCompleted() {
@@ -85,7 +90,10 @@ public class Itemizer {
 
 	public File basicProcessFiles(File processFile) {
 		try {
-			if (processFile.isDirectory() && processFile.getCanonicalPath().equals(processFile.getAbsolutePath())) {
+			if (!processFile.getCanonicalPath().equals(processFile.getAbsolutePath()))
+				return null; // skip symbolic links
+			
+			if (processFile.isDirectory()) {
 				for (File curr : processFile.listFiles()) {
 					File nextFiletoProcess = basicProcessFiles(curr);
 					if (nextFiletoProcess != null) {
@@ -93,11 +101,10 @@ public class Itemizer {
 					}
 				}
 			} else {
-				if (processFile.getCanonicalPath().equals(processFile.getAbsolutePath())
-						&& !itemQueue.offer(processFile)) {
+				if (!itemQueue.offer(processFile)) {
 					return processFile;
 				} else {
-					offercounter++;
+//					offercounter++;
 				}
 			}
 		} catch (IOException e) {
@@ -140,9 +147,8 @@ public class Itemizer {
 	}
 
 	public boolean processFiles() {
-		if (processingState == null)
-			return false;
-		processingState = processFilesFrom(processingState);
+		if (processingState != null)
+			processingState = processFilesFrom(processingState);
 		return processingState != null;
 	}
 }

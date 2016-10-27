@@ -46,6 +46,16 @@ public class Group {
 	private long size = 0;
 	private GroupState state = GroupState.NOT_TESTED;
 
+	public void print() {
+		System.out.println("GROUP: " + groupid);
+		System.out.println("  size: " + size);
+		System.out.println("  state: " + state);
+		System.out.println("  rank: " + Ranker.getRankerInstance().rank(this));
+		System.out.print("  children: "); for (Group child: children) System.out.print(child.groupid + " ");
+		System.out.println();
+		System.out.println();
+	}
+	
 	public GroupState getGroupState() {
 		return state;
 	}
@@ -85,24 +95,26 @@ public class Group {
 			return;
 		}
 		switch (newState) {
-		case REMOVAL_SUCCESS:
-		case TEST_NOT_NECESSARY:
-			if (children.size() > 0) {
-				for (Group child : children) {
-					child.setTestState(newState);
+			case REMOVAL_SUCCESS:
+			case TEST_NOT_NECESSARY:
+				if (children.size() > 0) {
+					for (Group child : children) {
+						child.setTestState(newState);
+					}
+				} else {
+					if (groupped.size() != 1)
+						throw new IllegalStateException(
+								"Childless group has more than a single file!");
+					removeFromGroup(groupped.get(0));
 				}
-			} else {
-				if (groupped.size() != 1)
-					throw new IllegalStateException(
-							"Childless group has more than a single file!");
-				removeFromGroup(groupped.get(0));
-			}
-			break;
-		case CORE_GROUP:
-		case REMOVAL_FAILURE:
-			if (parent != null && !parent.isInFinalState()) {
-				parent.setTestState(newState);
-			}
+				break;
+			case CORE_GROUP:
+			case REMOVAL_FAILURE:
+				if (parent != null && !parent.isInFinalState()) {
+					parent.setTestState(newState);
+				}
+			default:
+				break;
 		}
 		state = newState;
 	}
@@ -177,4 +189,7 @@ public class Group {
 				+ size + " R-" + Ranker.getRankerInstance().rank(this) + " ST-"
 				+ state;
 	}
+	
+	public String getId() { return groupid; }
+	public String getState() { return state.name(); }
 }
