@@ -29,7 +29,8 @@ do
 	if nc -z $IP $PORT
 	then
 		echo NC done, ssh start
-		ssh $SSHOPTS $LOGIN@$IP /sbin/ifconfig | grep $INTIP && exit 0
+#		note: do not grep $INTIP in ifconfig, because private IP may be a hostname (OpenStack)
+		ssh $SSHOPTS $LOGIN@$IP /sbin/ifconfig && exit 0
 	fi
 	# Wait for some time to allow ssh to come up
 	sleep 10

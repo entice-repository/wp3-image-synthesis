@@ -216,7 +216,7 @@ public abstract class VirtualMachine {
 					if (testConformance) {
 						setState(VMState.IAASCHECK);
 						try {
-							ret = new ExecHelper().execProg(ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + ip
+							ret = new ExecHelper().execProg(ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip
 									+ " 22 " + privateip + " " + RemoteExecutor.keyfile + " " + loginName, true, null, false)
 									.getRetcode();
 						} catch (IOException e) {

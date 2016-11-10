@@ -163,9 +163,9 @@ public class EC2VirtualMachine extends VirtualMachine {
 			
 			VirtualMachine.vmsStarted.incrementAndGet();
 			
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + instanceIds.get(0) + " " + this.ip +" (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			this.ip = null;
 			this.setPrivateIP(null);
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + instanceIds.get(0) + " " + this.ip +" (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			return instanceIds.get(0);
 		} catch (AmazonServiceException x) {
 			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
@@ -269,9 +269,9 @@ public class EC2VirtualMachine extends VirtualMachine {
 		}
 		String prevIP = this.ip;
 		this.ip = super.getIP();
+		if (this.ip == null || "".equals(this.ip)) this.ip = super.getPrivateIP();
 		if (prevIP == null && this.ip != null) 
 			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM " + getInstanceId() + " has IP " + this.ip);
-	
 		return this.ip;
 	}
 
