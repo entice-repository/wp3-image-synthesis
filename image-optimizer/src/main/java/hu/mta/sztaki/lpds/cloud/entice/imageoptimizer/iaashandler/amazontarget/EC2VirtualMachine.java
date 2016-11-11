@@ -20,6 +20,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -48,7 +49,7 @@ import static hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.Virtual
 public class EC2VirtualMachine extends VirtualMachine {
 	private static final int totalReqLimit = Integer
 			.parseInt(System.getProperty("hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxUsableCPUs"));
-	private static int reqCounter = 0;
+	private static AtomicInteger reqCounter = new AtomicInteger();
 
 	public static final String ACCESS_KEY = "accessKey";
 	public static final String SECRET_KEY = "secretKey";
@@ -91,11 +92,11 @@ public class EC2VirtualMachine extends VirtualMachine {
 		if (parameters == null)
 			throw new IllegalArgumentException("Missing parameters");
 		if (!parameters.containsKey(ACCESS_KEY) || parameters.get(ACCESS_KEY) == null
-				|| parameters.get(ACCESS_KEY).size() == 0)
-			throw new IllegalArgumentException("Missing parameter:" + ACCESS_KEY);
+				|| parameters.get(ACCESS_KEY).size() == 0 || parameters.get(ACCESS_KEY).get(0) == null)
+			throw new IllegalArgumentException("Missing parameter: " + ACCESS_KEY);
 		if (!parameters.containsKey(SECRET_KEY) || parameters.get(SECRET_KEY) == null
-				|| parameters.get(SECRET_KEY).size() == 0)
-			throw new IllegalArgumentException("Missing parameter:" + SECRET_KEY);
+				|| parameters.get(SECRET_KEY).size() == 0 || parameters.get(SECRET_KEY).get(0) == null)
+			throw new IllegalArgumentException("Missing parameter: " + SECRET_KEY);
 		this.accessKey = parameters.get(ACCESS_KEY).get(0);
 		this.secretKey = parameters.get(SECRET_KEY).get(0);
 		if (parameters.containsKey(ENDPOINT) && parameters.get(ENDPOINT) != null && parameters.get(ENDPOINT).size() > 0)
@@ -148,8 +149,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 				runInstancesRequest.withKeyName(keyName);
 			RunInstancesResult runInstancesResult = this.amazonEC2Client.runInstances(runInstancesRequest);
 			this.reservation = runInstancesResult.getReservation();
-			reqCounter++;
-			if (reqCounter > totalReqLimit) {
+			if (reqCounter.incrementAndGet() > totalReqLimit) {
 				Shrinker.myLogger.severe("Terminating shrinking process, too many non-terminated requests");
 				Thread.dumpStack();
 				System.exit(1);
@@ -165,7 +165,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 			
 			this.ip = null;
 			this.setPrivateIP(null);
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + instanceIds.get(0) + " " + this.ip +" (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + instanceIds.get(0) + " " + this.ip + " #" + reqCounter.get() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			return instanceIds.get(0);
 		} catch (AmazonServiceException x) {
 			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
@@ -203,11 +203,10 @@ public class EC2VirtualMachine extends VirtualMachine {
 	@Override
 	protected void terminateInstance() throws VMManagementException {
 		try {
-			reqCounter--;
-			if (reqCounter < 0) {
+			if (reqCounter.decrementAndGet() < 0) {
 				Shrinker.myLogger.severe("Terminating shrinking process, too much VM termination requests");
 				Thread.dumpStack();
-				System.exit(1);
+//				System.exit(1);
 			}
 			Shrinker.myLogger.info("Instance " + getInstanceId() + " received a terminate request");
 			TerminateInstancesRequest terminateInstancesRequest = new TerminateInstancesRequest();
@@ -252,7 +251,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 			throw new VMManagementException("terminateInstance exception", x);
 		}
 		
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.ip + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.ip + " #" + reqCounter.get() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	@Override
