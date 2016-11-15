@@ -123,7 +123,6 @@ public class EC2VirtualMachine extends VirtualMachine {
 	}
 
 	// suppress: WARNING: Unable to parse date '2016-06-09T09:47:30+02:00':
-	// Unparseable date: "2016-06-09T09:47:30+02:00"
 	private void disableUnparseableDateWarning() {
 		try {
 			// java.util.logging: set logger level to SEVERE
@@ -137,35 +136,33 @@ public class EC2VirtualMachine extends VirtualMachine {
 	}
 
 	@Override
-	// invoked from constuctor
+	// invoked from constructor
 	protected String runInstance(String keyName) throws VMManagementException {
 		try {
-			Shrinker.myLogger
-					.info("Trying to start instance (" + getImageId() + "/" + instanceType + "@" + endpoint + ")");
-			RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
-			runInstancesRequest.withImageId(getImageId()).withInstanceType(instanceType).withMinCount(1)
-					.withMaxCount(1);
-			if (keyName != null)
-				runInstancesRequest.withKeyName(keyName);
-			RunInstancesResult runInstancesResult = this.amazonEC2Client.runInstances(runInstancesRequest);
-			this.reservation = runInstancesResult.getReservation();
-			if (reqCounter.incrementAndGet() > totalReqLimit) {
+			Shrinker.myLogger.info("Trying to start instance (" + getImageId() + "/" + instanceType + "@" + endpoint + ")");
+			int requests = reqCounter.incrementAndGet();
+//			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VMs up: " + requests);
+			if (requests > totalReqLimit) {
 				Shrinker.myLogger.severe("Terminating shrinking process, too many non-terminated requests");
 				Thread.dumpStack();
 				System.exit(1);
 			}
+			
+			RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
+			runInstancesRequest.withImageId(getImageId()).withInstanceType(instanceType).withMinCount(1).withMaxCount(1);
+			if (keyName != null) runInstancesRequest.withKeyName(keyName);
+			RunInstancesResult runInstancesResult = this.amazonEC2Client.runInstances(runInstancesRequest);
+			this.reservation = runInstancesResult.getReservation();
 
 			List<String> instanceIds = getInstanceIds();
-			if (instanceIds.size() != 1)
-				throw new Exception("No or too many instances started");
-			Shrinker.myLogger.info("Started instance (" + getImageId() + "/" + instanceType + "@" + endpoint + "): "
-					+ getInstanceIds());
+			if (instanceIds.size() != 1) throw new Exception("No or too many instances started");
+			Shrinker.myLogger.info("Started instance (" + getImageId() + "/" + instanceType + "@" + endpoint + "): "+ getInstanceIds());
 			
 			VirtualMachine.vmsStarted.incrementAndGet();
 			
 			this.ip = null;
 			this.setPrivateIP(null);
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + instanceIds.get(0) + " " + this.ip + " #" + reqCounter.get() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + instanceIds.get(0) + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			return instanceIds.get(0);
 		} catch (AmazonServiceException x) {
 			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
@@ -203,11 +200,12 @@ public class EC2VirtualMachine extends VirtualMachine {
 	@Override
 	protected void terminateInstance() throws VMManagementException {
 		try {
-			if (reqCounter.decrementAndGet() < 0) {
+			int requests = reqCounter.decrementAndGet();
+			if (requests < 0) {
 				Shrinker.myLogger.severe("Terminating shrinking process, too much VM termination requests");
 				Thread.dumpStack();
-//				System.exit(1);
 			}
+
 			Shrinker.myLogger.info("Instance " + getInstanceId() + " received a terminate request");
 			TerminateInstancesRequest terminateInstancesRequest = new TerminateInstancesRequest();
 			terminateInstancesRequest.withInstanceIds(getInstanceIds());
@@ -220,20 +218,27 @@ public class EC2VirtualMachine extends VirtualMachine {
 			if (state != null) Shrinker.myLogger.info("State of instance " + getInstanceId() + ": " + state.getPreviousState().getName() + " -> " + state.getCurrentState().getName());
 			else Shrinker.myLogger.info("null state for instance " + getInstanceId());
 			
-			// resend terminate
+			// re-send terminate
 			if (state == null || !TERMINATED_STATE.equals(state.getCurrentState().getName())) {
 				int timeout = 0;
 				int counter = 1;
 				while (timeout < TERMINATE_TIMEOUT) {
-					try { Thread.sleep(10000); } catch (Exception x) {}
+					try { Thread.sleep(5000); } catch (Exception x) {}
 					Shrinker.myLogger.info("Re-sending (" + counter + "x) terminate request dispatched for instance " + getInstanceId());
-					res = this.amazonEC2Client.terminateInstances(terminateInstancesRequest);
-					stateChanges = res.getTerminatingInstances();
-					for (InstanceStateChange stateChange: stateChanges) if (getInstanceId().contains(stateChange.getInstanceId())) state = stateChange; 
-					if (state != null) Shrinker.myLogger.info("State of instance " + getInstanceId() + ": " + state.getPreviousState().getName() + " -> " + state.getCurrentState().getName());
-					else Shrinker.myLogger.info("null state for instance " + getInstanceId());
+					try {
+						res = this.amazonEC2Client.terminateInstances(terminateInstancesRequest);
+						stateChanges = res.getTerminatingInstances();
+						for (InstanceStateChange stateChange: stateChanges) if (getInstanceId().contains(stateChange.getInstanceId())) state = stateChange; 
+						if (state != null) Shrinker.myLogger.info("State of instance " + getInstanceId() + ": " + state.getPreviousState().getName() + " -> " + state.getCurrentState().getName());
+						else Shrinker.myLogger.info("null state for instance " + getInstanceId());
+					} catch (AmazonServiceException x) { // terminated correctly
+						// it can happen that terminate seemingly didn't succeed for the first time (remains running), 
+						// but then the instance id is gone (correctly) so re-sending terminate will cause exception
+						if ("InvalidInstanceID.NotFound".equals(x.getErrorCode())) break;
+						else throw x;
+					}
 					if (state != null && TERMINATED_STATE.equals(state.getCurrentState().getName())) break;
-					timeout += 10000; // repeat every 10 sec
+					timeout += 5000; // repeat every 5 second
 					counter++;
 				}
 				
@@ -250,8 +255,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 			Shrinker.myLogger.info("terminateInstance error: " + x.getMessage());
 			throw new VMManagementException("terminateInstance exception", x);
 		}
-		
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.ip + " #" + reqCounter.get() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.ip + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	@Override
@@ -306,6 +310,10 @@ public class EC2VirtualMachine extends VirtualMachine {
 	}
 
 	private void describeInstance(boolean verbose) throws VMManagementException {
+		if (this.getInstanceId() == null) {
+			Shrinker.myLogger.severe("null instance id");
+			return;
+		}
 		try {
 			DescribeInstancesRequest describeInstancesRequest = new DescribeInstancesRequest();
 			DescribeInstancesResult describeInstancesResult = this.amazonEC2Client

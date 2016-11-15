@@ -113,7 +113,7 @@ public class ParallelValidatorThread extends Thread {
 			siblings.add(this);
 		}
 		List<Group> groups = availableGroups; // copy of the list of groups not in final state
-		if (groups.size() > 0) {
+		if (groups != null && groups.size() > 0) {
 			Shrinker.myLogger.info("Parallel validation started!");
 			Shrinker.myLogger.info("Number of available groups before purge: " + groups.size());
 			

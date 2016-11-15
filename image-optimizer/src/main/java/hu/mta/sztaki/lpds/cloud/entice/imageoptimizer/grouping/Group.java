@@ -50,7 +50,7 @@ public class Group {
 		System.out.println("GROUP: " + groupid);
 		System.out.println("  size: " + size);
 		System.out.println("  state: " + state);
-		System.out.println("  rank: " + Ranker.getRankerInstance().rank(this));
+		if (Ranker.getRankerInstance() != null)	System.out.println("  rank: " + Ranker.getRankerInstance().rank(this));
 		System.out.print("  children: "); for (Group child: children) System.out.print(child.groupid + " ");
 		System.out.println();
 		System.out.println();
@@ -186,7 +186,7 @@ public class Group {
 	@Override
 	public String toString() {
 		return groupid + " (" + (children.isEmpty() ? "F" : "D") + "): S-"
-				+ size + " R-" + Ranker.getRankerInstance().rank(this) + " ST-"
+				+ size + " R-" + (Ranker.getRankerInstance() != null ? Ranker.getRankerInstance().rank(this) : "?") + " ST-"
 				+ state;
 	}
 	

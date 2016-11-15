@@ -255,17 +255,25 @@ public class VMInstanceManager extends Thread {
 				Shrinker.myLogger.info("START:" + getName());
 				// creates VM with currently used VA and no (null) modification.
 				// (ie. mods are to be applied during runtime)
-				VirtualMachine vm = VMFactory.instance.requestVM(Shrinker.getContext().getVaid(), null);
-				if (!terminated) {
-					synchronized (vms) {
-						vms.add(new InstanceAllocationData(vm));
-					}
-				} else {
-					try {
-						Shrinker.myLogger.info("Termination after VM init: " + vm.toString());
-						vm.terminate();
-					} catch (VMManagementException e) {
-						Shrinker.myLogger.warning("Cannot terminate just created vm" + e.getMessage());
+				VirtualMachine vm = null;
+				try {
+					vm = VMFactory.instance.requestVM(Shrinker.getContext().getVaid(), null);
+				} catch (IllegalArgumentException x) {
+					System.out.println("Exception: " + x.getMessage());
+					Shrinker.myLogger.warning(x.getMessage());
+				}
+				if (vm != null) {
+					if (!terminated) {
+						synchronized (vms) {
+							vms.add(new InstanceAllocationData(vm));
+						}
+					} else {
+						try {
+							Shrinker.myLogger.info("Termination after VM init: " + vm.toString());
+							vm.terminate();
+						} catch (VMManagementException e) {
+							Shrinker.myLogger.warning("Cannot terminate just created vm" + e.getMessage());
+						}
 					}
 				}
 				Shrinker.myLogger.info("STOP:" + getName());
@@ -279,7 +287,7 @@ public class VMInstanceManager extends Thread {
 				public void run() {
 					Shrinker.myLogger.info("Shutdown hook handler launched");
 					long time = System.currentTimeMillis();
-					// Wait 30 seconds before giving up waithing on VMI to terminate
+					// Wait 30 seconds before giving up waiting on VMI to terminate
 					while (!terminated && System.currentTimeMillis() - time < 30000)
 						yield();
 					if(!terminated) {

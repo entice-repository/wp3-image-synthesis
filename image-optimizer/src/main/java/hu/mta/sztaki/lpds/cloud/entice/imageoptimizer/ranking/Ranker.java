@@ -36,12 +36,12 @@ public abstract class Ranker {
 	protected Ranker() throws IllegalStateException {
 		ThreadGroup tg = Thread.currentThread().getThreadGroup();
 		if (rankers.get(tg) != null) {
-			throw new IllegalStateException(
-					"This threadgroup already has a ranker!");
+			Shrinker.myLogger.severe("This threadgroup already has a ranker!");
+		} else {
+			rankers.put(tg, this);
 		}
 		Shrinker.myLogger.info(tg.getName() + " uses "
 				+ this.getClass().getName());
-		rankers.put(tg, this);
 	}
 
 	public abstract double rank(Group g);

@@ -43,7 +43,7 @@ public class ItemPool {
 
 		public void run() {
 			Shrinker.myLogger.info("###phase: source file analysis");
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ItemPool: reading source file system");
+//			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ItemPool: reading source file system");
 			ShrinkingContext sc = Shrinker.getContext();
 			while ((!itemSource.isProcessingCompleted() || !itemSource.itemQueue.isEmpty()) && sc.isRunning()) {
 				if (itemPool.size() < POOLSIZE) {
@@ -78,6 +78,7 @@ public class ItemPool {
 	}
 
 	public void removefromPool(File removable) {
+		if (removable == null) return;
 		poolFull = !itemPool.remove(removable);
 		overallSize -= removable.length();
 	}
@@ -117,6 +118,6 @@ public class ItemPool {
 	}
 
 	public boolean isPoolFull() {
-		return poolFull || !poolFiller.isAlive();
+		return poolFull || (poolFiller != null && !poolFiller.isAlive());
 	}
 }

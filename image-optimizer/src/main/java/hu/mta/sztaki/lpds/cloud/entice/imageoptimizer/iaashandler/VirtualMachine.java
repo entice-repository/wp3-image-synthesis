@@ -18,6 +18,8 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Vector;
@@ -216,10 +218,14 @@ public abstract class VirtualMachine {
 					if (testConformance) {
 						setState(VMState.IAASCHECK);
 						try {
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh " + this.instanceid + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+
 							ret = new ExecHelper().execProg(ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip
 									+ " 22 " + privateip + " " + RemoteExecutor.keyfile + " " + loginName, true, null, false)
 									.getRetcode();
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh done  " + ret + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 						} catch (IOException e) {
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh FAILED " + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 							Shrinker.myLogger.warning("Initialization check failed: " + e.getMessage());
 							ret = 1;
 						} catch (InterruptedException e) {

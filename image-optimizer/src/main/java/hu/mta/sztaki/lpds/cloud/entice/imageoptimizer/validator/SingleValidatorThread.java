@@ -282,7 +282,7 @@ public class SingleValidatorThread extends Thread {
 		for (Group g : removables) sb.append(g.getId() + " ");
 		String removablesString  = sb.toString().trim();
 
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] SingleValidatorThread (fullValidation: " + fullValidation + "): " + removablesString);
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] SingleValidatorThread (fullValidation: " + fullValidation + "): " + removablesString);
 		
 		if (fullValidation) {
 			File validatorScript = new File(getName());
@@ -322,13 +322,13 @@ public class SingleValidatorThread extends Thread {
 						}
 					} else { // SSH
 						vm = removables.size() > 1 ? vim.getNewVMAndAcquire() : vim.getAndAcquireNextAvailableVM(); // FIXME acquire VM at getNew/getNext? vm.setAcquired()
-						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM acquired: " + vm.getInstanceId() + " (" + (removables.size() > 1 ? "getNewVM" : "getNextAvailableVM") + ") for group " + removablesString);
+						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM acquired: " + (vm != null ? vm.getInstanceId() : "?") + " (" + (removables.size() > 1 ? "getNewVM" : "getNextAvailableVM") + ") for group " + removablesString);
 					}
 //					if (vm == null) { // FIXME dead code?
 //						Shrinker.myLogger.severe(getName() + "failed to acquire VM!");
 //						return;
 //					}
-					Shrinker.myLogger.info(getName() + " acquires " + vm.toString());
+					Shrinker.myLogger.info(getName() + " acquires " + (vm != null ? vm.toString() : vm));
 					try {
 						vs = noMMVA ? executeTest(vm, null) // no SSH
 								: executeRemovalAndTest(vm, validatorScript.toString(), true, removablesString); // SSH

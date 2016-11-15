@@ -39,14 +39,14 @@ public class DirectoryGroupManager extends GroupManager {
 	}
 
 	@Override
-	// create all groups (the fie itself, all parents), add the file to all these groups (itself, all parents) up to mount point
+	// create all groups (the file itself, all parents), add the file to all these groups (itself, all parents) up to mount point
 	public void addFile(File addition) {
 		addToGroup(addition, addition); // create group for the container directory (if not yet exists) then add this file to this group
 		File parentDir = addition;
 		do {
 			parentDir = parentDir.getParentFile();
-			addToGroup(parentDir, addition); // add the file to all groups of all container directories up to mount point (recursively) 
-		} while (!Shrinker.getContext().getMountPoint().equals(parentDir));
+			if (parentDir != null) addToGroup(parentDir, addition); // add the file to all groups of all container directories up to mount point (recursively) 
+		} while (!Shrinker.getContext().getMountPoint().equals(parentDir) && parentDir != null);
 	}
 
 }

@@ -61,15 +61,16 @@ public abstract class GroupManager {
 	public GroupManager() throws IllegalStateException {
 		ThreadGroup tg = Thread.currentThread().getThreadGroup();
 		if (groupers.get(tg) != null) {
-			throw new IllegalStateException("This threadgroup already has a grouper!");
+			Shrinker.myLogger.severe("This threadgroup already has a grouper!");
+		} else {
+			groupers.put(tg, this);
 		}
 		Shrinker.myLogger.info(tg.getName() + " uses " + this.getClass().getName());
-		groupers.put(tg, this);
 		new Thread(tg, "GroupCounter") {
 			@Override
 			public void run() {
 				ShrinkingContext sc = Shrinker.getContext();
-				while (nottestedGroups != 0 && sc.isRunning()) {
+				while (nottestedGroups != 0 && sc.isRunning() && !Thread.currentThread().isInterrupted()) {
 					try {
 						evaluateStatistics();
 						sleep(1000);
@@ -197,7 +198,8 @@ public abstract class GroupManager {
 	public void loadGroupStates() throws IOException {
 		Shrinker.ShrinkingContext sc = Shrinker.getContext();
 		Shrinker.myLogger.info("Loading group states from: " + sc.getGroupStatesFile());
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] trying to load group states from file: " + sc.getGroupStatesFile().getAbsolutePath() + "");
+		if (sc.getGroupStatesFile() == null) throw new IOException("Group states file is null");
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] trying to load group states from file: " + sc.getGroupStatesFile().getAbsolutePath() + "");
 		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(sc.getGroupStatesFile())));
 		String line = null;
 		while ((line = br.readLine()) != null) {
@@ -211,13 +213,14 @@ public abstract class GroupManager {
 		}
 		br.close();
 		Shrinker.myLogger.info("Group states successfully loaded from: " + sc.getGroupStatesFile());
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] group states loaded from file");
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] group states loaded from file");
 	}
 
 	public void saveGroupStates() throws IOException {
 		Shrinker.ShrinkingContext sc = Shrinker.getContext();
 		File groupStatesFile = sc.getGroupStatesFile();
 		Shrinker.myLogger.info("Saving group states to: " + groupStatesFile);
+		if (sc.getGroupStatesFile() == null) throw new IOException("Group states file is null");
 		groupStatesFile.delete();
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(groupStatesFile)));
 		synchronized (GMBlocker) {

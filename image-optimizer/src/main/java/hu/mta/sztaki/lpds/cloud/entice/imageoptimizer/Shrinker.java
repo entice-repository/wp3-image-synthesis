@@ -19,8 +19,6 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.Vector;
@@ -50,6 +48,7 @@ public class Shrinker extends Thread {
 	public static final String removalScriptPrelude = "#!/bin/sh\nexec 5>&1 6>&2 >> /dev/null 2>&1\n ROOT=$1 \n [ -z \"$1\" ] && ROOT=/ \n [ \"/reposi*\" = `echo /reposi*` ] || { [ \"$ROOT\" = \"/\" ] && exit 238 ; }\n true\n";
 	private static TreeMap<String, ShrinkingContext> contexts = new TreeMap<String, ShrinkingContext>();
 	private static final long startTime = System.currentTimeMillis();
+	private static int exitCode = 0;
 
 	public static class ShrinkingContext {
 		public final String origVaid;
@@ -178,11 +177,11 @@ public class Shrinker extends Thread {
 						Math.min((int) (ParallelValidatorThread.parallelVMs * 1.25), Integer.parseInt(maxParallelCPUcount)) // this is the normal case
 						: 0);
 		
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker: waiting for ending itemizer (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker: waiting for ending itemizer (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		while (!pool.isPoolFull()) {
 			try { sleep(100); } catch (InterruptedException e1) {}
 		}
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker: itemizer done (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker: itemizer done (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 
 		Shrinker.myLogger.info("###phase: initial grouping");
 		if (dgm instanceof DirectoryGroupManager) {
@@ -190,7 +189,9 @@ public class Shrinker extends Thread {
 				dgm.getGroup(sc.getMountPoint().toString()).setTestState(Group.GroupState.CORE_GROUP);
 			} catch (NullPointerException x) {
 				System.out.println("Exception: Nothing to optimize, no files found in image");
-				System.exit(1);
+				getThreadGroup().interrupt();
+				exitCode = 1;
+				return;
 			} // files in mount point at all
 			try {
 				dgm.getGroup(sc.getMountPoint().toString() + "/dev").setTestState(Group.GroupState.CORE_GROUP);
@@ -385,8 +386,8 @@ public class Shrinker extends Thread {
 		}
 	}
 
-	public static void main(final String[] args) throws Exception {
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker started (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+	public static int main(final String[] args) throws Exception {
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker started (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.info("###phase: starting");
 		final ThreadGroup tg = new ThreadGroup("Shrinking");
 		final Thread[] shrinkerThread = new Thread[1];
@@ -424,6 +425,7 @@ public class Shrinker extends Thread {
 			System.out.println(e.getMessage());
 			e.printStackTrace();
 		}
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		return exitCode;
 	}
 }

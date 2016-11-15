@@ -18,9 +18,7 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker.ShrinkingContext;
@@ -41,7 +39,7 @@ public class Itemizer {
 		}
 
 		public void run() {
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Itemizer thread started (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+//			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Itemizer thread started (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			ShrinkingContext sc = Shrinker.getContext();
 			while (!stopprocessing && processFiles() && sc.isRunning()) {
 				try {
@@ -50,7 +48,7 @@ public class Itemizer {
 				}
 			}
 			Shrinker.myLogger.info("Itemizer thread finished");
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Itemizer thread ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+//			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Itemizer thread ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		}
 	}
 
@@ -66,7 +64,7 @@ public class Itemizer {
 		Shrinker.myLogger.finest("Acquired mount point: " + mp);
 		File[] list = mp.listFiles();
 		Shrinker.myLogger.finest("Received list: " + list);
-		if (list.length > 0) processingState = list[0]; // processingState left null - when no files or subdirectories under mountpoint
+		if (list != null && list.length > 0) processingState = list[0]; // processingState left null - when no files or subdirectories under mountpoint
 		else Shrinker.myLogger.warning("No files or subdirectories found at mount point");
 		Shrinker.myLogger.finest("Starting point set as " + processingState);
 		processingThread.start();
