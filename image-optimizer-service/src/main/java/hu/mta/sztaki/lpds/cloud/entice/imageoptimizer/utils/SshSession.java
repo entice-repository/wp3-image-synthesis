@@ -20,7 +20,7 @@ public class SshSession implements Closeable {
 	public SshSession(final String host, final String user, final String privateKeyFile) throws JSchException {
 		synchronized (this) {
 			JSch jsch = new JSch();
-			jsch.addIdentity(privateKeyFile); // 
+			if (privateKeyFile != null) jsch.addIdentity(privateKeyFile); // 
 	        Session session = jsch.getSession(user, host, 22);
 	        Properties config = new Properties(); 
 	        config.put("StrictHostKeyChecking", "no");
@@ -35,7 +35,7 @@ public class SshSession implements Closeable {
         		try { Thread.sleep(1000); } catch (InterruptedException x) {}
         		jsch = new JSch();
         		session = jsch.getSession(user, host, 22);
-    			jsch.addIdentity(privateKeyFile);  
+        		if (privateKeyFile != null) jsch.addIdentity(privateKeyFile);  
     			session.setConfig(config);
     	        session.setTimeout(10 * 60 * 1000); // 10 min session timeout
         		session.connect(10000);

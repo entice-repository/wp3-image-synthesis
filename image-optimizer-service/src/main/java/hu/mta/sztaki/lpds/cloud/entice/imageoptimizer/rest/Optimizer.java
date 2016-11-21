@@ -46,7 +46,7 @@ public class Optimizer {
 		log.info("" + method /* + ", from: " + request.getRemoteAddr() */);
 	}
 
-	private static ConcurrentHashMap <String, Task> taskCache = new ConcurrentHashMap<String, Task>();
+	private static ConcurrentHashMap <String, Task> taskCache = new ConcurrentHashMap<String, Task>(); // contains tasks of running/stopping state
 	private static ConcurrentHashMap <String, VM> optimizerVMCache = new ConcurrentHashMap<String, VM>();
 	
 	public static final String OPTIMIZER_CLOUD_INIT_RESOURCE = "optimizer.cloud-init";
@@ -79,6 +79,7 @@ public class Optimizer {
 	public static final String CLOUD_OPTIMIZER_VM_INSTANCE_TYPE = "cloudOptimizerVMInstanceType"; // OPTIONAL (default: m1.medium, properties file)
 	public static final String CLOUD_WORKER_VM_INSTANCE_TYPE = "cloudWorkerVMInstanceType"; // OPTIONAL (default: m1.small, properties file)
 	public static final String NUMBER_OF_PARALLEL_WORKER_VMS = "numberOfParallelWorkerVMs";  // OPTIONAL (default: 8, properties file)
+	public static final String AVAILABILITY_ZONE = "availabilityZone";  // OPTIONAL
 	
 	public static final String S3_ENDPOINT_URL = "s3EndpointURL"; // OPTIONAL (but the optimized image will not be uploaded, neither can download source image, validator script from s3 URLs)
 	public static final String S3_ACCESS_KEY = "s3AccessKey"; // OPTIONAL
@@ -262,6 +263,9 @@ public class Optimizer {
 		catch (NumberFormatException x) {return Response.status(Status.BAD_REQUEST).entity("NumberFormatException " + MAX_RUNNING_TIME + ": " + x.getMessage()).build(); }
 		task.setOptimizedImageURL(parameters.get(S3_ENDPOINT_URL) + "/" + parameters.get(S3_PATH));
 
+		
+        parameters.put(AVAILABILITY_ZONE, requestBody.optString(AVAILABILITY_ZONE)); // OPTIONAL
+
 		log.debug("Parameters: " + parameters);
 //		log.debug("Cloud-init: " + cloudInit);
 		
@@ -269,7 +273,7 @@ public class Optimizer {
         log.info("Starting optimizer VM...");
         try {
         	String cloudInitBase64 = ResourceUtils.base64Encode(cloudInit);
-        	optimizerVM.run(null, cloudInitBase64);
+        	optimizerVM.run(null, cloudInitBase64, parameters.get(AVAILABILITY_ZONE));
         	task.setInstanceId(optimizerVM.getInstanceId());
         	task.setVmStatus(VM.PENDING);
         } catch (Exception x) {
@@ -310,7 +314,17 @@ public class Optimizer {
 				} catch (Throwable x) { log.error("Database connection problem. Check JPA settings!", x); }
 				if (task == null) log.debug("Task id not found in database: " + id);
 			} else log.error("No database!");
-			if (task != null) taskCache.put(id, task);
+			if (task != null) {
+				if (task.getStatus().equalsIgnoreCase(OptimizerStatus.DONE.name()) ||
+						task.getStatus().equalsIgnoreCase(OptimizerStatus.FAILED.name()) ||
+						task.getStatus().equalsIgnoreCase(OptimizerStatus.ABORTED.name())) {
+					// do not put task to cache
+				} else {
+					taskCache.put(id, task);
+				}
+			}
+		} else {
+			log.debug("Task found in cache. (Cache size: " + taskCache.size() + ")");
 		}
 		return task;
 	}
@@ -343,7 +357,15 @@ public class Optimizer {
 				try { vm = new VM(task.getEndpoint(), task.getAccessKey(), task.getSecretKey(), task.getInstanceId()); } 
 				catch (Exception x) {}
 			}
-			if (vm != null) optimizerVMCache.put(task.getId(), vm);
+			if (vm != null) {
+				if (task.getStatus().equalsIgnoreCase(OptimizerStatus.DONE.name()) ||
+						task.getStatus().equalsIgnoreCase(OptimizerStatus.FAILED.name()) ||
+						task.getStatus().equalsIgnoreCase(OptimizerStatus.ABORTED.name())) {
+					// do not put VM to cache
+				} else {
+					optimizerVMCache.put(task.getId(), vm);
+				}
+			}
 		}
 		return vm;
 	}
@@ -423,11 +445,12 @@ public class Optimizer {
 		Task task = retrieveTask(id);
 		if (task == null) return Response.status(Status.BAD_REQUEST).entity("Invalid task id: " + id).build();
 
+		synchronized (task) { // in cache (running/stopping) or not (done/failed/aborted)
+
 		// Task idempotent
 		if (task.getStatus().equalsIgnoreCase(OptimizerStatus.DONE.name()) ||
 			task.getStatus().equalsIgnoreCase(OptimizerStatus.FAILED.name()) ||
 			task.getStatus().equalsIgnoreCase(OptimizerStatus.ABORTED.name())) {
-			taskCache.remove(task.getId()); // remove Task from task cache (assuming the user will not query it again)
 			return Response.status(Status.OK).entity(renderTaskToJSON(task).toString()).build();
 		} 
 
@@ -437,10 +460,11 @@ public class Optimizer {
 		log.debug("Status: " + task.getStatus());
 		
 		// get instance id (during RUNNING or STOPPING)
-		if (task.getInstanceId() == null) { // it should not happen ever: this is fatal error, no chance to recover from this case (instance ids zeroed if comleted only) 
+		if (task.getInstanceId() == null) { // it should not happen ever, no chance to recover from this case 
 			log.error("No instance id for task: " + task.getId());
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("No optimizer instance id for task: " + task.getId()).build(); 
 		}
+		
 		log.debug("Instance: " + task.getInstanceId());
 		
 		// get optimizer VM
@@ -453,7 +477,7 @@ public class Optimizer {
 		}
 
 		// describe VM if IP not known or state is not running
-		if (optimizerVM.privateDnsName == null || !optimizerVM.status.equalsIgnoreCase(VM.RUNNING)) {
+		if (optimizerVM.getIP() == null || !optimizerVM.getStatus().equalsIgnoreCase(VM.RUNNING)) {
 			log.debug("Describe: " + task.getInstanceId());
 			try { optimizerVM.describeInstance(); } 
 			catch (Exception x) { // may be temporary, should not happen unless AWS credentials changed
@@ -463,40 +487,41 @@ public class Optimizer {
 			}
 		}
 		
-		log.debug("VM status: " + optimizerVM.status);
-		log.debug("IP: " + optimizerVM.privateDnsName);
-		task.setVmStatus(optimizerVM.status);
+		log.debug("VM status: " + optimizerVM.getStatus());
+		log.debug("IP: " + optimizerVM.getIP());
+		task.setVmStatus(optimizerVM.getStatus());
 
 		// we have VM now yet started (cannot yet be described)
-		if (optimizerVM.status.equalsIgnoreCase(VM.UNKNOWN)) { 
+		if (optimizerVM.getStatus().equalsIgnoreCase(VM.UNKNOWN)) { 
 			log.debug("Cannot describe optimizer VM: " + task.getInstanceId() + ", state is: " + VM.UNKNOWN +  ". Possible resons: changed AWS credentials or instance id cannot be described.");
 			task.setOptimizerPhase("Describing " + task.getInstanceId() + "...");
 			return Response.status(Status.OK).entity(renderTaskToJSON(task).toString()).build(); 
 		}
 
-		// we have VM already down (someone else externally stopped the optimizer VM), no chance to recover from this situation
-		if (optimizerVM.status.equalsIgnoreCase(VM.TERMINATED) 
-			|| optimizerVM.status.equalsIgnoreCase(VM.SHUTDOWN) 
-			|| optimizerVM.status.equalsIgnoreCase(VM.STOPPED) 
-			|| optimizerVM.status.equalsIgnoreCase(VM.STOPPING)) {
+		// VM already down (someone externally stopped the optimizer VM), no chance to recover from this situation
+		if (optimizerVM.getStatus().equalsIgnoreCase(VM.TERMINATED) 
+			|| optimizerVM.getStatus().equalsIgnoreCase(VM.SHUTDOWN) 
+			|| optimizerVM.getStatus().equalsIgnoreCase(VM.STOPPED) 
+			|| optimizerVM.getStatus().equalsIgnoreCase(VM.STOPPING)) {
 			task.setStatus(OptimizerStatus.FAILED.name());
-			task.setFailure("Optimizer VM " + task.getInstanceId() + " is down: " + optimizerVM.status + ". (Terminated externally.)");
+			task.setFailure("Optimizer VM " + task.getInstanceId() + " is down: " + optimizerVM.getStatus() + ". (Terminated externally.)");
 			task.setSecretKey(""); // clear passwords from database
 			task.setEnded(System.currentTimeMillis()); // FIXME it is query time, not task completion time
 			persistTask(task);
 			taskCache.remove(task.getId()); // remove Task from task cache (assuming the user will not query it again)
 			optimizerVMCache.remove(task.getId()); // remove VM from VM cache
+			optimizerVM.discard();
 			return Response.status(Status.OK).entity(renderTaskToJSON(task).toString()).build();
 		}
 
 		// IP not yet available (it has booting or running status, but no IP yet)
-		if (optimizerVM.privateDnsName == null) {
+		if (optimizerVM.getIP() == null) {
 			log.debug("No IP of optimizer instance: " + task.getInstanceId());
 			task.setOptimizerPhase("Getting IP to " + task.getInstanceId() + "...");
 			return Response.status(Status.OK).entity(renderTaskToJSON(task).toString()).build(); // VM staring up
 		}
 
-		log.debug("Opening SSH connection to VM " + optimizerVM.getInstanceId() + " " + optimizerVM.privateDnsName);
+		log.debug("Opening SSH connection to VM " + optimizerVM.getInstanceId() + " " + optimizerVM.getIP());
 		SshSession ssh = null;
 		boolean changed = false;
 		try {
@@ -506,8 +531,8 @@ public class Optimizer {
 				else if (sshKeyPath.startsWith("file:/")) sshKeyPath = sshKeyPath.substring("file:".length());
 			} else throw new Exception("Resource not found: " + OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE);
 			
-			log.debug("Opening SSH connection to " + optimizerVM.getInstanceId() + " " + Configuration.optimizerRootLogin + "@" + optimizerVM.privateDnsName + " " + sshKeyPath);
-			ssh = new SshSession(optimizerVM.privateDnsName, Configuration.optimizerRootLogin, sshKeyPath);
+			log.debug("Opening SSH connection to " + optimizerVM.getInstanceId() + " " + Configuration.optimizerRootLogin + "@" + optimizerVM.getIP() + " " + sshKeyPath);
+			ssh = new SshSession(optimizerVM.getIP(), Configuration.optimizerRootLogin, sshKeyPath);
 			
 			OutputStreamWrapper stdout = new OutputStreamWrapper();
 			OutputStreamWrapper stderr = new OutputStreamWrapper();
@@ -527,10 +552,10 @@ public class Optimizer {
 			
 			// zombie
 			if (zombie) {
-				log.error("ZOMBIE found: queried task id differs from file contents of 'id'. VM: " + task.getInstanceId() + " " + optimizerVM.privateDnsName + " " + System.currentTimeMillis());
+				log.error("ZOMBIE found: queried task id differs from file contents of 'id'. VM: " + task.getInstanceId() + " " + optimizerVM.getIP() + " " + System.currentTimeMillis());
 				// return unchanged task details
 				
-			} else { // task id matches file id
+			} else { // task id matches file id, or no id file at all (starting up, legacy)
 				
 				// update statuses ==========================================
 				// status: file "failure" exists || grep file Shrinker.out "Exception" => FAILED,
@@ -584,7 +609,7 @@ public class Optimizer {
 	
 				// set optimizerVMStatus
 				optimizerVM.describeInstance();
-				task.setVmStatus(optimizerVM.status);
+				task.setVmStatus(optimizerVM.getStatus());
 	
 				// set shrinker phase
 				log.debug("Grepping file 'Shrinker.log' for lines '###phase: '...");
@@ -739,10 +764,10 @@ public class Optimizer {
 			
 		} // end of open ssh connection  
 		catch (Exception x) {
-			String error = "Cannot establish SSH connection and/or perform commands on optimizer VM (" + optimizerVM.getInstanceId() + " " + optimizerVM.privateDnsName + "): " + x.getMessage(); 
+			String error = "Cannot establish SSH connection and/or perform commands on optimizer VM (" + optimizerVM.getInstanceId() + " " + optimizerVM.getIP() + "): " + x.getMessage(); 
 			log.warn(error);
 			task.setVmStatus(VM.BOOTING);
-			task.setOptimizerPhase("Opening SSH connection to optimizer VM: " +  optimizerVM.getInstanceId() + " " + optimizerVM.privateDnsName);
+			task.setOptimizerPhase("Opening SSH connection to optimizer VM: " +  optimizerVM.getInstanceId() + " " + optimizerVM.getIP());
 			return Response.status(Status.OK).entity(renderTaskToJSON(task).toString()).build(); 
 		} 
 		finally { if (ssh!= null) ssh.close(); } 
@@ -753,16 +778,18 @@ public class Optimizer {
 			log.debug("Shutting down optimizer VM: " + optimizerVM.getInstanceId() + "...");
 			try { optimizerVM.terminate(); } // can wait up to 30 seconds
 			catch (Exception x) {} 
-			task.setVmStatus(optimizerVM.status); // NOTE: VM state may remain in shutting down but will terminate later
+			task.setVmStatus(optimizerVM.getStatus()); // NOTE: VM state may remain in shutting down but will terminate later
 			log.debug("Removing task and VM from cache...");
 			taskCache.remove(task.getId()); // remove Task from task cache (assuming the user will not query it again)
 			optimizerVMCache.remove(task.getId()); // remove VM from VM cache
+			optimizerVM.discard();
 			task.setSecretKey(""); // clear passwords from database
 		}
 		
 		// update database
 		if (changed) persistTask(task);  
 		
+		} // end synchronized(task) 
 		return Response.status(Status.OK).entity(renderTaskToJSON(task).toString()).build();
 	}
 
@@ -796,6 +823,7 @@ public class Optimizer {
 
 		Task task = retrieveTask(id);
 		if (task == null) return Response.status(Status.BAD_REQUEST).entity("Invalid task id: " + id).build();
+		synchronized(task) {
 
 		log.info("Stopping task: " + task.getId());
 
@@ -811,7 +839,7 @@ public class Optimizer {
 		if (optimizerVM == null) return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot retrieve optimizer VM instance: " + task.getInstanceId()).build();
 		
 		// get VM IP if not yet set
-		if (optimizerVM.privateDnsName == null) {
+		if (optimizerVM.getIP() == null) {
 			try { optimizerVM.describeInstance(); }
 			catch (Exception x) { 
 				return Response.status(Status.FOUND).entity("Cannot describe optimizer VM instance: " + task.getInstanceId() + ": " + x.getMessage()).build();
@@ -819,9 +847,9 @@ public class Optimizer {
 		}
 		
 		// IP not yet available
-		if (optimizerVM.privateDnsName == null) return Response.status(Status.FOUND).entity("No IP available for optimizer VM: " + task.getInstanceId() + "").build();
+		if (optimizerVM.getIP() == null) return Response.status(Status.FOUND).entity("No IP available for optimizer VM: " + task.getInstanceId() + "").build();
 		
-		log.debug("Opening SSH connection to VM " + optimizerVM.getInstanceId() + " " + optimizerVM.privateDnsName);
+		log.debug("Opening SSH connection to VM " + optimizerVM.getInstanceId() + " " + optimizerVM.getIP());
 		SshSession ssh = null;
 		try {
 			String sshKeyPath = Thread.currentThread().getContextClassLoader().getResource(OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE).toString();
@@ -829,7 +857,7 @@ public class Optimizer {
 				if (sshKeyPath.startsWith("file:\\")) sshKeyPath = sshKeyPath.substring("file:\\".length());
 				else if (sshKeyPath.startsWith("file:/")) sshKeyPath = sshKeyPath.substring("file:".length());
 			} else throw new Exception("Resource not found: " + OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE);
-			ssh = new SshSession(optimizerVM.privateDnsName, Configuration.optimizerRootLogin, sshKeyPath);
+			ssh = new SshSession(optimizerVM.getIP(), Configuration.optimizerRootLogin, sshKeyPath);
 			
 			OutputStreamWrapper stdout = new OutputStreamWrapper();
 			OutputStreamWrapper stderr = new OutputStreamWrapper();
@@ -840,11 +868,11 @@ public class Optimizer {
 				task.setStatus(OptimizerStatus.STOPPING.name());
 			} else {
 				log.warn(stderr.toString());
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot create stop file on VM: " + optimizerVM.getInstanceId() + " " + optimizerVM.privateDnsName).build(); 
+				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot create stop file on VM: " + optimizerVM.getInstanceId() + " " + optimizerVM.getIP()).build(); 
 			}
 		} // end of open ssh connection  
 		catch (Exception x) {
-			String error = "Cannot establish SSH connection and/or perform commands on optimizer VM (" + optimizerVM.getInstanceId() + " " + optimizerVM.privateDnsName + "): " + x.getMessage(); 
+			String error = "Cannot establish SSH connection and/or perform commands on optimizer VM (" + optimizerVM.getInstanceId() + " " + optimizerVM.getIP() + "): " + x.getMessage(); 
 			log.warn(error);
 			task.setVmStatus(VM.BOOTING);
 			task.setOptimizerPhase("Waiting to open SSH connection to optimizer VM...");
@@ -854,6 +882,8 @@ public class Optimizer {
 
 		persistTask(task);
 
+		} // end synchronized(task)
+		
 		return Response.status(Status.OK).build();
 	}
 	
@@ -867,13 +897,15 @@ public class Optimizer {
 		
 		Task task = retrieveTask(id);
 		if (task == null) return Response.status(Status.BAD_REQUEST).entity("Invalid task id: " + id).build();
-
+		synchronized(task) {
+	
 		log.info("Aborting task: " + task.getId());
 
 		// only a running task can be stopped
 		if (!task.getStatus().equalsIgnoreCase(OptimizerStatus.RUNNING.name()) && !task.getStatus().equalsIgnoreCase(OptimizerStatus.STOPPING.name()))
 			return Response.status(Status.BAD_REQUEST).entity("Task (" + id + ") is not in RUNNING or STOPPING state (" + task.getStatus() + ")").build();
 
+		
 		// we need optimizer VM
 		VM optimizerVM = retrieveVM(task);
 		if (optimizerVM == null) return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot retrieve optimizer VM instance: " + task.getInstanceId()).build();
@@ -881,15 +913,17 @@ public class Optimizer {
 		log.debug("Teminating optimizer VM: " + optimizerVM.getInstanceId() + "...");
 		try { optimizerVM.terminate(); } // can wait up to 30 seconds
 		catch (Exception x) {} 
-		task.setVmStatus(optimizerVM.status); // NOTE: VM state may remain in shutting down but will terminate later
+		task.setVmStatus(optimizerVM.getStatus()); // NOTE: VM state may remain in shutting down but will terminate later
 		log.debug("Removing task and VM from cache...");
 		taskCache.remove(task.getId()); // remove Task from task cache (assuming the user will not query it again)
 		optimizerVMCache.remove(task.getId()); // remove VM from VM cache
+		optimizerVM.discard();
 		task.setSecretKey("");
 		task.setEnded(System.currentTimeMillis());
 		task.setStatus(OptimizerStatus.ABORTED.name());
 		persistTask(task);
-		
+
+		} // end synchronized(task)
 		return Response.status(Status.OK).build();
 	}
 	
@@ -1104,6 +1138,31 @@ public class Optimizer {
 		// 'at' causes misc problems, don't use: sb.append("- at now + " + Configuration.optimizerCloudInitDelay + " min < /root/optimize.sh"); sb.append("\n");
 		
 		return sb.toString();
+	}
+	
+	// remove task older than one day from cache
+	public static void taskCacheCleanup() {
+		long currentTime = System.currentTimeMillis();
+		
+		// pro: no running VMs remain + end time will be ok (+ 1 hour at most) con: VMs will be destroyed (no debugging/logs possible)
+//		for (String id: taskCache.keySet()) { // get status of all running/stopping tasks
+//			WebTarget webTarget = client.target("http://localhost:8080/image-optimizer-service/rest");
+//			WebTarget resourceWebTarget = webTarget.path(id);
+//			Invocation.Builder invocationBuilder = helloworldWebTargetWithQueryParam.request(MediaType.MediaType.APPLICATION_JSON);
+//			Response response = invocationBuilder.get();
+//		}
+		
+		long cacheLifetime = 24 * 60 * 60 * 1000l; // 24 hours (in millis)
+		for (String id: taskCache.keySet()) {
+			Task task = taskCache.get(id);
+			if (task != null) synchronized(task) {
+				if (currentTime - task.getCreated() > cacheLifetime) { 
+					taskCache.remove(id);
+					VM vm = optimizerVMCache.remove(id);
+					if (vm != null) vm.discard();
+				}
+			}
+		}
 	}
 	
 	public static void main(String [] args) throws Exception {

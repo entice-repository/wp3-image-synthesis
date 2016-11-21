@@ -34,6 +34,10 @@
 		<res-auth>Container</res-auth>
   	</resource-ref>
     
+    <listener>
+    	<listener-class>hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.rest.WebApplicationContextListener</listener-class>
+    </listener>
+    
 	<security-constraint>
         <web-resource-collection>
             <web-resource-name>Admin area</web-resource-name>

@@ -33,6 +33,7 @@ import com.amazonaws.services.ec2.model.DescribeInstancesResult;
 import com.amazonaws.services.ec2.model.DetachVolumeRequest;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.InstanceStateChange;
+import com.amazonaws.services.ec2.model.Placement;
 import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
@@ -72,9 +73,10 @@ public class VM {
 	public String getInstanceId() {	return instanceId; }
 	public void setInstanceId(String instanceId) { this.instanceId = instanceId; }
 
-	public String publicDnsName = null;
-	public String privateDnsName = null;
-	public String status = UNKNOWN;
+	@SuppressWarnings("unused")
+	private String publicDnsName = null;
+	private String privateDnsName = null;
+	private String status = UNKNOWN;
 	
 	static {
 		try {
@@ -84,6 +86,9 @@ public class VM {
 		} catch (Throwable x) {} // ignore any exception
 	}
 
+	public String getIP() {	return privateDnsName; }
+	public String getStatus() { return status; }
+	
 	public VM(String endpoint, String accessKey, String secretKey, String instanceType, String imageId, String keyPairName) throws Exception {
 		this.endpoint = endpoint;
 		this.accessKey = accessKey;
@@ -114,16 +119,18 @@ public class VM {
 	}
 	
 	public void run() throws Exception {
-		run(null, null);
+		run(null, null, null);
 	}
 	
-	public void run(String keyPairName, String userDataBase64) throws Exception {
+	public void run(String keyPairName, String userDataBase64, String availabilityZone) throws Exception {
 		if (this.imageId == null) throw new Exception("VM.run exception: no imageId provided");
 		try {
 			if (this.instanceId == null) {
 				log.debug(this.imageId + " " + this.instanceType + " " + keyPairName);
 				RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
 				runInstancesRequest.withImageId(this.imageId).withInstanceType(this.instanceType).withMinCount(1).withMaxCount(1);
+				
+				if (availabilityZone != null && !"".equals(availabilityZone)) runInstancesRequest.withPlacement(new Placement(availabilityZone));
 				if (keyPairName != null) runInstancesRequest.withKeyName(keyPairName);
 				if (userDataBase64 != null) runInstancesRequest.withUserData(userDataBase64);
 				RunInstancesResult runInstancesResult = this.amazonEC2Client.runInstances(runInstancesRequest);
@@ -156,7 +163,7 @@ public class VM {
 						this.status = instance.getState().getName();
 						if (RUNNING.equals(this.status)) {
 							this.publicDnsName = instance.getPublicDnsName();
-							this.privateDnsName = instance.getPrivateDnsName();
+							this.privateDnsName = instance.getPrivateDnsName(); // FIXME use getPrivateIP()
 							found = true;
 							break; // assuming one such
 						}
