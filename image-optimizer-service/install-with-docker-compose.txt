@@ -1,0 +1,46 @@
+1. Build the war file...
+===========================
+
+apt-get install -y default-jdk git-all maven curl
+git clone https://github.com/entice-repository/wp3-image-synthesis.git
+mvn install -f wp3-image-synthesis/image-optimizer-service/pom.xml
+
+2. Configure the service...
+===========================
+
+Edit wp3-image-synthesis/image-optimizer-service/target/image-optimizer-service.war/WEB-INF/classes/image-optimizer-service.properties,
+update fields according to current deployment place:
+
+- localEc2Endpoint: default EC2 endpoint of the cloud to be used (e.g., http://cfe2.lpds.sztaki.hu:4567)
+- optimizerImageId: image id of the previously deployed "optimizer orchestrator" image (e.g., ami-00001553)
+
+3. Download docker and docker-compose...
+========================================
+
+# docker engine
+apt-get update
+sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" | sudo tee /etc/apt/sources.list.d/docker.list
+apt-get update
+apt-cache policy docker-engine
+apt-get install linux-image-extra-$(uname -r) linux-image-extra-virtual
+apt-get install docker-engine
+service docker status
+
+# docker-compose
+curl -L "https://github.com/docker/compose/releases/download/1.8.1/docker-compose-$(uname -s)-$(uname -m)" > /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+4. Unzip service docker-compose...
+==================================
+
+tar -xvf image-optimizer-service-docker-compose.tar.gz
+cp wp3-image-synthesis/image-optimizer-service/target/image-optimizer-service.war image-optimizer-service-docker-compose/ios
+
+5. Start the service...
+=======================
+
+cd image-optimizer-service-docker-compose
+docker-compose up
+
+
