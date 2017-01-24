@@ -11,7 +11,7 @@ public class VMTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		vm = new VM("http://localhost", "accessKey", "secretKey", "m1.small", "imageid", "keypair");
+		vm = new VM("http://localhost:4567", "accessKey", "secretKey", "m1.small", "imageid", "keypair");
 	}
 
 	@Test
