@@ -61,6 +61,7 @@ public class Optimizer {
 	private static final String VALIDATOR_SCRIPT_FILE = "/root/validator_script.sh";
 	
 	// post request fields
+	public static final String ID = "id"; // REQUIRED by optimized-image upload
 	public static final String IMAGE_URL = "imageURL"; // REQUIRED
 	public static final String IMAGE_ID = "imageId"; // REQUIRED
 	public static final String IMAGE_KEY_PAIR = "imageKeyPair"; // OPTIONAL (will use image wired public key if absent)
@@ -172,6 +173,9 @@ public class Optimizer {
         try { cloudInit = ResourceUtils.getResorceAsString(OPTIMIZER_CLOUD_INIT_RESOURCE); }
         catch (Exception x) { return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Missing resource: " + OPTIMIZER_CLOUD_INIT_RESOURCE).build(); }
 
+        if ("".equals(requestBody.optString(ID))) log.error("No parameter " + ID + " provided. Optimized image will not be uploaded.");
+        parameters.put(ID, requestBody.getString(ID)); // REQUIRED
+        
         if ("".equals(requestBody.optString(IMAGE_ID))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_ID + "").build();
         parameters.put(IMAGE_ID, requestBody.getString(IMAGE_ID)); // REQUIRED
         
@@ -963,7 +967,7 @@ public class Optimizer {
 			// download source image from HTTP(s) URL
 			sb.append("    echo 'Downloading source image' > phase"); sb.append("\n");
 			sb.append("    ");
-			sb.append("curl -k -s --retry 5 --retry-delay 10 '" + parameters.get(IMAGE_URL) + "' -o " + SOURCE_IMAGE_FILE + " 2> download.out");
+			sb.append("curl -k -L -s --retry 5 --retry-delay 10 '" + parameters.get(IMAGE_URL) + "' -o " + SOURCE_IMAGE_FILE + " 2> download.out");
 			sb.append(" || { ");
 			sb.append("echo 'Cannot download source image from HTTP URL: " + parameters.get(IMAGE_URL) + "' > failure");
 			sb.append(" ; exit 1 ; }"); sb.append("\n");
@@ -990,7 +994,7 @@ public class Optimizer {
 			if (parameters.get(VALIDATOR_SCRIPT_URL).startsWith("http://") || parameters.get(VALIDATOR_SCRIPT_URL).startsWith("https://")) {
 				sb.append("    echo 'Downloading validator script' > phase"); sb.append("\n");
 				sb.append("    ");
-				sb.append("curl -k -s '" + parameters.get(VALIDATOR_SCRIPT_URL) + "' -o " + VALIDATOR_SCRIPT_FILE + " 2> download.out");
+				sb.append("curl -k -L -s '" + parameters.get(VALIDATOR_SCRIPT_URL) + "' -o " + VALIDATOR_SCRIPT_FILE + " 2> download.out");
 				sb.append(" || { ");
 				sb.append("echo 'Cannot download validator script from URL: " + parameters.get(VALIDATOR_SCRIPT_URL) + "' > failure");
 				sb.append(" ; exit 1 ; }"); sb.append("\n");
@@ -1067,7 +1071,11 @@ public class Optimizer {
 		// econe-upload --access-key ahajnal@sztaki.hu --secret-key 60a... --url http://cfe2.lpds.sztaki.hu:4567 /mnt/optimized-image.qcow2
 		sb.append("    ");
 		sb.append("# econe-upload --access-key " + parameters.get(CLOUD_ACCESS_KEY) + " --secret-key " + parameters.get(CLOUD_SECRET_KEY) + " --url " + parameters.get(CLOUD_ENDPOINT_URL) + " " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
-		
+
+		sb.append("    ");
+		if ("".equals(parameters.get(ID))) sb.append("# ");
+		sb.append("curl -X POST -k --upload-file @" + OPTIMIZED_IMAGE_FILE + " https://path-to-provide-by-Sandi/" + parameters.get(ID) + ""); sb.append("\n");
+
 		// make optimized image
 		sb.append("    echo 'Done' > phase"); sb.append("\n");
 
