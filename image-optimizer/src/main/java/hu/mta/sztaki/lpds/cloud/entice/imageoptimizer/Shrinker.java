@@ -386,7 +386,7 @@ public class Shrinker extends Thread {
 		}
 	}
 
-	public static int main(final String[] args) throws Exception {
+	public static void main(final String[] args) throws Exception {
 //		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker started (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.info("###phase: starting");
 		final ThreadGroup tg = new ThreadGroup("Shrinking");
@@ -426,6 +426,6 @@ public class Shrinker extends Thread {
 			e.printStackTrace();
 		}
 //		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
-		return exitCode;
+		System.exit(exitCode);
 	}
 }

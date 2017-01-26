@@ -70,7 +70,7 @@ public class VMInstanceManager extends Thread {
 	}
 
 	public static AtomicInteger reinitFailures = new AtomicInteger();
-	public static final int REINIT_LIMIT = 10; // maximum number of unsuccessful VM start
+	public static final int REINIT_LIMIT = 100; // maximum number of unsuccessful VM starts
 	
 	public VMInstanceManager(ThreadGroup tg, int maxvm) {
 		super(tg, "VMInstanceManager");
