@@ -92,7 +92,7 @@ public class VMTests {
 					} catch (Throwable x) { Shrinker.myLogger.warning("Reboot from command line failed: " + x.getMessage()); } 
 				} */
 			} catch (TimeoutException e) {
-				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] uptime timeout exzeption ");
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Timeout: " + e.getMessage());
 			}
 			Thread.sleep(delay * 1000l);
 			beforeRestart += delay;
