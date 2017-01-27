@@ -21,6 +21,8 @@ public class Configuration {
 	public static String optimizerInstanceType;
 	public static String workerInstanceType;
 	
+	public static String knowledgeBaseURL;
+	
 	public static String rankerToUse;
 	public static String grouperToUse;
 	public static String maxUsableCPUs;
@@ -47,6 +49,8 @@ public class Configuration {
 				optimizerImageId = prop.getProperty("optimizerImageId") != null ? prop.getProperty("optimizerImageId") : "ami-00001553";
 				optimizerInstanceType = prop.getProperty("optimizerInstanceType") != null ? prop.getProperty("optimizerInstanceType") : "m1.medium";
 				workerInstanceType = prop.getProperty("workerInstanceType") != null ? prop.getProperty("workerInstanceType") : "m1.small";
+				
+				knowledgeBaseURL = prop.getProperty("knowledgeBaseURL");
 				
 				// misc optimizer options
 				rankerToUse = prop.getProperty("rankerToUse") != null ? prop.getProperty("rankerToUse") : "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ranking.GroupFactorBasedRanker";

@@ -3,7 +3,7 @@
 
 apt-get install -y default-jdk git-all maven curl
 git clone https://github.com/entice-repository/wp3-image-synthesis.git
-mvn install -f wp3-image-synthesis/image-optimizer-service/pom.xml
+mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-optimizer-service/pom.xml
 
 2. Configure the service...
 ===========================

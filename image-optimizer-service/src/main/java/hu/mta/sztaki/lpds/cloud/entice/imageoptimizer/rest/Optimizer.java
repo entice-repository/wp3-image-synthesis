@@ -174,6 +174,7 @@ public class Optimizer {
         catch (Exception x) { return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Missing resource: " + OPTIMIZER_CLOUD_INIT_RESOURCE).build(); }
 
         if ("".equals(requestBody.optString(ID))) log.error("No parameter " + ID + " provided. Optimized image will not be uploaded.");
+        if (Configuration.knowledgeBaseURL == null) log.warn("knowledgeBaseURL not defined in properties file: " + Configuration.PROPERTIES_FILE_NAME + ". Optimized image will not be uploaded.");
         parameters.put(ID, requestBody.getString(ID)); // REQUIRED
         
         if ("".equals(requestBody.optString(IMAGE_ID))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_ID + "").build();
@@ -1073,8 +1074,8 @@ public class Optimizer {
 		sb.append("# econe-upload --access-key " + parameters.get(CLOUD_ACCESS_KEY) + " --secret-key " + parameters.get(CLOUD_SECRET_KEY) + " --url " + parameters.get(CLOUD_ENDPOINT_URL) + " " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
 
 		sb.append("    ");
-		if ("".equals(parameters.get(ID))) sb.append("# ");
-		sb.append("curl -X POST -k --upload-file @" + OPTIMIZED_IMAGE_FILE + " https://path-to-provide-by-Sandi/" + parameters.get(ID) + ""); sb.append("\n");
+		if ("".equals(parameters.get(ID)) || Configuration.knowledgeBaseURL == null) sb.append("# ");
+		sb.append("curl -X POST -k -L --retry 5 --retry-delay 10 --upload-file @" + OPTIMIZED_IMAGE_FILE + " " + Configuration.knowledgeBaseURL + "/" + parameters.get(ID) + ""); sb.append("\n");
 
 		// make optimized image
 		sb.append("    echo 'Done' > phase"); sb.append("\n");
