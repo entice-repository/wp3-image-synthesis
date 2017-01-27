@@ -218,18 +218,19 @@ public abstract class VirtualMachine {
 					if (testConformance) {
 						setState(VMState.IAASCHECK);
 						try {
-							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh " + this.instanceid + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
-
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh " + this.instanceid + " with timeout 300s... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+							long now = System.currentTimeMillis();
 							ret = new ExecHelper().execProg(ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip
 									+ " 22 " + privateip + " " + RemoteExecutor.keyfile + " " + loginName, true, null, false)
 									.getRetcode();
-							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh done  " + ret + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+							long ellapsed = (System.currentTimeMillis() - now) / 1000l;
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh done in " + ellapsed + "s. Exit code: " + ret + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 						} catch (IOException e) {
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh FAILED " + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
-							Shrinker.myLogger.warning("Initialization check failed: " + e.getMessage());
+							Shrinker.myLogger.warning("Initialization check failed because of IOException: " + e.getMessage());
 							ret = 1;
 						} catch (InterruptedException e) {
-							Shrinker.myLogger.warning("Initialization check interrupted: " + e.getMessage());
+							Shrinker.myLogger.warning("Initialization check interrupted because of InterruptedException: " + e.getMessage());
 							ret = 1;
 						}
 						
