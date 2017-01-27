@@ -175,7 +175,7 @@ public class Optimizer {
 
         if ("".equals(requestBody.optString(ID))) log.error("No parameter " + ID + " provided. Optimized image will not be uploaded.");
         if (Configuration.knowledgeBaseURL == null) log.warn("knowledgeBaseURL not defined in properties file: " + Configuration.PROPERTIES_FILE_NAME + ". Optimized image will not be uploaded.");
-        parameters.put(ID, requestBody.getString(ID)); // REQUIRED
+        parameters.put(ID, requestBody.optString(ID)); // REQUIRED
         
         if ("".equals(requestBody.optString(IMAGE_ID))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_ID + "").build();
         parameters.put(IMAGE_ID, requestBody.getString(IMAGE_ID)); // REQUIRED
