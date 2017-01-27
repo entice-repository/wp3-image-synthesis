@@ -88,8 +88,8 @@ public class Group {
 	}
 
 	public void setTestState(GroupState newState) {
-		Shrinker.myLogger.info("Group: '" + groupid + "' Statechange from "
-				+ state + " to " + newState);
+//		Shrinker.myLogger.info("Group: '" + groupid + "' Statechange from "
+//				+ state + " to " + newState);
 		if (isInFinalState()) {
 			Shrinker.myLogger.warning("Already in final state.");
 			return;

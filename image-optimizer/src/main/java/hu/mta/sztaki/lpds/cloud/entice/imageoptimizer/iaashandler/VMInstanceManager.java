@@ -266,6 +266,7 @@ public class VMInstanceManager extends Thread {
 					if (!terminated) {
 						synchronized (vms) {
 							vms.add(new InstanceAllocationData(vm));
+							Shrinker.myLogger.info("Instance allocation data about instance " + vm.getInstanceId() + " added to vms");
 						}
 					} else {
 						try {
@@ -331,6 +332,7 @@ public class VMInstanceManager extends Thread {
 						Shrinker.myLogger.info("Current VM listing: \n" + newVMlisting);
 					}
 				}
+				
 				Iterator<VMCreatorThread> it = vmcs.iterator();
 				while (it.hasNext()) {
 					if (!it.next().isAlive()) {
@@ -355,15 +357,22 @@ public class VMInstanceManager extends Thread {
 					beats += sleeptime / 10;
 				} catch (InterruptedException e) {
 				}
-			}
-			Shrinker.myLogger.info("Terminating managed VMs.");
+			}  // end while (sc.isRunning()) {
+			
+			// shrinking ended -----------------------------------------
+			Shrinker.myLogger.info("Terminating managed VMs...");
 			for (VMCreatorThread vmc : vmcs) {
 				vmc.terminated = true;
+				Shrinker.myLogger.info("VM creator thread " + vmc.getId() + " terminated"); 
 			}
+			
 			for (InstanceAllocationData iad : vms) {
+				Shrinker.myLogger.info("VM " + iad.vm.getInstanceId() + " status: " + iad.vm.getState());
 				if (!iad.vm.isInFinalState()) {
 					iad.vm.terminate();
 				}
+//				if (iad.vm.isInFinalState()) Shrinker.myLogger.warning("VM is in final state, still terminating...");
+//				iad.vm.terminate();
 			}
 			vms.removeAllElements();
 			Shrinker.myLogger.info("All VMs terminated.");

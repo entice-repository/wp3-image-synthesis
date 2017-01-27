@@ -48,7 +48,6 @@ public class Shrinker extends Thread {
 	public static final String removalScriptPrelude = "#!/bin/sh\nexec 5>&1 6>&2 >> /dev/null 2>&1\n ROOT=$1 \n [ -z \"$1\" ] && ROOT=/ \n [ \"/reposi*\" = `echo /reposi*` ] || { [ \"$ROOT\" = \"/\" ] && exit 238 ; }\n true\n";
 	private static TreeMap<String, ShrinkingContext> contexts = new TreeMap<String, ShrinkingContext>();
 	private static final long startTime = System.currentTimeMillis();
-	private static int exitCode = 0;
 
 	public static class ShrinkingContext {
 		public final String origVaid;
@@ -190,7 +189,6 @@ public class Shrinker extends Thread {
 			} catch (NullPointerException x) {
 				System.out.println("Exception: Nothing to optimize, no files found in image");
 				getThreadGroup().interrupt();
-				exitCode = 1;
 				return;
 			} // files in mount point at all
 			try {
@@ -342,7 +340,7 @@ public class Shrinker extends Thread {
 				Shrinker.myLogger.info("STOPPING: user initiated stop");
 			}
 		}
-		Shrinker.myLogger.info("Shutdown request!");
+		Shrinker.myLogger.info("Shutting down...");
 		sc.running = false;
 		Shrinker.myLogger.info("###phase: shutting down worker VMs");
 		VMFactory.instance.terminateFactory();
@@ -425,7 +423,5 @@ public class Shrinker extends Thread {
 			System.out.println(e.getMessage());
 			e.printStackTrace();
 		}
-//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
-		System.exit(exitCode);
 	}
 }
