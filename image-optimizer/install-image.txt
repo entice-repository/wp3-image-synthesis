@@ -1,0 +1,91 @@
+These instructions are for Ubuntu, but should work on other distros with slight modifications (yum, pacman, ...)
+
+1. Install the required software packages...
+============================================
+
+# install jdk, git, maven, curl, qemu
+apt-get install -y default-jdk git-all maven curl qemu-utils
+
+# install zerofree for optimized image creation
+echo Installing zerofree...
+curl http://frippery.org/uml/zerofree-1.0.4.tgz -o zerofree-1.0.4.tgz
+tar -xvzf zerofree-1.0.4.tgz
+apt-get install -y build-essential e2fslibs-dev
+cd zerofree-1.0.4
+make
+cp zerofree /usr/bin
+rm -r zerofree-1.0.4.tgz
+rm -r zerofree-1.0.4
+cd ..
+
+# install aws CLI for s3 up/downloads
+echo Installing AWS CLI...
+curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
+unzip awscli-bundle.zip
+./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+apt-get install -y python-pip python-dev
+pip install --upgrade pip
+pip install awscli
+rm -r awscli-bundle.zip
+rm -r awscli-bundle
+
+2. Build optimizer source codes...
+==================================
+
+cd /root
+
+# download/build image optimizer source codes
+echo Building image optizer source codes
+git clone https://github.com/entice-repository/wp3-image-synthesis.git
+mvn install -f wp3-image-synthesis/sztaki-java-cli-utils/pom.xml
+mvn install -f wp3-image-synthesis/image-optimizer/pom.xml
+
+# create symlinks to scripts
+mkdir -p scripts
+cd scripts
+CLI_UTILS_SCRIPT_PATH="../wp3-image-synthesis/sztaki-java-cli-utils/src/main/resources/scripts"
+OPTIMIZER_SCRIPT_PATH="../wp3-image-synthesis/image-optimizer/src/main/resources/scripts"
+ln -s $CLI_UTILS_SCRIPT_PATH/remoteexecute.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/createOptimizedImage.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/echoer.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/mountImage.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/testBasicVM.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/umountImage.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/createOptimizedVA.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/makeWPImage.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/mountSourceImage.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/rsynctest.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/testuptime.sh
+ln -s $OPTIMIZER_SCRIPT_PATH/unmountSourceImage.sh
+cd ..
+
+# create symlinks to libs
+mkdir -p lib
+cd lib
+CLI_TARGET_SCRIPT_PATH="../wp3-image-synthesis/sztaki-java-cli-utils/target"
+OPTIMIZER_TARGET_PATH="../wp3-image-synthesis/image-optimizer/target"
+MAVEN_REPO_PATH="../.m2/repository"
+ln -s $CLI_TARGET_SCRIPT_PATH/cli-utils-0.0.1-SNAPSHOT.jar
+ln -s $OPTIMIZER_TARGET_PATH/FunctionalOptimizer-0.1-SNAPSHOT.jar
+ln -s $MAVEN_REPO_PATH/com/amazonaws/aws-java-sdk/1.6.12/aws-java-sdk-1.6.12.jar
+ln -s $MAVEN_REPO_PATH/commons-codec/commons-codec/1.3/commons-codec-1.3.jar
+ln -s $MAVEN_REPO_PATH/commons-logging/commons-logging/1.1.1/commons-logging-1.1.1.jar
+ln -s $MAVEN_REPO_PATH/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar
+ln -s $MAVEN_REPO_PATH/org/apache/httpcomponents/httpclient/4.2/httpclient-4.2.jar
+ln -s $MAVEN_REPO_PATH/org/apache/httpcomponents/httpcore/4.2/httpcore-4.2.jar
+ln -s $MAVEN_REPO_PATH/com/fasterxml/jackson/core/jackson-annotations/2.1.1/jackson-annotations-2.1.1.jar
+ln -s $MAVEN_REPO_PATH/com/fasterxml/jackson/core/jackson-core/2.1.1/jackson-core-2.1.1.jar
+ln -s $MAVEN_REPO_PATH/com/fasterxml/jackson/core/jackson-databind/2.1.1/jackson-databind-2.1.1.jar
+ln -s $MAVEN_REPO_PATH/joda-time/joda-time/2.9.4/joda-time-2.9.4.jar
+cd ..
+
+3. Set root SSH key...
+======================
+
+Download public SSH key from: https://github.com/entice-repository/wp3-image-synthesis/raw/master/image-optimizer-service/src/main/resources/image-optimizer-service_pub.rsa
+Add to: /root/.ssh/authorized_keys
+Check that permission of .ssh (drwx------), authorized_keys (-rw-------); chmod 600 if necessary.
+
+NOTE: optimizer VM must not have public IP, as root access can easily be gained. If optimizer VM has public access, change
+the SSH key with any generated key pair and also change the resource/image-optimizer-service_priv.rsa file accordingly 
+in the Image optimizer service.
