@@ -7,9 +7,11 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.VM;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.database.DBManager;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.database.Task;
-import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ec2.VM;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ec2.EC2VM;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.fco.FCOVM;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.OutputStreamWrapper;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.ResourceUtils;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.SshSession;
@@ -67,14 +69,15 @@ public class Optimizer {
 	public static final String IMAGE_KEY_PAIR = "imageKeyPair"; // OPTIONAL (will use image wired public key if absent)
 	public static final String IMAGE_PRIVATE_KEY = "imagePrivateKey"; // REQUIRED
 	public static final String IMAGE_USER_NAME = "imageUserName"; // OPTIONAL (default: root, properties file)
-	public static final String IMAGE_CONTEXTUALIZATION = "imageContextualization"; // OPTIONAL TODO
-	public static final String IMAGE_CONTEXTUALIZATION_URL = "imageContextualizationURL"; // OPTIONAL TODO
+	public static final String IMAGE_CONTEXTUALIZATION = "imageContextualization"; // OPTIONAL 
+	public static final String IMAGE_CONTEXTUALIZATION_URL = "imageContextualizationURL"; // OPTIONAL 
 	public static final String IMAGE_ROOT_FILE_SYSTEM_PARTITION = "fsPartition"; // OPTIONAL (default: 1st partition, no LVM), partno || volgroup logvolume
 	
 	public static final String VALIDATOR_SCRIPT = "validatorScript"; // REQUIRED one of VALIDATOR_*
 	public static final String VALIDATOR_SCRIPT_URL = "validatorScriptURL"; // REQUIRED one of VALIDATOR_*
-	public static final String VALIDATOR_SERVER_URL = "validatorServerURL"; // REQUIRED one of VALIDATOR_* TODO
+	public static final String VALIDATOR_SERVER_URL = "validatorServerURL"; // REQUIRED one of VALIDATOR_* 
 	public static final String CLOUD_ENDPOINT_URL = "cloudEndpointURL"; // OPTIONAL (default: sztaki cloud, properties file)
+	public static final String CLOUD_INTERFACE = "cloudInterface"; // OPTIONAL (default: properties file || ec2)
 	public static final String CLOUD_ACCESS_KEY = "cloudAccessKey"; // REQUIRED
 	public static final String CLOUD_SECRET_KEY = "cloudSecretKey"; // REQUIRED
 	public static final String CLOUD_OPTIMIZER_VM_INSTANCE_TYPE = "cloudOptimizerVMInstanceType"; // OPTIONAL (default: m1.medium, properties file)
@@ -189,14 +192,17 @@ public class Optimizer {
         parameters.put(VALIDATOR_SCRIPT_URL, requestBody.optString(VALIDATOR_SCRIPT_URL)); // REQUIRED one of them
         parameters.put(VALIDATOR_SERVER_URL, requestBody.optString(VALIDATOR_SERVER_URL)); // REQUIRED one of them
         
-       	parameters.put(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, !"".equals(requestBody.optString(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE)) ? requestBody.getString(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE) : Configuration.optimizerInstanceType); // OPTIONAL
-       	parameters.put(CLOUD_WORKER_VM_INSTANCE_TYPE, !"".equals(requestBody.optString(CLOUD_WORKER_VM_INSTANCE_TYPE)) ? requestBody.getString(CLOUD_WORKER_VM_INSTANCE_TYPE) : Configuration.workerInstanceType); // OPTIONAL
-        parameters.put(NUMBER_OF_PARALLEL_WORKER_VMS, !"".equals(requestBody.optString(NUMBER_OF_PARALLEL_WORKER_VMS)) ? requestBody.optString(NUMBER_OF_PARALLEL_WORKER_VMS) : Configuration.maxUsableCPUs); // OPTIONAL
+        String cloudInterface = requestBody.optString(CLOUD_INTERFACE, Configuration.cloudInterface);
+        parameters.put(CLOUD_INTERFACE, cloudInterface); 
+        
+        parameters.put(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, requestBody.optString(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, Configuration.optimizerInstanceType)); // OPTIONAL
+       	parameters.put(CLOUD_WORKER_VM_INSTANCE_TYPE, requestBody.optString(CLOUD_WORKER_VM_INSTANCE_TYPE, Configuration.workerInstanceType)); // OPTIONAL
+        parameters.put(NUMBER_OF_PARALLEL_WORKER_VMS, requestBody.optString(NUMBER_OF_PARALLEL_WORKER_VMS, Configuration.maxUsableCPUs)); // OPTIONAL
         
         if ("".equals(requestBody.optString(IMAGE_PRIVATE_KEY))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_PRIVATE_KEY).build();
         parameters.put(IMAGE_KEY_PAIR, requestBody.optString(IMAGE_KEY_PAIR)); // OPTIONAL (wired public key)
         parameters.put(IMAGE_PRIVATE_KEY, requestBody.optString(IMAGE_PRIVATE_KEY)); // REQUIRED
-        parameters.put(IMAGE_USER_NAME, !"".equals(requestBody.optString(IMAGE_USER_NAME)) ? requestBody.optString(IMAGE_USER_NAME) : Configuration.workerVMRootLogin); // OPTIONAL
+        parameters.put(IMAGE_USER_NAME, requestBody.optString(IMAGE_USER_NAME, Configuration.workerVMRootLogin)); // OPTIONAL
         
         parameters.put(IMAGE_CONTEXTUALIZATION, requestBody.optString(IMAGE_CONTEXTUALIZATION)); // OPTIONAL
         parameters.put(IMAGE_CONTEXTUALIZATION_URL, requestBody.optString(IMAGE_CONTEXTUALIZATION_URL)); // OPTIONAL
@@ -246,12 +252,30 @@ public class Optimizer {
        			
        	// create optimizer VM (not yet started)
         VM optimizerVM = null; 
-        try { optimizerVM = new VM(endpoint, accessKey, secretKey, parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE), optimizerImageId, null); } 
-        catch (Exception x) { return Response.status(Status.BAD_REQUEST).entity("Cannot start optimizer VM: " + x.getMessage()).build(); }
+        try { 
+        	if (EC2VM.CLOUD_INTERFACE.equals(cloudInterface)) {
+        		optimizerVM = new EC2VM(endpoint, accessKey, secretKey, parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE), optimizerImageId, null); 
+        	} else if (FCOVM.CLOUD_INTERFACE.equals(cloudInterface)) {
+        		// FIXME read parameters from request
+        		String userEmailAddress = parameters.get(CLOUD_ACCESS_KEY);
+        		String password = parameters.get(CLOUD_SECRET_KEY);
+        		String customerUUID = "todo"; 
+        		String clusterUUID = "todo";
+        		String networkUUID = "todo"; 
+        		String diskProductOfferUUID = "todo"; 
+        		String vdcUUID = "todo";
+        		String serverProductOfferUUID = "todo";
+        		optimizerVM = new FCOVM.Builder(userEmailAddress, password, customerUUID, clusterUUID, networkUUID, diskProductOfferUUID, vdcUUID, serverProductOfferUUID)
+        				.withEndpoint(endpoint)
+        				.withImageUUID(optimizerImageId)
+//        				.withDiskSize(5000)
+        				.build();  
+        	} else return Response.status(Status.BAD_REQUEST).entity("Invalid cloud interface: " + cloudInterface).build(); 
+        } catch (Exception x) { return Response.status(Status.BAD_REQUEST).entity("Cannot create optimizer VM: " + x.getMessage()).build(); }
 
-		// set known task propertis
+		// set known task properties
 		task.setStatus(OptimizerStatus.RUNNING.name()); // task: running
-		
+		task.setCloudInterface(cloudInterface);
         task.setEndpoint(endpoint);
         task.setAccessKey(accessKey);
         task.setSecretKey(secretKey);
@@ -267,7 +291,6 @@ public class Optimizer {
 		try { task.setMaxRunningTime(parameters.get(MAX_RUNNING_TIME)); }
 		catch (NumberFormatException x) {return Response.status(Status.BAD_REQUEST).entity("NumberFormatException " + MAX_RUNNING_TIME + ": " + x.getMessage()).build(); }
 		task.setOptimizedImageURL(parameters.get(S3_ENDPOINT_URL) + "/" + parameters.get(S3_PATH));
-
 		
         parameters.put(AVAILABILITY_ZONE, requestBody.optString(AVAILABILITY_ZONE)); // OPTIONAL
 
@@ -277,8 +300,10 @@ public class Optimizer {
         // start optimizer VM  ====================================
         log.info("Starting optimizer VM...");
         try {
-        	String cloudInitBase64 = ResourceUtils.base64Encode(cloudInit);
-        	optimizerVM.run(null, cloudInitBase64, parameters.get(AVAILABILITY_ZONE));
+        	Map<String, String> pars = new HashMap<String, String>();
+        	pars.put(EC2VM.USER_DATA_BASE64, ResourceUtils.base64Encode(cloudInit)); 
+        	pars.put(EC2VM.AVAILABILITY_ZONE, parameters.get(AVAILABILITY_ZONE));
+        	optimizerVM.run(pars);
         	task.setInstanceId(optimizerVM.getInstanceId());
         	task.setVmStatus(VM.PENDING);
         } catch (Exception x) {
@@ -334,33 +359,29 @@ public class Optimizer {
 		return task;
 	}
 	
-	/*
-	private Task retrieveTaskByTag(String tag) {
-			log.debug("Getting task with tag " + tag + " from database...");
-			EntityManager entityManager = DBManager.getInstance().getEntityManager();
-			if (entityManager != null) {
-				try {
-					entityManager.getTransaction().begin();
-					Criteria criteria = session.createCriteria(Task.class);
-					Task task = criteria.add(Restrictions.eq("tag", tag)).uniqueResult();
-					if (task == null) log.debug("Task with tag not found in database: " + tag);
-					entityManager.getTransaction().commit();
-					entityManager.close();
-					return task;
-				} catch (Throwable x) { log.error("Database connection problem. Check JPA settings!", x); }
-			} else log.error("No database!");
-		}
-		return null;
-	}
-	*/
-	
 	private VM retrieveVM(Task task) { // note: no describe
 		VM vm = optimizerVMCache.get(task.getId());
 		if (vm == null) { // recreate VM object to connect to the instance
 			if (task.getInstanceId() == null) log.error("No instanceId in task, cannot recover optimizer VM"); // it should not happen as this case was filtered befor
 			else {
-				try { vm = new VM(task.getEndpoint(), task.getAccessKey(), task.getSecretKey(), task.getInstanceId()); } 
-				catch (Exception x) {}
+				try { 
+					if (task.getCloudInterface() == null || EC2VM.CLOUD_INTERFACE.equals(task.getCloudInterface())) vm = new EC2VM(task.getEndpoint(), task.getAccessKey(), task.getSecretKey(), task.getInstanceId()); 
+					else if (FCOVM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
+		        		// FIXME read parameters from database
+		        		String userEmailAddress = task.getAccessKey();
+		        		String password = task.getSecretKey();
+		        		String customerUUID = "todo"; 
+		        		String clusterUUID = "todo";
+		        		String networkUUID = "todo"; 
+		        		String diskProductOfferUUID = "todo"; 
+		        		String vdcUUID = "todo";
+		        		String serverProductOfferUUID = "todo";
+		        		vm = new FCOVM.Builder(userEmailAddress, password, customerUUID, clusterUUID, networkUUID, diskProductOfferUUID, vdcUUID, serverProductOfferUUID)
+		        				.withEndpoint(task.getEndpoint())
+		        				.build();  
+					}
+					else log.error("Invalid cloud interface in database: " + task.getCloudInterface());
+				} catch (Exception x) {}
 			}
 			if (vm != null) {
 				if (task.getStatus().equalsIgnoreCase(OptimizerStatus.DONE.name()) ||
@@ -403,6 +424,7 @@ public class Optimizer {
 					entity.setFailure(task.getFailure());
 					entity.setOptimizedImageURL(task.getOptimizedImageURL());
 					entity.setChart(task.getChart());
+					entity.setCloudInterface(task.getCloudInterface());
 				} else log.warn("Task id not found in database: " + task.getId());
 				entityManager.getTransaction().commit();
 				entityManager.close();
@@ -435,6 +457,7 @@ public class Optimizer {
 		json.put(RESPONSE_FAILURE, task.getFailure());
 		json.put(RESPONSE_OPTIMIZED_IMAGE_URL, task.getOptimizedImageURL());
 		json.put(RESPONSE_CHART, new JSONArray(new JSONTokener(task.getChart())));
+		json.put(CLOUD_INTERFACE, task.getCloudInterface());
 		json.put("id", task.getId());
 		return json;
 	}
@@ -509,9 +532,9 @@ public class Optimizer {
 			|| optimizerVM.getStatus().equalsIgnoreCase(VM.STOPPED) 
 			|| optimizerVM.getStatus().equalsIgnoreCase(VM.STOPPING)) {
 			task.setStatus(OptimizerStatus.FAILED.name());
-			task.setFailure("Optimizer VM " + task.getInstanceId() + " is down: " + optimizerVM.getStatus() + ". (Terminated externally.)");
+			task.setFailure("Optimizer VM " + task.getInstanceId() + " is down: " + optimizerVM.getStatus() + ". (Terminated externally or unsuccessful launch.)");
 			task.setSecretKey(""); // clear passwords from database
-			task.setEnded(System.currentTimeMillis()); // FIXME it is query time, not task completion time
+			task.setEnded(System.currentTimeMillis()); // it is query time, not task completion time
 			persistTask(task);
 			taskCache.remove(task.getId()); // remove Task from task cache (assuming the user will not query it again)
 			optimizerVMCache.remove(task.getId()); // remove VM from VM cache
@@ -672,7 +695,7 @@ public class Optimizer {
 					task.getStatus().equalsIgnoreCase(OptimizerStatus.FAILED.name()) ||
 					task.getStatus().equalsIgnoreCase(OptimizerStatus.ABORTED.name())) {
 						log.debug("Task completed with status: " + task.getStatus());
-						task.setEnded(System.currentTimeMillis()); // FIXME it is query time, not task completion time
+						task.setEnded(System.currentTimeMillis()); // it is query time, not task completion time
 						changed = true;
 				}
 			
@@ -1047,12 +1070,6 @@ public class Optimizer {
 			
 		// make optimized image
 		sb.append("    echo 'Creating optimized image' > phase"); sb.append("\n");
-//		sb.append("    ");
-//		if ("".equals(parameters.get(S3_PATH))) sb.append("#"); // if no upload path, skip creating optimized image
-//		sb.append(Configuration.scriptPrefix + "scripts/makeWPImage.sh " + SOURCE_IMAGE_FILE + " /root/rmme " + OPTIMIZED_IMAGE_FILE + " " + parameters.get(FREE_DISK_SPACE) + " > makeWPImage.out");
-//		sb.append(" || { ");
-//		sb.append("echo 'Cannot make optimized image file " + OPTIMIZED_IMAGE_FILE + " from source image " + SOURCE_IMAGE_FILE + "' > failure");
-//		sb.append(" ; exit 1 ; }"); sb.append("\n");
 		sb.append("    ");
 		sb.append(Configuration.scriptPrefix + "scripts/createOptimizedImage.sh " + SOURCE_IMAGE_FILE + " " + SOURCE_FILE_SYSTEM_DIR + " " + parameters.get(IMAGE_ROOT_FILE_SYSTEM_PARTITION) + " &> createOptimizedImage.out");
 		sb.append(" || { ");

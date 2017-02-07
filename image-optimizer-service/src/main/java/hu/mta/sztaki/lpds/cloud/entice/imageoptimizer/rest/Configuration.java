@@ -21,6 +21,7 @@ public class Configuration {
 	public static String optimizerInstanceType;
 	public static String workerInstanceType;
 	
+	public static String cloudInterface;
 	public static String knowledgeBaseURL;
 	
 	public static String rankerToUse;
@@ -50,6 +51,8 @@ public class Configuration {
 				optimizerInstanceType = prop.getProperty("optimizerInstanceType") != null ? prop.getProperty("optimizerInstanceType") : "m1.medium";
 				workerInstanceType = prop.getProperty("workerInstanceType") != null ? prop.getProperty("workerInstanceType") : "m1.small";
 				
+				cloudInterface = prop.getProperty("cloudInterface") != null ? prop.getProperty("cloudInterface") : "ec2";
+
 				knowledgeBaseURL = prop.getProperty("knowledgeBaseURL");
 				
 				// misc optimizer options
