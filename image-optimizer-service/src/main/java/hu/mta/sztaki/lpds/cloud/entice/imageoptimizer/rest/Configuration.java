@@ -2,7 +2,16 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.rest;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.Properties;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +43,39 @@ public class Configuration {
 	public static String optimizerRootLogin = "root"; // login name for optimizer VM instances
 	public static String workerVMRootLogin = "root"; // default login name for worker VM instances (image under optimization) 
 	
+	public static String clusterUUID;
+	public static String networkUUID; 
+	public static String diskProductOfferUUID;
+	public static String vdcUUID;
+	public static String serverProductOfferUUID;
+
+	private static void disableHostnameVerification() {
+		try {
+			System.setProperty("jsse.enableSNIExtension", "false");
+			// create a trust manager that does not validate certificate chains
+			TrustManager[] trustAllCerts = new TrustManager[] { 
+			  new X509TrustManager() {
+			    public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+			    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+			    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+			}};
+			// ignore differences between given hostname and certificate hostname
+			HostnameVerifier hv = new HostnameVerifier() {
+			  public boolean verify(String hostname, SSLSession session) { return true; }
+			};
+			// install the all-trusting trust manager
+			try {
+			  SSLContext sc = SSLContext.getInstance("SSL");
+			  sc.init(null, trustAllCerts, new SecureRandom());
+			  HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+			  HttpsURLConnection.setDefaultHostnameVerifier(hv);
+			} catch (Exception e) {}
+			log.warn("Hostname verification disabled");
+		} catch (Throwable x) {
+			log.error("Error at turning off hostname verification " + x.getMessage());
+		}
+	}
+	
 	static {
 		Properties prop = new Properties();
 		InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(PROPERTIES_FILE_NAME); // emits no exception but null returned
@@ -53,6 +95,8 @@ public class Configuration {
 				
 				cloudInterface = prop.getProperty("cloudInterface") != null ? prop.getProperty("cloudInterface") : "ec2";
 
+				if (prop.getProperty("hostnameVerification") != null && prop.getProperty("hostnameVerification").startsWith("disable")) disableHostnameVerification();
+				
 				knowledgeBaseURL = prop.getProperty("knowledgeBaseURL");
 				
 				// misc optimizer options
@@ -64,6 +108,13 @@ public class Configuration {
 				scriptPrefix = prop.getProperty("scriptPrefix") != null ? prop.getProperty("scriptPrefix") : "/root/";
 				
 				optimizerRootLogin = prop.getProperty("optimizerRootLogin") != null ? prop.getProperty("optimizerRootLogin") : "root";
+				
+				// fco
+				clusterUUID = prop.getProperty("clusterUUID");
+				networkUUID = prop.getProperty("networkUUID"); 
+				diskProductOfferUUID = prop.getProperty("diskProductOfferUUID");
+				vdcUUID = prop.getProperty("vdcUUID");
+				serverProductOfferUUID = prop.getProperty("serverProductOfferUUID");
 				
 				log.info(PROPERTIES_FILE_NAME + " loaded");
 			} catch (IOException e) { log.error("Cannot read properties file: " + PROPERTIES_FILE_NAME, e); }

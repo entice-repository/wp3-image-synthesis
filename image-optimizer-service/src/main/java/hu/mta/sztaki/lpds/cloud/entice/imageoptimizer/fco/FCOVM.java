@@ -1,21 +1,17 @@
 package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.fco;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
@@ -23,13 +19,18 @@ import javax.xml.ws.BindingProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.extl.jade.user.Condition;
 import com.extl.jade.user.Disk;
-import com.extl.jade.user.ExtilityException;
+import com.extl.jade.user.FilterCondition;
 import com.extl.jade.user.Job;
+import com.extl.jade.user.ListResult;
 import com.extl.jade.user.NetworkType;
 import com.extl.jade.user.Nic;
+import com.extl.jade.user.QueryLimit;
 import com.extl.jade.user.ResourceType;
+import com.extl.jade.user.SearchFilter;
 import com.extl.jade.user.Server;
+import com.extl.jade.user.ServerStatus;
 import com.extl.jade.user.UserAPI;
 import com.extl.jade.user.UserService;
 import com.extl.jade.user.VirtualizationType;
@@ -40,112 +41,122 @@ import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.rest.Configuration;
 public class FCOVM extends VM {
 	private static final Logger log = LoggerFactory.getLogger(FCOVM.class);
 	public static final String CLOUD_INTERFACE = "fco";
-	private static ExecutorService executor = Executors.newFixedThreadPool(10);
-
-	static {
-		try {
-			System.setProperty("jsse.enableSNIExtension", "false");
-			// Create a trust manager that does not validate certificate chains
-			TrustManager[] trustAllCerts = new TrustManager[] { 
-			  new X509TrustManager() {
-			    public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-			    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-			    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-			}};
-			// Ignore differences between given hostname and certificate hostname
-			HostnameVerifier hv = new HostnameVerifier() {
-			  public boolean verify(String hostname, SSLSession session) { return true; }
-			};
-			// Install the all-trusting trust manager
-			try {
-			  SSLContext sc = SSLContext.getInstance("SSL");
-			  sc.init(null, trustAllCerts, new SecureRandom());
-			  HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-			  HttpsURLConnection.setDefaultHostnameVerifier(hv);
-			} catch (Exception e) {}
-		} catch (Throwable x) {
-			log.error("Error at turning off hostname verification " + x.getMessage());
-		}
-	}
+	private ExecutorService executor = Executors.newFixedThreadPool(1);
 	
 	// configuration-defined fixed-parameters (optimization task-invariant)
 	private final String serverName = "Optimizer VM " + UUID.randomUUID(); 
-	private static final int cpuSize = 2;
-	private static final int ramSize = 2048;
 	private static final String nicResourceName = "Nic-Card-1"; 
 	
-	// user-defined required parameters (must present in request json)
+	// user-defined required parameters (must be present in request json)
 	private final String endpoint;
-	private final String userEmailAddress;
+	private final String userEmailAddressSlashCustomerUUID;
 	private final String password;
-	private final String customerUUID;
+	
+	// user-defined optional parameters (defaults set in properties files)
+	private final String imageUUID;
+	private final int diskSize;
 	private final String clusterUUID;
 	private final String networkUUID; 
 	private final String diskProductOfferUUID;
 	private final String vdcUUID;
 	private final String serverProductOfferUUID;
-	
-	// user-defined optional parameters (defaults set in properties files)
-	private final String imageUUID;
-	private final int diskSize;
+	private final int cpuSize;
+	private final int ramSize;
 
 	// VM status 
-	UserService service;
-	private final Server server;
-	private String serverUUID;
-	private String instanceId;
+	private final DatatypeFactory datatypeFactory;
+	private final UserService service; // web service
+	private String serverUUID = null; // UUID of the created server
 	private String privateDnsName;
 	private String status = UNKNOWN;
 	
 	public static class Builder {
 		// required parameters
-		private final String userEmailAddress;
+		private final String userEmailAddressSlashCustomerUUID;
 		private final String password;
-		private final String customerUUID;
-		private final String clusterUUID;
-		private final String networkUUID; 
-		private final String diskProductOfferUUID;
-		private final String vdcUUID;
-		private final String serverProductOfferUUID;
 		// optional parameters
 		private String endpoint = Configuration.localEc2Endpoint;
 		private String imageUUID = Configuration.optimizerImageId;
-		private int diskSize = 100; // MB?
+		private String clusterUUID = Configuration.clusterUUID;
+		private String networkUUID = Configuration.networkUUID; 
+		private String diskProductOfferUUID = Configuration.diskProductOfferUUID;
+		private String vdcUUID = Configuration.vdcUUID;
+		private String serverProductOfferUUID = Configuration.serverProductOfferUUID;
+		private int cpuSize = 1;
+		private int ramSize = 1024;
+		private int diskSize = 16; // GB
 		
-		public Builder(String userEmailAddress, String password, String customerUUID, String clusterUUID, String networkUUID, String diskProductOfferUUID, String vdcUUID, String serverProductOfferUUID) {
-			this.userEmailAddress = userEmailAddress;
+		public Builder(String userEmailAddressSlashCustomerUUID, String password) {
+			this.userEmailAddressSlashCustomerUUID = userEmailAddressSlashCustomerUUID;
 			this.password = password;
-			this.customerUUID = customerUUID;
-			this.clusterUUID = clusterUUID;
-			this.networkUUID = networkUUID; 
-			this.diskProductOfferUUID = diskProductOfferUUID;
-			this.vdcUUID = vdcUUID;
-			this.serverProductOfferUUID = serverProductOfferUUID;
 		}
-		
 		public Builder withEndpoint(String endpoint) {
 			this.endpoint = endpoint;
 			return this;
 		}
-
 		public Builder withImageUUID(String imageUUID) {
 			this.imageUUID = imageUUID;
 			return this;
 		}
-
 		public Builder withDiskSize(int diskSize) {
 			this.diskSize = diskSize;
 			return this;
 		}
-		public FCOVM build() {
+		public Builder withNetworkUUID(String networkUUID) {
+			this.networkUUID = networkUUID; 
+			return this;
+		}
+		public Builder withClusterUUID(String clusterUUID) {
+			this.clusterUUID = clusterUUID;
+			return this;
+		}
+		public Builder withDiskProductOfferUUID(String diskProductOfferUUID) {
+			this.diskProductOfferUUID = diskProductOfferUUID;
+			return this;
+		}
+		public Builder withVdcUUID(String vdcUUID) {
+			this.vdcUUID = vdcUUID;
+			return this;
+		}
+		public Builder withServerProductOfferUUID(String serverProductOfferUUID) {
+			this.serverProductOfferUUID = serverProductOfferUUID;
+			return this;
+		}
+
+		public Builder withCpuSize(int cpuSize) {
+			this.cpuSize = cpuSize;
+			return this;
+		}
+		public Builder withRamSize(int ramSize) {
+			this.ramSize = ramSize;
+			return this;
+		}
+		public Builder withInstanceType(String instanceType) {
+			if ("m1.small".equals(instanceType)) {
+				cpuSize = 1;
+				ramSize = 2048;
+			} else if ("m1.medium".equals(instanceType)) {
+				cpuSize = 1;
+				ramSize = 4096;
+			} else if ("m1.large".equals(instanceType)) {
+				cpuSize = 2;
+				ramSize = 8196;
+			} else if ("m1.xlarge".equals(instanceType)) {
+				cpuSize = 4;
+				ramSize = 16384;
+			} else log.warn("Unknown instance type: " + instanceType);
+			return this;
+		}
+		
+		public FCOVM build() throws MalformedURLException, DatatypeConfigurationException, IOException {
 			return new FCOVM(this);
 		}
 	}
 	
-	private FCOVM(Builder builder) {
-		userEmailAddress = builder.userEmailAddress;
+	private FCOVM(Builder builder) throws MalformedURLException, DatatypeConfigurationException, IOException {
+		userEmailAddressSlashCustomerUUID = builder.userEmailAddressSlashCustomerUUID;
 		password = builder.password;
-		customerUUID = builder.customerUUID;
+
 		clusterUUID = builder.clusterUUID;
 		networkUUID = builder.networkUUID; 
 		diskProductOfferUUID = builder.diskProductOfferUUID;
@@ -155,9 +166,17 @@ public class FCOVM extends VM {
 		endpoint = builder.endpoint;
 		imageUUID = builder.imageUUID;
 		diskSize = builder.diskSize;
-		
+
+		cpuSize = builder.cpuSize;
+		ramSize = builder.ramSize;
+
+		service = getService(endpoint, userEmailAddressSlashCustomerUUID, password);
+		datatypeFactory = DatatypeFactory.newInstance();
+	}
+	
+	private Server createServerObject() {
 	    // create a server resource using Standard server product offer and set basic settings
-		server = new Server();
+		Server server = new Server();
 		Disk disk = new Disk();
 		disk.setClusterUUID(clusterUUID);
 	    disk.setProductOfferUUID(diskProductOfferUUID);
@@ -185,129 +204,195 @@ public class FCOVM extends VM {
 		nicCard.setResourceType(ResourceType.NIC);
 		nicCard.setVdcUUID(vdcUUID);
 		server.getNics().add(nicCard);
+		return server;
 	}
 	
 	@Override public void run(Map<String, String> parameters) throws Exception {
 		log.info("Launching optimizer VM in FCO...");
-		if (service == null) service = getService(endpoint, userEmailAddress, customerUUID, password);
-		
-//        DatatypeFactory datatypeFactory = DatatypeFactory.newInstance();
-		try {
-			Job job = service.createServer(server, null, null, null);
-			serverUUID = job.getResourceUUID();
-//			job.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
-            Runnable worker = new VMCreatedPollerThread(this, serverUUID);
-            executor.execute(worker);
-//			Job response = service.waitForJob(job.getResourceUUID(), true);
-//			serverUUID = response.getItemUUID();
-//			if (response.getErrorCode() == null) {
-//				log.info("Server created successfully");
-//			} else {
-//				log.error(response.getErrorCode());
-//				throw new Exception("ERROR: failed to create server: " + response.getErrorCode());
-//			}
-	    } 
-		catch (ExtilityException e) { log.error("ExtilityException", e); throw e; }
-		finally {}
+		// create server
+		try { createServer(); } 
+		catch (Exception x) {
+			log.error("Cannot create server: " + x.getMessage());
+			status = VM.TERMINATED;
+			throw x;
+		}
+		// change status in async thread (may take longer time)
+        executor.execute(new VMCreatorThread(this));
 	}
 	
-	public class VMCreatedPollerThread implements Runnable {
-		private final static int timeout = 5 * 60; // seconds
-		private final static int interval = 10; // seconds
+	private void createServer() throws Exception {
+		log.debug("Create server...");
+		Job createServerJob = service.createServer(createServerObject(), null, null, null);
+		log.debug("Waiting for Create server job to complete...");
+		createServerJob.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
+		Job response = service.waitForJob(createServerJob.getResourceUUID(), true);	
+		log.debug("Create server job completed");
+		serverUUID = response.getItemUUID();
+		log.debug("serverUUID: " + serverUUID);
+		if (response.getErrorCode() == null) log.debug("Server created");
+		else throw new Exception("Cannot create server: " + response.getErrorCode());
+	}	
+	
+	public class VMCreatorThread implements Runnable {
 		private final FCOVM vm;
-		private final String jobUUID;
-		VMCreatedPollerThread(FCOVM vm, String jobUUID) {
+		
+		VMCreatorThread(FCOVM vm) throws DatatypeConfigurationException {
 			this.vm = vm;
-			this.jobUUID = jobUUID;
 		}
 		
-		// poll for at most 5 minutes every 10 seconds  
 		@Override public void run() {
-			int repeats = timeout / interval;
-			Exception x = null;
-			String errorCode = "";
-			while (repeats > 0) {
-				log.debug("Polling createServer status: " + jobUUID);
-				try { 
-					Job response = service.waitForJob(jobUUID, true);
-					if (response.getErrorCode() == null) break;
-					else {
-						errorCode = response.getErrorCode();
-						log.debug("Poll failed due to error code: " + errorCode);
-					}
-				} catch (ExtilityException e) { 
-					x = e;
-					log.debug("Poll failed due to exception: " + e.getMessage());
-				}
-				try { Thread.sleep(interval * 1000l); } catch (InterruptedException e) {}
-				repeats--;
-			}
-			if (repeats == 0) {
-				log.error("Cannot create server: " + errorCode + " " + (x != null ? x.getMessage() : ""));
+			log.debug("Server creator thread started");
+
+//			// create
+//			try { createServer(); } 
+//			catch (Exception x) {
+//				log.error("Cannot create server: " + x.getMessage());
+//				vm.status = VM.TERMINATED;
+//			}
+			// run
+			try { runServer(); } 
+			catch (Exception x) {
+				log.error("Cannot run server: " + x.getMessage());
+				try { vm.terminate(); } catch (Exception e) { log.error("Cannot terminate VM", e); }
 				vm.status = VM.TERMINATED;
 			}
+			// describe
+			try { if (vm.status != VM.TERMINATED) describeInstance(); } 
+			catch (Exception x) { log.warn("Cannot describe server: " + x.getMessage()); }
+			
+			log.debug("Server creator thread ended");
+		}
+		
+		private void runServer() throws Exception {
+			log.debug("Start server...");
+			Job startServerJob = service.changeServerStatus(serverUUID, ServerStatus.RUNNING, true, null, null);
+			log.debug("Waiting for Start server job to complete...");
+			startServerJob.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
+			Job response = service.waitForJob(startServerJob.getResourceUUID(), true);	
+			log.debug("Start server job completed");
+			if (response.getErrorCode() == null) log.debug("Server status changed to running");
+			else throw new Exception("Cannot run server: " + response.getErrorCode());
 		}
 	}
 	
-	private UserService getService(String endpoint, String userEmailAddress, String customerUUID, String password) throws MalformedURLException {
+	private UserService getService(String endpoint, String userEmailAddressSlashCustomerUUID, String password) throws MalformedURLException, IOException {
 	    URL url = new URL(com.extl.jade.user.UserAPI.class.getResource("."), endpoint);
-	    UserAPI api = new UserAPI(url, new QName("http://extility.flexiant.net", "UserAPI"));
+	    UserAPI api = new UserAPI(url, new QName("http://extility.flexiant.net", "UserAPI")); // throws IOException if endpoint is not accessible
 	    UserService service = api.getUserServicePort();
-	    // Get the binding provider
+	    // get the binding provider
 	    BindingProvider portBP = (BindingProvider) service;
-	    // and set the service endpoint
+	    // set the service endpoint
 	    portBP.getRequestContext().put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, endpoint);
-	    // and the caller's authentication details and password
-	    portBP.getRequestContext().put(BindingProvider.USERNAME_PROPERTY, userEmailAddress + "/" + customerUUID);
+	    // caller's authentication details and password
+	    portBP.getRequestContext().put(BindingProvider.USERNAME_PROPERTY, userEmailAddressSlashCustomerUUID);
 	    portBP.getRequestContext().put(BindingProvider.PASSWORD_PROPERTY, password);
 	    return service;
 	} 
 	
 	// getters and setters
-	@Override public String getInstanceId() { return instanceId; }
+	@Override public String getInstanceId() { return serverUUID; }
 	@Override public String getStatus() { return status; }
 	@Override public String getIP() { return privateDnsName; }
 
 	@Override public void describeInstance() throws Exception {
-		// TODO Auto-generated method stub
-
+		log.debug("Describe server: " + serverUUID);
+		// create an FQL filter and a filter condition
+		SearchFilter searchFilter = new SearchFilter();
+		FilterCondition filterCondition = new FilterCondition();
+		// set the condition type
+		filterCondition.setCondition(Condition.IS_EQUAL_TO);
+		// the field to be matched
+		filterCondition.setField("resourceuuid");
+		// and a list of values
+		filterCondition.getValue().add(serverUUID);
+		// add the filter condition to the query
+		searchFilter.getFilterConditions().add(filterCondition);
+		// limit to the number of results
+		QueryLimit queryLimit = new QueryLimit();
+		queryLimit.setMaxRecords(10000);
+		queryLimit.setLoadChildren(true);
+		
+		ListResult resultList = service.listResources(searchFilter, queryLimit, ResourceType.SERVER);
+		if (resultList == null) throw new Exception("Server UUID not found: " + serverUUID);
+		List <Object> results = resultList.getList();
+		if (results.size() == 0)  throw new Exception("Server UUID not found: " + serverUUID + " (empty list)");
+		if (results.size() > 1)  log.warn("Server UUID found too many times: " + serverUUID + " (" + results.size() + ")");
+		if (!(results.get(results.size() - 1) instanceof Server)) throw new Exception("Invalid object (Serve expected): " + results.get(results.size() - 1).getClass().getName());
+		Server resultServer = (Server) results.get(results.size() - 1);
+		log.debug("Server UUID " + serverUUID + " found: " + serverUUID);
+		ArrayList<Nic> nics;
+		nics = (ArrayList<Nic>) resultServer.getNics();
+		if (nics.size() == 0) throw new Exception("No NIC found for server UUID: " + serverUUID + "");
+		if (nics.size() > 1) log.debug("Too many NIC found for server UUID: " + serverUUID + ". Considering the first only.");
+		Nic nic0 = nics.get(0);
+		if (nic0.getIpAddresses() == null || nic0.getIpAddresses().size() == 0) throw new Exception("No IP address for NIC 0");
+		privateDnsName = nic0.getIpAddresses().get(0).getIpAddress();
+		status = mapVMStatus(resultServer.getStatus());
+		log.debug("Server name: " + resultServer.getResourceName());
+		log.debug("IP: " + privateDnsName);
+		log.debug("Status: " + status + " (" + resultServer.getStatus() + ")");
 	}
 
+	private String mapVMStatus(ServerStatus serverStatus) {
+		if (serverStatus == null) return VM.UNKNOWN;
+		switch (serverStatus) {
+			case STARTING:
+			case MIGRATING:
+			case REBOOTING:
+			case RECOVERY:
+			case BUILDING:
+			case INSTALLING:
+				return VM.PENDING;
+			case RUNNING:
+				return VM.RUNNING;
+			case DELETING:
+				return VM.STOPPING;
+			case ERROR:
+				return VM.ERROR;
+			case STOPPED:
+				return VM.TERMINATED;
+			case STOPPING:
+				return VM.STOPPING;
+			default:
+				return VM.UNKNOWN;
+		}
+	}
+	
 	@Override public void terminate() throws Exception {
-		// TODO Auto-generated method stub
-		DatatypeFactory datatypeFactory = DatatypeFactory.newInstance();
-		Job deleteJob = service.deleteResource(serverUUID, true, datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
+		log.debug("Delete server: " + serverUUID);
+		Job deleteJob = service.deleteResource(serverUUID, true, null);
+		if (deleteJob == null) throw new Exception("Server UUID not found: " + serverUUID + " (null job)");
+		deleteJob.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
+		log.debug("Waiting for Delete server job to complete...");
 		Job response = service.waitForJob(deleteJob.getResourceUUID(), true);
+		log.debug("Delete server job completed");
 		if (response.getErrorCode() == null) {
 			log.info("Server deleted successfully");
-		} else {
-			log.error(response.getErrorCode());
-			throw new Exception("ERROR: failed to delete server: " + response.getErrorCode());
-		}		
+		} else throw new Exception("Cannot terminate server: " + response.getErrorCode());
 	}
 
 	@Override public void discard() {
-		// no resources to discard
+		executor.shutdown();
 	}
 	
 	public static void main(String [] args) throws Exception {
 		String endpoint = "https://cp.sd1.flexiant.net/soap/user/current/?wsdl";
 		String optimizerImageId = "4599ad51-33cd-386e-b074-76e18a2ebc18";
-
-		String userEmailAddress = "username";
+		String username = "userEmail/customerUUID";
 		String password = "password";
-		String customerUUID = "uuid"; 
-		String clusterUUID = "uuid";
-		String networkUUID = "uuid"; 
-		String diskProductOfferUUID = "uuid"; 
-		String vdcUUID = "uuid";
-		String serverProductOfferUUID = "uuid";
-		
-		VM vm = new FCOVM.Builder(userEmailAddress, password, customerUUID, clusterUUID, networkUUID, diskProductOfferUUID, vdcUUID, serverProductOfferUUID)
+		FCOVM vm = new FCOVM.Builder(username, password)
 				.withEndpoint(endpoint)
 				.withImageUUID(optimizerImageId)
-//				.withDiskSize(5000)
+				.withInstanceType("m1.medium")
+				.withDiskSize(16)
 				.build();  
 		vm.run(null);
+		do {
+			Thread.sleep(10000);
+			log.debug("Polling VM status...");
+			if (vm.serverUUID != null) try { vm.describeInstance(); } catch (Exception x) { log.debug(x.getMessage()); }
+		} while (!vm.status.equals(VM.RUNNING));
+		vm.terminate();
+		vm.discard();
 	}
 }

@@ -27,6 +27,7 @@ public abstract class VM {
 	public static final String STOPPING = "stopping";
 	public static final String STOPPED = "stopped";
 	public static final String TERMINATED = "terminated";
+	public static final String ERROR = "error";
 	
 	// launch VM
 	public abstract void run(Map<String,String> parameters) throws Exception;

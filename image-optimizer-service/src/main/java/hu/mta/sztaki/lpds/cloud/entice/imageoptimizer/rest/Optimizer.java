@@ -133,8 +133,7 @@ public class Optimizer {
 	public static final String RESPONSE_OPTIMIZED_IMAGE_URL = "optimizedImageURL";
 	public static final String RESPONSE_CHART = "chart";
 	
-	@POST
-	@Consumes(MediaType.APPLICATION_JSON)
+	@POST @Consumes(MediaType.APPLICATION_JSON)
 	public Response optimize(
 			@Context HttpHeaders headers,
 			@Context HttpServletRequest request,
@@ -256,19 +255,14 @@ public class Optimizer {
         	if (EC2VM.CLOUD_INTERFACE.equals(cloudInterface)) {
         		optimizerVM = new EC2VM(endpoint, accessKey, secretKey, parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE), optimizerImageId, null); 
         	} else if (FCOVM.CLOUD_INTERFACE.equals(cloudInterface)) {
-        		// FIXME read parameters from request
-        		String userEmailAddress = parameters.get(CLOUD_ACCESS_KEY);
+        		// read parameters from request
+        		String userEmailAddressSlashCustomerUUID = parameters.get(CLOUD_ACCESS_KEY);
         		String password = parameters.get(CLOUD_SECRET_KEY);
-        		String customerUUID = "todo"; 
-        		String clusterUUID = "todo";
-        		String networkUUID = "todo"; 
-        		String diskProductOfferUUID = "todo"; 
-        		String vdcUUID = "todo";
-        		String serverProductOfferUUID = "todo";
-        		optimizerVM = new FCOVM.Builder(userEmailAddress, password, customerUUID, clusterUUID, networkUUID, diskProductOfferUUID, vdcUUID, serverProductOfferUUID)
+        		optimizerVM = new FCOVM.Builder(userEmailAddressSlashCustomerUUID, password)
         				.withEndpoint(endpoint)
         				.withImageUUID(optimizerImageId)
-//        				.withDiskSize(5000)
+        				.withInstanceType(parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE))
+        				.withDiskSize(16) // GB
         				.build();  
         	} else return Response.status(Status.BAD_REQUEST).entity("Invalid cloud interface: " + cloudInterface).build(); 
         } catch (Exception x) { return Response.status(Status.BAD_REQUEST).entity("Cannot create optimizer VM: " + x.getMessage()).build(); }
@@ -367,16 +361,10 @@ public class Optimizer {
 				try { 
 					if (task.getCloudInterface() == null || EC2VM.CLOUD_INTERFACE.equals(task.getCloudInterface())) vm = new EC2VM(task.getEndpoint(), task.getAccessKey(), task.getSecretKey(), task.getInstanceId()); 
 					else if (FCOVM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
-		        		// FIXME read parameters from database
-		        		String userEmailAddress = task.getAccessKey();
+		        		// read parameters from database
+		        		String userEmailAddressSlashCustomerUUID = task.getAccessKey();
 		        		String password = task.getSecretKey();
-		        		String customerUUID = "todo"; 
-		        		String clusterUUID = "todo";
-		        		String networkUUID = "todo"; 
-		        		String diskProductOfferUUID = "todo"; 
-		        		String vdcUUID = "todo";
-		        		String serverProductOfferUUID = "todo";
-		        		vm = new FCOVM.Builder(userEmailAddress, password, customerUUID, clusterUUID, networkUUID, diskProductOfferUUID, vdcUUID, serverProductOfferUUID)
+		        		vm = new FCOVM.Builder(userEmailAddressSlashCustomerUUID, password)
 		        				.withEndpoint(task.getEndpoint())
 		        				.build();  
 					}
@@ -462,9 +450,7 @@ public class Optimizer {
 		return json;
 	}
 
-	@GET
-	@Path("{id}")
-	@Produces(MediaType.APPLICATION_JSON)
+	@GET @Path("{id}") @Produces(MediaType.APPLICATION_JSON)
 	public Response status(
 			@PathParam("id") String id,
 			@Context HttpHeaders headers,
