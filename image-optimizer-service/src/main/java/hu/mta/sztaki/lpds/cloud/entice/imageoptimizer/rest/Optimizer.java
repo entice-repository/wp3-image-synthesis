@@ -47,7 +47,7 @@ public class Optimizer {
 	private void logRequest(final String method, final HttpHeaders httpHeaders, final HttpServletRequest request) {
 		log.info("" + method /* + ", from: " + request.getRemoteAddr() */);
 	}
-
+	
 	private static ConcurrentHashMap <String, Task> taskCache = new ConcurrentHashMap<String, Task>(); // contains tasks of running/stopping state
 	private static ConcurrentHashMap <String, VM> optimizerVMCache = new ConcurrentHashMap<String, VM>();
 	
@@ -258,9 +258,7 @@ public class Optimizer {
         		// read parameters from request
         		String userEmailAddressSlashCustomerUUID = parameters.get(CLOUD_ACCESS_KEY);
         		String password = parameters.get(CLOUD_SECRET_KEY);
-        		optimizerVM = new FCOVM.Builder(userEmailAddressSlashCustomerUUID, password)
-        				.withEndpoint(endpoint)
-        				.withImageUUID(optimizerImageId)
+        		optimizerVM = new FCOVM.Builder(endpoint, userEmailAddressSlashCustomerUUID, password, optimizerImageId)
         				.withInstanceType(parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE))
         				.withDiskSize(16) // GB
         				.build();  
@@ -295,8 +293,11 @@ public class Optimizer {
         log.info("Starting optimizer VM...");
         try {
         	Map<String, String> pars = new HashMap<String, String>();
-        	pars.put(EC2VM.USER_DATA_BASE64, ResourceUtils.base64Encode(cloudInit)); 
+        	pars.put(VM.USER_DATA_BASE64, ResourceUtils.base64Encode(cloudInit)); 
         	pars.put(EC2VM.AVAILABILITY_ZONE, parameters.get(AVAILABILITY_ZONE));
+        	pars.put(VM.LOGIN, Configuration.optimizerRootLogin);
+        	
+        	pars.put(VM.SSH_KEY_PATH, Configuration.sshKeyPath);
         	optimizerVM.run(pars);
         	task.setInstanceId(optimizerVM.getInstanceId());
         	task.setVmStatus(VM.PENDING);
@@ -364,8 +365,7 @@ public class Optimizer {
 		        		// read parameters from database
 		        		String userEmailAddressSlashCustomerUUID = task.getAccessKey();
 		        		String password = task.getSecretKey();
-		        		vm = new FCOVM.Builder(userEmailAddressSlashCustomerUUID, password)
-		        				.withEndpoint(task.getEndpoint())
+		        		vm = new FCOVM.Builder(task.getEndpoint(), userEmailAddressSlashCustomerUUID, password, Configuration.optimizerImageId)
 		        				.build();  
 					}
 					else log.error("Invalid cloud interface in database: " + task.getCloudInterface());
@@ -539,14 +539,9 @@ public class Optimizer {
 		SshSession ssh = null;
 		boolean changed = false;
 		try {
-			String sshKeyPath = Thread.currentThread().getContextClassLoader().getResource(OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE).toString();
-			if (sshKeyPath != null) { 
-				if (sshKeyPath.startsWith("file:\\")) sshKeyPath = sshKeyPath.substring("file:\\".length());
-				else if (sshKeyPath.startsWith("file:/")) sshKeyPath = sshKeyPath.substring("file:".length());
-			} else throw new Exception("Resource not found: " + OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE);
 			
-			log.debug("Opening SSH connection to " + optimizerVM.getInstanceId() + " " + Configuration.optimizerRootLogin + "@" + optimizerVM.getIP() + " " + sshKeyPath);
-			ssh = new SshSession(optimizerVM.getIP(), Configuration.optimizerRootLogin, sshKeyPath);
+			log.debug("Opening SSH connection to " + optimizerVM.getInstanceId() + " " + Configuration.optimizerRootLogin + "@" + optimizerVM.getIP() + " " + Configuration.sshKeyPath);
+			ssh = new SshSession(optimizerVM.getIP(), Configuration.optimizerRootLogin, Configuration.sshKeyPath);
 			
 			OutputStreamWrapper stdout = new OutputStreamWrapper();
 			OutputStreamWrapper stderr = new OutputStreamWrapper();
@@ -1118,6 +1113,8 @@ public class Optimizer {
 		if (!"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY))) {
 		sb.append("\n");
 		sb.append("- path: /root/.aws/config"); sb.append("\n");
+		sb.append("  permissions: \"0600\""); sb.append("\n");
+		sb.append("  owner: \"root\""); sb.append("\n");
 		sb.append("  content: |"); sb.append("\n");
 		sb.append("    [default]"); sb.append("\n");
 		sb.append("    aws_access_key_id = " + parameters.get(S3_ACCESS_KEY)); sb.append("\n");

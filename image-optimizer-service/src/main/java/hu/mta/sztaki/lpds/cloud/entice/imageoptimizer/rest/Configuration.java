@@ -48,6 +48,8 @@ public class Configuration {
 	public static String diskProductOfferUUID;
 	public static String vdcUUID;
 	public static String serverProductOfferUUID;
+	
+	public static String sshKeyPath;
 
 	private static void disableHostnameVerification() {
 		try {
@@ -115,9 +117,22 @@ public class Configuration {
 				diskProductOfferUUID = prop.getProperty("diskProductOfferUUID");
 				vdcUUID = prop.getProperty("vdcUUID");
 				serverProductOfferUUID = prop.getProperty("serverProductOfferUUID");
+
+				sshKeyPath = prop.getProperty("sshKeyPath");
 				
 				log.info(PROPERTIES_FILE_NAME + " loaded");
 			} catch (IOException e) { log.error("Cannot read properties file: " + PROPERTIES_FILE_NAME, e); }
+			
+			// if not set, try to locate SSH key
+			if (sshKeyPath == null) {
+				try {
+					sshKeyPath = Thread.currentThread().getContextClassLoader().getResource(Optimizer.OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE).toString();
+					if (sshKeyPath != null) { 
+						if (sshKeyPath.startsWith("file:\\")) sshKeyPath = sshKeyPath.substring("file:\\".length());
+						else if (sshKeyPath.startsWith("file:/")) sshKeyPath = sshKeyPath.substring("file:".length());
+					} else log.error("Private SSH key not found for optimizer VM: " + Optimizer.OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE + "");
+				} catch (Throwable x) {}
+			}
 		} 
 	}
 }

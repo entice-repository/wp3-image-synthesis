@@ -28,7 +28,11 @@ public abstract class VM {
 	public static final String STOPPED = "stopped";
 	public static final String TERMINATED = "terminated";
 	public static final String ERROR = "error";
-	
+
+	public static final String USER_DATA_BASE64 = "userDataBase64";
+	public static final String LOGIN = "login";
+	public static final String SSH_KEY_PATH = "sshKeyPath";
+
 	// launch VM
 	public abstract void run(Map<String,String> parameters) throws Exception;
 	// get instance id

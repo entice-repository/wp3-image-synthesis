@@ -5,11 +5,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -37,11 +39,19 @@ import com.extl.jade.user.VirtualizationType;
 
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.VM;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.rest.Configuration;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.OutputStreamWrapper;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.SshSession;
 
 public class FCOVM extends VM {
 	private static final Logger log = LoggerFactory.getLogger(FCOVM.class);
 	public static final String CLOUD_INTERFACE = "fco";
-	private ExecutorService executor = Executors.newFixedThreadPool(1);
+	
+	private ExecutorService threadExecutor = Executors.newFixedThreadPool(2); // runs startServer and describeServer threads
+	private AtomicBoolean describeInProgress = new AtomicBoolean(false); // allow new describe if no describe in progress 
+	
+	private String userDataBase64; // cloud-init
+	private String login; // for cloud-init
+	private String sshKeyPath; // for cloud-init
 	
 	// configuration-defined fixed-parameters (optimization task-invariant)
 	private final String serverName = "Optimizer VM " + UUID.randomUUID(); 
@@ -72,11 +82,11 @@ public class FCOVM extends VM {
 	
 	public static class Builder {
 		// required parameters
+		private final String endpoint;
 		private final String userEmailAddressSlashCustomerUUID;
 		private final String password;
+		private final String imageUUID;
 		// optional parameters
-		private String endpoint = Configuration.localEc2Endpoint;
-		private String imageUUID = Configuration.optimizerImageId;
 		private String clusterUUID = Configuration.clusterUUID;
 		private String networkUUID = Configuration.networkUUID; 
 		private String diskProductOfferUUID = Configuration.diskProductOfferUUID;
@@ -86,17 +96,11 @@ public class FCOVM extends VM {
 		private int ramSize = 1024;
 		private int diskSize = 16; // GB
 		
-		public Builder(String userEmailAddressSlashCustomerUUID, String password) {
+		public Builder(String endpoint, String userEmailAddressSlashCustomerUUID, String password, String imageUUID)  {
+			this.endpoint = endpoint;
 			this.userEmailAddressSlashCustomerUUID = userEmailAddressSlashCustomerUUID;
 			this.password = password;
-		}
-		public Builder withEndpoint(String endpoint) {
-			this.endpoint = endpoint;
-			return this;
-		}
-		public Builder withImageUUID(String imageUUID) {
 			this.imageUUID = imageUUID;
-			return this;
 		}
 		public Builder withDiskSize(int diskSize) {
 			this.diskSize = diskSize;
@@ -122,7 +126,6 @@ public class FCOVM extends VM {
 			this.serverProductOfferUUID = serverProductOfferUUID;
 			return this;
 		}
-
 		public Builder withCpuSize(int cpuSize) {
 			this.cpuSize = cpuSize;
 			return this;
@@ -176,6 +179,7 @@ public class FCOVM extends VM {
 	
 	private Server createServerObject() {
 	    // create a server resource using Standard server product offer and set basic settings
+		log.info("Server name: " + serverName);
 		Server server = new Server();
 		Disk disk = new Disk();
 		disk.setClusterUUID(clusterUUID);
@@ -209,6 +213,14 @@ public class FCOVM extends VM {
 	
 	@Override public void run(Map<String, String> parameters) throws Exception {
 		log.info("Launching optimizer VM in FCO...");
+		
+		// parameters for emulating cloud-init
+		if (parameters != null) {
+			userDataBase64 = parameters.get(USER_DATA_BASE64);
+			login = parameters.get(LOGIN);
+			sshKeyPath = parameters.get(SSH_KEY_PATH);
+		}
+		
 		// create server
 		try { createServer(); } 
 		catch (Exception x) {
@@ -217,7 +229,8 @@ public class FCOVM extends VM {
 			throw x;
 		}
 		// change status in async thread (may take longer time)
-        executor.execute(new VMCreatorThread(this));
+        if (!threadExecutor.isShutdown()) threadExecutor.execute(new VMStarterThread(this));
+        else log.debug("Executor is down");
 	}
 	
 	private void createServer() throws Exception {
@@ -228,27 +241,15 @@ public class FCOVM extends VM {
 		Job response = service.waitForJob(createServerJob.getResourceUUID(), true);	
 		log.debug("Create server job completed");
 		serverUUID = response.getItemUUID();
-		log.debug("serverUUID: " + serverUUID);
-		if (response.getErrorCode() == null) log.debug("Server created");
+		if (response.getErrorCode() == null) log.info("Server created: " + serverUUID);
 		else throw new Exception("Cannot create server: " + response.getErrorCode());
 	}	
 	
-	public class VMCreatorThread implements Runnable {
+	public class VMStarterThread implements Runnable {
 		private final FCOVM vm;
-		
-		VMCreatorThread(FCOVM vm) throws DatatypeConfigurationException {
-			this.vm = vm;
-		}
-		
+		VMStarterThread(FCOVM vm) throws DatatypeConfigurationException { this.vm = vm;	}
 		@Override public void run() {
-			log.debug("Server creator thread started");
-
-//			// create
-//			try { createServer(); } 
-//			catch (Exception x) {
-//				log.error("Cannot create server: " + x.getMessage());
-//				vm.status = VM.TERMINATED;
-//			}
+			log.debug("Server starter thread started");
 			// run
 			try { runServer(); } 
 			catch (Exception x) {
@@ -256,13 +257,12 @@ public class FCOVM extends VM {
 				try { vm.terminate(); } catch (Exception e) { log.error("Cannot terminate VM", e); }
 				vm.status = VM.TERMINATED;
 			}
-			// describe
-			try { if (vm.status != VM.TERMINATED) describeInstance(); } 
-			catch (Exception x) { log.warn("Cannot describe server: " + x.getMessage()); }
-			
-			log.debug("Server creator thread ended");
+			// describe to get IP
+			describeServerIfNotInProgress();
+			// run cloud-init
+			emulateCloudInitWithRetries();
+			log.debug("Server starter thread ended");
 		}
-		
 		private void runServer() throws Exception {
 			log.debug("Start server...");
 			Job startServerJob = service.changeServerStatus(serverUUID, ServerStatus.RUNNING, true, null, null);
@@ -274,7 +274,7 @@ public class FCOVM extends VM {
 			else throw new Exception("Cannot run server: " + response.getErrorCode());
 		}
 	}
-	
+
 	private UserService getService(String endpoint, String userEmailAddressSlashCustomerUUID, String password) throws MalformedURLException, IOException {
 	    URL url = new URL(com.extl.jade.user.UserAPI.class.getResource("."), endpoint);
 	    UserAPI api = new UserAPI(url, new QName("http://extility.flexiant.net", "UserAPI")); // throws IOException if endpoint is not accessible
@@ -295,7 +295,45 @@ public class FCOVM extends VM {
 	@Override public String getIP() { return privateDnsName; }
 
 	@Override public void describeInstance() throws Exception {
+		describeServerIfNotInProgress();
+	}	
+
+	private void describeServerIfNotInProgress() {
+		if (threadExecutor.isShutdown()) {
+			log.debug("Executor is down");
+			return;
+		}
+		synchronized (describeInProgress) {
+			if (describeInProgress.get()) {
+				log.debug("Describe is in progress");
+				return;
+			} else {
+				try { 
+					if (!threadExecutor.isShutdown()) {
+						threadExecutor.execute(new VMDescribeThread()); 
+						describeInProgress.set(true);
+					} else log.debug("Executor is down. Cannot describe.");
+				} catch (DatatypeConfigurationException e) {} // should not happen now
+			} 
+		}
+	}
+
+	public class VMDescribeThread implements Runnable {
+		VMDescribeThread() throws DatatypeConfigurationException {}
+		@Override public void run() {
+			log.debug("Server describe thread started");
+			try { describeServer(); } 
+			catch (Exception x) { log.warn("Cannot describe server: " + x.getMessage()); }
+			log.debug("Server describe thread ended");
+			synchronized (describeInProgress) {
+				describeInProgress.set(false);
+			}
+		}
+	}
+
+	private void describeServer() throws Exception {
 		log.debug("Describe server: " + serverUUID);
+		if (serverUUID == null) return;
 		// create an FQL filter and a filter condition
 		SearchFilter searchFilter = new SearchFilter();
 		FilterCondition filterCondition = new FilterCondition();
@@ -319,7 +357,7 @@ public class FCOVM extends VM {
 		if (results.size() > 1)  log.warn("Server UUID found too many times: " + serverUUID + " (" + results.size() + ")");
 		if (!(results.get(results.size() - 1) instanceof Server)) throw new Exception("Invalid object (Serve expected): " + results.get(results.size() - 1).getClass().getName());
 		Server resultServer = (Server) results.get(results.size() - 1);
-		log.debug("Server UUID " + serverUUID + " found: " + serverUUID);
+		log.debug("Server UUID found");
 		ArrayList<Nic> nics;
 		nics = (ArrayList<Nic>) resultServer.getNics();
 		if (nics.size() == 0) throw new Exception("No NIC found for server UUID: " + serverUUID + "");
@@ -360,6 +398,7 @@ public class FCOVM extends VM {
 	
 	@Override public void terminate() throws Exception {
 		log.debug("Delete server: " + serverUUID);
+		if (serverUUID == null) throw new Exception("Server UUID is null");
 		Job deleteJob = service.deleteResource(serverUUID, true, null);
 		if (deleteJob == null) throw new Exception("Server UUID not found: " + serverUUID + " (null job)");
 		deleteJob.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
@@ -367,26 +406,102 @@ public class FCOVM extends VM {
 		Job response = service.waitForJob(deleteJob.getResourceUUID(), true);
 		log.debug("Delete server job completed");
 		if (response.getErrorCode() == null) {
-			log.info("Server deleted successfully");
+			log.info("Server deleted: " + serverUUID);
 		} else throw new Exception("Cannot terminate server: " + response.getErrorCode());
 	}
 
+	// try to do cloud-init until completed (SSH is up)
+	private void emulateCloudInitWithRetries () {
+		log.debug("Emulating cloud-init...");
+		if (userDataBase64 == null) {
+			log.debug("No cloud-config");
+			return;
+		}
+		if (login == null) {
+			log.error("No login name specified to perform cloud-init");
+			return;
+		}
+		if (sshKeyPath == null) {
+			log.error("No path to SSH key specified to perform cloud-init");
+			return;
+		}
+		int trials = 0;
+		final int sleep = 10; // seconds
+		final int maxTrials = 5 * 6; // up to 5 minutes (6 trials / minute)  
+		do {
+			trials++;
+			if (privateDnsName != null && VM.RUNNING.equals(status)) {
+				try {
+					emulateCloudInit(privateDnsName, login, sshKeyPath);
+					log.debug("Cloud-init done");
+					break;
+				} catch (Exception e) {
+					log.debug("emulateCloudInit failed: " + e.getMessage());
+				}
+			} else log.debug("VM has no IP or is not running (" + status + ")");
+			//  no IP yet, do describe
+			describeServerIfNotInProgress();
+			log.debug("Trial " + trials + " failed. Retrying cloud-init in " + sleep + "s...");
+			try { Thread.sleep(sleep * 1000l); } catch (InterruptedException e) {}
+		} while (trials <= maxTrials);
+		
+		if (trials > maxTrials) log.error("Failed to run cloud-init");
+	}
+	
+	private void emulateCloudInit(String ip, String login, String sshKeyPath) throws Exception {
+		// mkdir -p /var/lib/cloud/instance/ 
+		// /var/lib/cloud/instance/user-data.txt
+		// sudo "/usr/bin/cloud-init -d modules || /usr/bin/cloud-init start"
+		SshSession ssh = null;
+		try {
+			ssh = new SshSession(ip, login, sshKeyPath);
+			OutputStreamWrapper stdout = new OutputStreamWrapper();
+			OutputStreamWrapper stderr = new OutputStreamWrapper();
+			int exitCode;
+			
+			// upload user-data.txt
+			log.debug("Uploading /root/user-data.txt...");
+			stdout.clear(); stderr.clear();
+			exitCode = ssh.executeCommand("sudo echo " + userDataBase64 + " | base64 --decode > /root/user-data.txt", stdout, stderr);
+			if (exitCode != 0) {
+				log.debug(stderr.toString());
+				throw new Exception("Cannot upload user-data.txt to host " + ip);
+			}
+
+			// optionally, before re-running cloud-init: rm -f /var/lib/cloud/instance/sem/*
+			
+			// run cloud-init for modules: cc_write_files, cc_runcmd (cc_package_update_upgrade_install); from /usr/lib/python2.7/dist-packages/cloudinit/config/
+			log.debug("Running cloud-init cc_write_files, cc_runcmd sections from /root/user-data.txt...");
+			stdout.clear(); stderr.clear();
+			exitCode = ssh.executeCommand(	"sudo cloud-init --file /root/user-data.txt single --name cc_write_files " +
+											"&& sudo cloud-init --file /root/user-data.txt single --name cc_runcmd " +
+											"&& sudo /var/lib/cloud/instance/scripts/runcmd", stdout, stderr);
+			if (exitCode != 0) {
+				log.debug(stderr.toString());
+				throw new Exception("Cannot run cloud-init on user-data.txt on host " + ip);
+			}
+			
+		} finally {	if (ssh!= null) ssh.close(); }
+	}
+	
 	@Override public void discard() {
-		executor.shutdown();
+		threadExecutor.shutdown();
 	}
 	
 	public static void main(String [] args) throws Exception {
 		String endpoint = "https://cp.sd1.flexiant.net/soap/user/current/?wsdl";
-		String optimizerImageId = "4599ad51-33cd-386e-b074-76e18a2ebc18";
+		String optimizerImageId = "800da8ae-d424-30e0-8eba-c690310da426";
 		String username = "userEmail/customerUUID";
 		String password = "password";
-		FCOVM vm = new FCOVM.Builder(username, password)
-				.withEndpoint(endpoint)
-				.withImageUUID(optimizerImageId)
+		FCOVM vm = new FCOVM.Builder(endpoint, username, password, optimizerImageId)
 				.withInstanceType("m1.medium")
 				.withDiskSize(16)
-				.build();  
-		vm.run(null);
+				.build();
+		Map <String, String> params = new HashMap<String, String>();
+		params.put(LOGIN, "root"); 
+		params.put(SSH_KEY_PATH, "image-optimizer-service_priv.rsa");
+		params.put(USER_DATA_BASE64, "I2Nsb3VkLWNvbmZpZw0Kd3JpdGVfZmlsZXM6DQotIHBhdGg6IC9yb290L29wdGltaXplLnNoDQogIHBlcm1pc3Npb25zOiAiMDcwMCINCiAgY29udGVudDogfA0KICAgICMhL2Jpbi9iYXNoDQpydW5jbWQ6DQotIGVjaG8gJ0hlbGxvIHdvcmxkIScgPiAvcm9vdC9oZWxsby13b3JsZC50eHQ=");
+		vm.run(params);
 		do {
 			Thread.sleep(10000);
 			log.debug("Polling VM status...");

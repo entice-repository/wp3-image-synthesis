@@ -115,7 +115,6 @@ public class EC2VM extends VM {
 //		describeInstance(); // update IPs
 	}
 	
-	public static final String USER_DATA_BASE64 = "userDataBase64";
 	public static final String IMAGE_KEY_PAIR = "keyPairName";
 	public static final String AVAILABILITY_ZONE = "availabilityZone";
 	
