@@ -175,7 +175,7 @@ public class Optimizer {
         try { cloudInit = ResourceUtils.getResorceAsString(OPTIMIZER_CLOUD_INIT_RESOURCE); }
         catch (Exception x) { return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Missing resource: " + OPTIMIZER_CLOUD_INIT_RESOURCE).build(); }
 
-        if ("".equals(requestBody.optString(ID))) log.error("No parameter " + ID + " provided. Optimized image will not be uploaded.");
+        if ("".equals(requestBody.optString(ID))) log.error("No parameter " + ID + " provided for knowledge base. Optimized image will not be uploaded.");
         if (Configuration.knowledgeBaseURL == null) log.warn("knowledgeBaseURL not defined in properties file: " + Configuration.PROPERTIES_FILE_NAME + ". Optimized image will not be uploaded.");
         parameters.put(ID, requestBody.optString(ID)); // REQUIRED
         
@@ -218,7 +218,7 @@ public class Optimizer {
         		(!"".equals(requestBody.optString(VALIDATOR_SCRIPT_URL)) && requestBody.optString(VALIDATOR_SCRIPT_URL).startsWith("s3://")) ||
         		(!"".equals(requestBody.optString(S3_PATH))) ) {
     		if (!"".equals(parameters.get(S3_ENDPOINT_URL)) && !"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY))) {}
-    		else return Response.status(Status.BAD_REQUEST).entity("S3 access is required (" + IMAGE_URL + ", " + VALIDATOR_SCRIPT_URL + ", " + S3_PATH + ") but no credentials are given: " + S3_ENDPOINT_URL + ", " + S3_ACCESS_KEY + ", " + S3_SECRET_KEY + "' > failure ").build(); 
+    		else return Response.status(Status.BAD_REQUEST).entity("S3 access is required by either " + IMAGE_URL + " or " + VALIDATOR_SCRIPT_URL + " or " + S3_PATH + ", but no credentials are provided: " + S3_ENDPOINT_URL + " and " + S3_ACCESS_KEY + " and " + S3_SECRET_KEY + ".").build(); 
         }
         
         parameters.put(MAX_ITERATIONS_NUM, requestBody.optString(MAX_ITERATIONS_NUM)); // OPTIONAL
@@ -365,7 +365,9 @@ public class Optimizer {
 		        		// read parameters from database
 		        		String userEmailAddressSlashCustomerUUID = task.getAccessKey();
 		        		String password = task.getSecretKey();
+		        		// TODO get IP and status
 		        		vm = new FCOVM.Builder(task.getEndpoint(), userEmailAddressSlashCustomerUUID, password, Configuration.optimizerImageId)
+		        				.withServerUUID(task.getInstanceId())
 		        				.build();  
 					}
 					else log.error("Invalid cloud interface in database: " + task.getCloudInterface());
@@ -574,6 +576,7 @@ public class Optimizer {
 				// optimizerPhase: content of file "phase"
 				// shrinkerPhase: last line of Shrinker.log containing pattern ###phase
 				log.debug("Checking file 'failure'...");
+				stdout.clear(); stderr.clear();
 				exitCode = ssh.executeCommand("cat failure", stdout, stderr);
 				if (exitCode == 0) { 
 					 if (stdout.size() > 0) {
@@ -1172,6 +1175,17 @@ public class Optimizer {
 				}
 			}
 		}
+	}
+	
+	public static void taskCacheShutdown() {
+		for (String id: taskCache.keySet()) {
+			Task task = taskCache.get(id);
+			if (task != null) synchronized(task) {
+				VM vm = optimizerVMCache.remove(id);
+				if (vm != null) vm.discard();
+			}
+		}
+		taskCache.clear();
 	}
 	
 	public static void main(String [] args) throws Exception {

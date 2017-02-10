@@ -50,6 +50,7 @@ public class Configuration {
 	public static String serverProductOfferUUID;
 	
 	public static String sshKeyPath;
+	public static boolean hostnameVerification = true;
 
 	private static void disableHostnameVerification() {
 		try {
@@ -97,7 +98,10 @@ public class Configuration {
 				
 				cloudInterface = prop.getProperty("cloudInterface") != null ? prop.getProperty("cloudInterface") : "ec2";
 
-				if (prop.getProperty("hostnameVerification") != null && prop.getProperty("hostnameVerification").startsWith("disable")) disableHostnameVerification();
+				if (prop.getProperty("hostnameVerification") != null && prop.getProperty("hostnameVerification").startsWith("disable")) {
+					hostnameVerification = false;
+					disableHostnameVerification();
+				}
 				
 				knowledgeBaseURL = prop.getProperty("knowledgeBaseURL");
 				

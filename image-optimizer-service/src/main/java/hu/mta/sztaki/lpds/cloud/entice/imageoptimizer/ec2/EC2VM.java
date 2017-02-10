@@ -35,6 +35,7 @@ import com.amazonaws.services.ec2.model.DetachVolumeRequest;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.InstanceStateChange;
 import com.amazonaws.services.ec2.model.Placement;
+import com.amazonaws.services.ec2.model.RebootInstancesRequest;
 import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
@@ -277,5 +278,17 @@ public class EC2VM extends VM {
 //		vm.run(null, ResourceUtils.getResorceBase64Encoded("optimizer.cloud-init"));
 //		vm.run(null, ResourceUtils.getFileBase64Encoded("c:/LPDS/Entice/optimizer-cloud-init.txt"), null);
 //		vm.run(null, null, "ami-00001459");
+	}
+	
+	@Override public void reboot() throws Exception {
+		try {
+			RebootInstancesRequest rebootInstancesRequest = new RebootInstancesRequest();
+			rebootInstancesRequest.withInstanceIds(getInstanceId());
+			this.amazonEC2Client.rebootInstances(rebootInstancesRequest);
+		} catch (AmazonServiceException x) {
+			throw new Exception("reboot service exception", x);
+		} catch (AmazonClientException x) {
+			throw new Exception("reboot client exception", x);
+		}
 	}
 }

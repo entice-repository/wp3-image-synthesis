@@ -40,6 +40,7 @@ import com.extl.jade.user.VirtualizationType;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.VM;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.rest.Configuration;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.OutputStreamWrapper;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.ResourceUtils;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.SshSession;
 
 public class FCOVM extends VM {
@@ -95,6 +96,7 @@ public class FCOVM extends VM {
 		private int cpuSize = 1;
 		private int ramSize = 1024;
 		private int diskSize = 16; // GB
+		private String serverUUID = null;
 		
 		public Builder(String endpoint, String userEmailAddressSlashCustomerUUID, String password, String imageUUID)  {
 			this.endpoint = endpoint;
@@ -150,6 +152,10 @@ public class FCOVM extends VM {
 			} else log.warn("Unknown instance type: " + instanceType);
 			return this;
 		}
+		public Builder withServerUUID(String serverUUID) {
+			this.serverUUID = serverUUID;
+			return this;
+		}
 		
 		public FCOVM build() throws MalformedURLException, DatatypeConfigurationException, IOException {
 			return new FCOVM(this);
@@ -173,6 +179,8 @@ public class FCOVM extends VM {
 		cpuSize = builder.cpuSize;
 		ramSize = builder.ramSize;
 
+		serverUUID = builder.serverUUID;
+		
 		service = getService(endpoint, userEmailAddressSlashCustomerUUID, password);
 		datatypeFactory = DatatypeFactory.newInstance();
 	}
@@ -260,7 +268,13 @@ public class FCOVM extends VM {
 			// describe to get IP
 			describeServerIfNotInProgress();
 			// run cloud-init
-			emulateCloudInitWithRetries();
+			try { emulateCloudInitWithRetries(); }
+			catch (Exception x) {
+				log.error("Cannot run cloud-init: " + x.getMessage());
+				try { vm.terminate(); } catch (Exception e) { log.error("Cannot terminate VM", e); }
+				vm.status = VM.TERMINATED;
+			}
+			
 			log.debug("Server starter thread ended");
 		}
 		private void runServer() throws Exception {
@@ -408,10 +422,11 @@ public class FCOVM extends VM {
 		if (response.getErrorCode() == null) {
 			log.info("Server deleted: " + serverUUID);
 		} else throw new Exception("Cannot terminate server: " + response.getErrorCode());
+		discard();
 	}
 
 	// try to do cloud-init until completed (SSH is up)
-	private void emulateCloudInitWithRetries () {
+	private void emulateCloudInitWithRetries () throws Exception {
 		log.debug("Emulating cloud-init...");
 		if (userDataBase64 == null) {
 			log.debug("No cloud-config");
@@ -428,6 +443,7 @@ public class FCOVM extends VM {
 		int trials = 0;
 		final int sleep = 10; // seconds
 		final int maxTrials = 5 * 6; // up to 5 minutes (6 trials / minute)  
+		String error = "";
 		do {
 			trials++;
 			if (privateDnsName != null && VM.RUNNING.equals(status)) {
@@ -436,16 +452,21 @@ public class FCOVM extends VM {
 					log.debug("Cloud-init done");
 					break;
 				} catch (Exception e) {
-					log.debug("emulateCloudInit failed: " + e.getMessage());
+					error = e.getMessage();
+					log.debug("cloud-init failed: " + e.getMessage());
 				}
-			} else log.debug("VM has no IP or is not running (" + status + ")");
-			//  no IP yet, do describe
-			describeServerIfNotInProgress();
+			} else {
+				log.debug("VM has no IP or is not running (" + status + ")");
+				describeServerIfNotInProgress();
+			}
 			log.debug("Trial " + trials + " failed. Retrying cloud-init in " + sleep + "s...");
 			try { Thread.sleep(sleep * 1000l); } catch (InterruptedException e) {}
 		} while (trials <= maxTrials);
 		
-		if (trials > maxTrials) log.error("Failed to run cloud-init");
+		if (trials > maxTrials) { 
+			log.error("Failed to run cloud-init");
+			throw new Exception(error);
+		}
 	}
 	
 	private void emulateCloudInit(String ip, String login, String sshKeyPath) throws Exception {
@@ -465,26 +486,73 @@ public class FCOVM extends VM {
 			exitCode = ssh.executeCommand("sudo echo " + userDataBase64 + " | base64 --decode > /root/user-data.txt", stdout, stderr);
 			if (exitCode != 0) {
 				log.debug(stderr.toString());
-				throw new Exception("Cannot upload user-data.txt to host " + ip);
+				throw new Exception("Cannot upload file user-data.txt to host: " + ip);
+			}
+
+			// upload fco.properties
+			log.debug("Uploading /root/fco.properties...");
+			stdout.clear(); stderr.clear();
+			exitCode = ssh.executeCommand("sudo echo " + getFCOPropertiesBase64() + " | base64 --decode > /root/fco.properties", stdout, stderr);
+			if (exitCode != 0) {
+				log.debug(stderr.toString());
+				throw new Exception("Cannot upload file fco.properties to host: " + ip);
 			}
 
 			// optionally, before re-running cloud-init: rm -f /var/lib/cloud/instance/sem/*
+			// rm -f /var/lib/cloud/instance/sem/config_cc_write_files
+			// rm -f /var/lib/cloud/instance/sem/config_cc_write_files
 			
 			// run cloud-init for modules: cc_write_files, cc_runcmd (cc_package_update_upgrade_install); from /usr/lib/python2.7/dist-packages/cloudinit/config/
-			log.debug("Running cloud-init cc_write_files, cc_runcmd sections from /root/user-data.txt...");
+			log.debug("Running cloud-init cc_write_files, cc_runcmd...");
 			stdout.clear(); stderr.clear();
 			exitCode = ssh.executeCommand(	"sudo cloud-init --file /root/user-data.txt single --name cc_write_files " +
-											"&& sudo cloud-init --file /root/user-data.txt single --name cc_runcmd " +
-											"&& sudo /var/lib/cloud/instance/scripts/runcmd", stdout, stderr);
+											"&& sudo cloud-init --file /root/user-data.txt single --name cc_runcmd", stdout, stderr);
+			// sudo cloud-init --file /root/user-data.txt single --name cc_write_files && sudo cloud-init --file /root/user-data.txt single --name cc_runcmd && sudo /var/lib/cloud/instance/scripts/runcmd
 			if (exitCode != 0) {
 				log.debug(stderr.toString());
-				throw new Exception("Cannot run cloud-init on user-data.txt on host " + ip);
+				throw new Exception("Cannot run cloud-init user-data.txt on host: " + ip);
 			}
+			
+			log.debug("SKIPPED: Running runcmd...");
+			// optimize.sh starts by cloud-init
+//			stdout.clear(); stderr.clear();
+//			exitCode = ssh.executeCommand("sudo sh /var/lib/cloud/instance/scripts/runcmd", stdout, stderr);
+//			if (exitCode != 0) {
+//				log.debug(stderr.toString());
+//				throw new Exception("Cannot run /var/lib/cloud/instance/scripts/runcmd on host: " + ip);
+//			}
+//		
+			log.debug("cloud-init done");
 			
 		} finally {	if (ssh!= null) ssh.close(); }
 	}
 	
+	private String getFCOPropertiesBase64() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("clusterUUID=" + Configuration.clusterUUID + "\n");
+		sb.append("networkUUID=" + Configuration.networkUUID + "\n");
+		sb.append("diskProductOfferUUID=" + Configuration.diskProductOfferUUID + "\n");
+		sb.append("vdcUUID=" + Configuration.vdcUUID + "\n");
+		sb.append("serverProductOfferUUID=" + Configuration.serverProductOfferUUID + "\n");
+		sb.append("hostnameVerification=" + Configuration.hostnameVerification + "\n");
+		log.debug(sb.toString());
+		
+		return ResourceUtils.base64Encode(sb.toString());
+	}
+	
+	@Override public void reboot() throws Exception {
+		log.info("Reboot server: " + serverUUID);
+		Job rebootServerJob = service.changeServerStatus(serverUUID, ServerStatus.REBOOTING, true, null, null);
+		log.debug("Waiting for Reboot server job to complete...");
+		rebootServerJob.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
+		Job response = service.waitForJob(rebootServerJob.getResourceUUID(), true);	
+		log.debug("Reboot server job completed");
+		if (response.getErrorCode() == null) {}
+		else throw new Exception("Cannot reboot server: " + response.getErrorCode());
+	}
+	
 	@Override public void discard() {
+		log.debug("Discarding VM with server name: " + serverName + ", server UUID: " + serverUUID);
 		threadExecutor.shutdown();
 	}
 	
@@ -508,6 +576,5 @@ public class FCOVM extends VM {
 			if (vm.serverUUID != null) try { vm.describeInstance(); } catch (Exception x) { log.debug(x.getMessage()); }
 		} while (!vm.status.equals(VM.RUNNING));
 		vm.terminate();
-		vm.discard();
 	}
 }

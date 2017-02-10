@@ -45,6 +45,8 @@ public abstract class VM {
 	public abstract String getIP();
 	// terminate VM
 	public abstract void terminate() throws Exception;
+	// reboot VM
+	public abstract void reboot() throws Exception;
 	// release resources
 	public abstract void discard();
 }
