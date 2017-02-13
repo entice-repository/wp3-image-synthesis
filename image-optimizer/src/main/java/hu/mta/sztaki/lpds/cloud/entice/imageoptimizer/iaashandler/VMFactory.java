@@ -15,6 +15,8 @@
  */
 package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler;
 
+import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.Vector;
 
@@ -23,7 +25,7 @@ import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget.E
 public abstract class VMFactory {
 	public static final String factorysetup = "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory";
 	public static final VMFactory instance;
-	private static final TreeMap<String, Vector<String>> customData = new TreeMap<String, Vector<String>>();
+	private static final TreeMap<String, List<String>> customData = new TreeMap<String, List<String>>();
 
 	protected abstract String[] listSPToLookup();
 
@@ -35,7 +37,7 @@ public abstract class VMFactory {
 	 */
 	public abstract void terminateFactory();
 
-	protected abstract VirtualMachine createNewVM(String vaId, TreeMap<String, Vector<String>> contextandcustomizeVA);
+	protected abstract VirtualMachine createNewVM(String vaId, Map<String, List<String>> contextandcustomizeVA);
 
 	private static void propsPopulator() {
 		for (String s : instance.listSPToLookup()) {
@@ -66,9 +68,9 @@ public abstract class VMFactory {
 	 * currently pre-runtime VA modification is supported only via the
 	 * XenFactory
 	 */
-	public VirtualMachine requestVM(String vaId, TreeMap<String, Vector<String>> contextandcustomizeVA) {
+	public VirtualMachine requestVM(String vaId, Map<String, List<String>> contextandcustomizeVA) {
 		if(contextandcustomizeVA==null) {
-			contextandcustomizeVA=new TreeMap<String, Vector<String>>();
+			contextandcustomizeVA=new TreeMap<String, List<String>>();
 		}
 		contextandcustomizeVA.putAll(customData);
 		return createNewVM(vaId, contextandcustomizeVA);

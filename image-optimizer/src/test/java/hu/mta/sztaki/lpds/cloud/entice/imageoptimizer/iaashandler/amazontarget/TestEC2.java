@@ -2,8 +2,8 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget;
 
 import static org.junit.Assert.*;
 
+import java.util.List;
 import java.util.TreeMap;
-import java.util.Vector;
 
 import org.junit.Test;
 
@@ -12,7 +12,7 @@ public class TestEC2 {
 	
 	@Test(expected=IllegalArgumentException.class) public void createNewVM() {
 		System.setProperty("hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxUsableCPUs", "10");
-		t.createNewVM("vaid", new TreeMap<String, Vector<String>>());
+		t.createNewVM("vaid", new TreeMap<String, List<String>>());
 	}
 
 	@Test public void listSPToLookup() {

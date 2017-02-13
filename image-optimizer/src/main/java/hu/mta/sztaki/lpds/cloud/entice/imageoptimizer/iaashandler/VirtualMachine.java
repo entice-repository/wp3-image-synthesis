@@ -21,8 +21,8 @@ import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker;
@@ -176,7 +176,7 @@ public abstract class VirtualMachine {
 		return imageid;
 	}
 
-	protected VirtualMachine(String vaid, Map<String, Vector<String>> parameters, boolean testConformance) {
+	protected VirtualMachine(String vaid, Map<String, List<String>> parameters, boolean testConformance) {
 		this.imageid = vaid;
 		int ret = 0;
 		if (parameters != null) {
@@ -320,6 +320,6 @@ public abstract class VirtualMachine {
 
 	public abstract void rebootInstance() throws VMManagementException;
 
-	protected abstract void parseVMCreatorParameters(Map<String, Vector<String>> parameters);
+	protected abstract void parseVMCreatorParameters(Map<String, List<String>> parameters);
 
 }

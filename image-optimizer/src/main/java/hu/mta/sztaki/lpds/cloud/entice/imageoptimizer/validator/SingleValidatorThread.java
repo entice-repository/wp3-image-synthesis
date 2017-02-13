@@ -24,6 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.TimeoutException;
@@ -307,7 +308,7 @@ public class SingleValidatorThread extends Thread {
 						removableList.add(
 								Obsolete.rshPrefix + new File(System.getProperty("user.dir"), Shrinker.removeScript));
 						removableList.add(Obsolete.rshPrefix + validatorScript.getAbsolutePath());
-						TreeMap<String, Vector<String>> tm = new TreeMap<String, Vector<String>>();
+						Map<String, List<String>> tm = new TreeMap<String, List<String>>();
 						tm.put(VirtualMachine.removeScriptParameterid, removableList);
 						vm = VMFactory.instance.requestVM(Shrinker.getContext().getVaid(), tm);
 						switch (vm.getState()) {
