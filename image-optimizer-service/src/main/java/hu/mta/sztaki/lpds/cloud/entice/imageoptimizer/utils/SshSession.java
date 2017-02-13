@@ -29,7 +29,7 @@ public class SshSession implements Closeable {
 	        try {
 	        	session.connect(10000); // 10sec
 	        } catch (JSchException e) { // failover on com.jcraft.jsch.JSchException: Auth fail
-	        	String errorMsg = e.getMessage();
+//	        	String errorMsg = e.getMessage();
 //        		log.debug("Auth failed at openning SSH connection (" + errorMsg + "). Retrying once again in 1 sec...");
         		try { session.disconnect(); } catch (Exception x) {}
         		try { Thread.sleep(1000); } catch (InterruptedException x) {}

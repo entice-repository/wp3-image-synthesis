@@ -265,8 +265,6 @@ public class FCOVM extends VM {
 				try { vm.terminate(); } catch (Exception e) { log.error("Cannot terminate VM", e); }
 				vm.status = VM.TERMINATED;
 			}
-			// describe to get IP
-			describeServerIfNotInProgress();
 			// run cloud-init
 			try { emulateCloudInitWithRetries(); }
 			catch (Exception x) {
@@ -277,6 +275,7 @@ public class FCOVM extends VM {
 			
 			log.debug("Server starter thread ended");
 		}
+		
 		private void runServer() throws Exception {
 			log.debug("Start server...");
 			Job startServerJob = service.changeServerStatus(serverUUID, ServerStatus.RUNNING, true, null, null);
@@ -446,6 +445,8 @@ public class FCOVM extends VM {
 		String error = "";
 		do {
 			trials++;
+			if (threadExecutor.isShutdown()) break; // quit loop on shutdown
+			
 			if (privateDnsName != null && VM.RUNNING.equals(status)) {
 				try {
 					emulateCloudInit(privateDnsName, login, sshKeyPath);
