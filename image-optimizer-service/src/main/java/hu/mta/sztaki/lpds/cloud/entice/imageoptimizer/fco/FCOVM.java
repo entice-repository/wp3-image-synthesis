@@ -55,7 +55,7 @@ public class FCOVM extends VM {
 	private String sshKeyPath; // for cloud-init
 	
 	// configuration-defined fixed-parameters (optimization task-invariant)
-	private final String serverName = "Optimizer VM " + UUID.randomUUID(); 
+	private final String serverName = "Optimizer Orchestrator VM " + UUID.randomUUID(); 
 	private static final String nicResourceName = "Nic-Card-1"; 
 	
 	// user-defined required parameters (must be present in request json)
@@ -514,6 +514,7 @@ public class FCOVM extends VM {
 				throw new Exception("Cannot run cloud-init user-data.txt on host: " + ip);
 			}
 			
+			// FIXME run runcmd if not running
 			log.debug("SKIPPED: Running runcmd...");
 			// optimize.sh starts by cloud-init
 //			stdout.clear(); stderr.clear();

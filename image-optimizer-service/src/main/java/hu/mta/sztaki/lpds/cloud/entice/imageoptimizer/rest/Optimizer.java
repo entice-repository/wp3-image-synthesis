@@ -360,18 +360,19 @@ public class Optimizer {
 			if (task.getInstanceId() == null) log.error("No instanceId in task, cannot recover optimizer VM"); // it should not happen as this case was filtered befor
 			else {
 				try { 
-					if (task.getCloudInterface() == null || EC2VM.CLOUD_INTERFACE.equals(task.getCloudInterface())) vm = new EC2VM(task.getEndpoint(), task.getAccessKey(), task.getSecretKey(), task.getInstanceId()); 
-					else if (FCOVM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
+					if (task.getCloudInterface() == null || EC2VM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
+						vm = new EC2VM(task.getEndpoint(), task.getAccessKey(), task.getSecretKey(), task.getInstanceId()); 
+					} else if (FCOVM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
 		        		// read parameters from database
 		        		String userEmailAddressSlashCustomerUUID = task.getAccessKey();
 		        		String password = task.getSecretKey();
-		        		// TODO get IP and status
 		        		vm = new FCOVM.Builder(task.getEndpoint(), userEmailAddressSlashCustomerUUID, password, Configuration.optimizerImageId)
 		        				.withServerUUID(task.getInstanceId())
-		        				.build();  
-					}
-					else log.error("Invalid cloud interface in database: " + task.getCloudInterface());
-				} catch (Exception x) {}
+		        				.build(); 
+		        		// get IP and status
+					} else log.error("Invalid cloud interface in database: " + task.getCloudInterface());
+	        		vm.describeInstance();
+				} catch (Exception x) { log.error("Cannot recover VM: " + x.getMessage()); }
 			}
 			if (vm != null) {
 				if (task.getStatus().equalsIgnoreCase(OptimizerStatus.DONE.name()) ||
@@ -940,6 +941,8 @@ public class Optimizer {
 	}
 	
 	private String generateCloudInitWriteFiles(Map<String,String> parameters) {
+		String vmFactoryClass = Configuration.vmFactory != null && Configuration.vmFactory.contains(".") ? Configuration.vmFactory.substring(Configuration.vmFactory.lastIndexOf(".") + 1) : "EC2";
+		
 		StringBuilder sb = new StringBuilder();
 		sb.append("- path: /root/optimize.sh"); sb.append("\n");
 		sb.append("  permissions: \"0700\""); sb.append("\n");
@@ -951,17 +954,17 @@ public class Optimizer {
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxUsableCPUs=" + parameters.get(NUMBER_OF_PARALLEL_WORKER_VMS) /*Configuration.maxUsableCPUs */+ " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.validator.ParallelVMNum=" + parameters.get(NUMBER_OF_PARALLEL_WORKER_VMS) /*Configuration.parallelVMNum*/ + " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory=" + Configuration.vmFactory + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.accessKey=" + parameters.get(CLOUD_ACCESS_KEY) + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.secretKey=" + parameters.get(CLOUD_SECRET_KEY) + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.endpoint=" + parameters.get(CLOUD_ENDPOINT_URL) + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.instanceType=" + parameters.get(CLOUD_WORKER_VM_INSTANCE_TYPE) + " \\"); sb.append("\n");
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".accessKey=" + parameters.get(CLOUD_ACCESS_KEY) + " \\"); sb.append("\n"); 
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".secretKey=" + parameters.get(CLOUD_SECRET_KEY) + " \\"); sb.append("\n"); 
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".endpoint=" + parameters.get(CLOUD_ENDPOINT_URL) + " \\"); sb.append("\n"); 
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".instanceType=" + parameters.get(CLOUD_WORKER_VM_INSTANCE_TYPE) + " \\"); sb.append("\n");
 		if (!"".equals(parameters.get(IMAGE_KEY_PAIR))) {
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.keypair=" + parameters.get(IMAGE_KEY_PAIR) + " \\"); sb.append("\n"); 
 		}
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.util.scriptprefix=" + Configuration.scriptPrefix + " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.util.sshkey=/root/.ssh/id_rsa"); sb.append(" \\" + "\n");
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.sourceimagefilename=" + SOURCE_IMAGE_FILE); sb.append(" \\" + "\n");
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.loginName=" + parameters.get(IMAGE_USER_NAME) + " \\"); sb.append("\n");
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".loginName=" + parameters.get(IMAGE_USER_NAME) + " \\"); sb.append("\n");
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.targetimagefilename=" + OPTIMIZED_IMAGE_FILE); sb.append(" \\" + "\n");
 		if (!"".equals(parameters.get(MAX_ITERATIONS_NUM))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxIterationsNum=" + parameters.get(MAX_ITERATIONS_NUM)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(MAX_NUMBER_OF_VMS))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxNumberOfVMs=" + parameters.get(MAX_NUMBER_OF_VMS)); sb.append(" \\" + "\n"); }
@@ -1039,7 +1042,7 @@ public class Optimizer {
 		// start optimizer (optimize + create optimized image)
 		sb.append("    echo 'Running shrinker' > phase"); sb.append("\n");
 		sb.append("    ");
-		sb.append("java $JAVA_OPTS -cp \"./lib/*\" hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker " + SOURCE_FILE_SYSTEM_DIR + " " + parameters.get(IMAGE_ID) + " " + VALIDATOR_SCRIPT_FILE + " &> " + SHRINKER_STDOUT);
+		sb.append("java $JAVA_OPTS -cp \"./lib/*:.\" hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker " + SOURCE_FILE_SYSTEM_DIR + " " + parameters.get(IMAGE_ID) + " " + VALIDATOR_SCRIPT_FILE + " &> " + SHRINKER_STDOUT);
 		sb.append(" || { ");
 		sb.append("echo Optimizer Java exit code: $? > failure");
 		sb.append(" ; exit 1 ; }"); sb.append("\n");
