@@ -169,7 +169,7 @@ public class Shrinker extends Thread {
 
 		// We pool some extra VMs for effectiveness
 		String sshSetup = System.getProperty(Shrinker.noSSHSetup);
-		myLogger.info("SSH is " + (sshSetup == null ? "" : "not") + " used for shrinking");
+		myLogger.info("SSH is " + (sshSetup == null ? "" : "not ") + "used for shrinking");
 		/*VMInstanceManager vmim = */ 
 		new VMInstanceManager(getThreadGroup(), 
 				sshSetup == null ? 

@@ -23,12 +23,12 @@ if [ $# -gt 4 ] ; then LOGIN=$5 ; fi
 
 SSHOPTS="-o ForwardX11=no -o ServerAliveInterval=5 -o ServerAliveCountMax=5 -o BatchMode=yes -o ConnectTimeout=5 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PRIVKEY"
 
-for retries in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+for retries in $(seq 60)
 do
-	echo NC start
+	echo NC $retries
 	if nc -z $IP $PORT
 	then
-		echo NC done, ssh start
+		echo SSH $retries
 #		note: do not grep $INTIP in ifconfig, because private IP may be a hostname (OpenStack)
 		ssh $SSHOPTS $LOGIN@$IP /sbin/ifconfig && exit 0
 	fi

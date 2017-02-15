@@ -176,6 +176,7 @@ public abstract class VirtualMachine {
 		return imageid;
 	}
 
+	// constructor
 	protected VirtualMachine(String vaid, Map<String, List<String>> parameters, boolean testConformance) {
 		this.imageid = vaid;
 		int ret = 0;
@@ -218,13 +219,13 @@ public abstract class VirtualMachine {
 					if (testConformance) {
 						setState(VMState.IAASCHECK);
 						try {
-							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh " + this.instanceid + " with timeout 300s... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh on " + getInstanceId() + ": " + ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip + " " + loginName + " " + RemoteExecutor.keyfile + "(@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 							long now = System.currentTimeMillis();
 							ret = new ExecHelper().execProg(ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip
 									+ " 22 " + privateip + " " + RemoteExecutor.keyfile + " " + loginName, true, null, false)
 									.getRetcode();
 							long ellapsed = (System.currentTimeMillis() - now) / 1000l;
-							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh done in " + ellapsed + "s. Exit code: " + ret + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh took " + ellapsed + "s. Exit code: " + ret + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 						} catch (IOException e) {
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh FAILED " + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 							Shrinker.myLogger.warning("Initialization check failed because of IOException: " + e.getMessage());
@@ -251,7 +252,7 @@ public abstract class VirtualMachine {
 				repeatCounter--;
 			} while (ret != 0 && repeatCounter >= 0);
 			if (repeatCounter < 0) {
-				Shrinker.myLogger.info("VM initialization timeout.");
+				Shrinker.myLogger.info("VM initialization timeout. (repeat counter 0)");
 				terminate();
 			} else {
 				setState(VMState.FREE);

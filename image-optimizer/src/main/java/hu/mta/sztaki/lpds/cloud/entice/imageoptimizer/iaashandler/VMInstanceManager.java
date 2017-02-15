@@ -236,6 +236,7 @@ public class VMInstanceManager extends Thread {
 				sleep(new java.util.Random().nextInt(1000));
 			} catch (InterruptedException e) {}
 		}
+		Shrinker.myLogger.info("VMInstanceManager getAndAcquireNextAvailableVM after context down " + threadName);
 		return null;
 	}
 
@@ -243,6 +244,7 @@ public class VMInstanceManager extends Thread {
 	@Override
 	public void run() {
 		long beats = 0, lastreport = 0;
+		
 		class VMCreatorThread extends Thread {
 			private boolean terminated = false;
 
@@ -280,6 +282,7 @@ public class VMInstanceManager extends Thread {
 				Shrinker.myLogger.info("STOP:" + getName());
 			}
 		}
+		
 		Vector<VMCreatorThread> vmcs = new Vector<VMCreatorThread>();
 		try {
 			Shrinker.myLogger.info("VMInstancemanager thread started");
