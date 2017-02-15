@@ -197,6 +197,7 @@ public class Optimizer {
         parameters.put(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, requestBody.optString(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, Configuration.optimizerInstanceType)); // OPTIONAL
        	parameters.put(CLOUD_WORKER_VM_INSTANCE_TYPE, requestBody.optString(CLOUD_WORKER_VM_INSTANCE_TYPE, Configuration.workerInstanceType)); // OPTIONAL
         parameters.put(NUMBER_OF_PARALLEL_WORKER_VMS, requestBody.optString(NUMBER_OF_PARALLEL_WORKER_VMS, Configuration.maxUsableCPUs)); // OPTIONAL
+        try { int x = Integer.parseInt(parameters.get(NUMBER_OF_PARALLEL_WORKER_VMS)); if (x < 2) return Response.status(Status.BAD_REQUEST).entity("Parameter " + NUMBER_OF_PARALLEL_WORKER_VMS + " must be greater than or equal to 2.").build(); } catch (NumberFormatException x) { log.warn("Parameter " + NUMBER_OF_PARALLEL_WORKER_VMS + " is of invalid syntax."); }
         
         if ("".equals(requestBody.optString(IMAGE_PRIVATE_KEY))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_PRIVATE_KEY).build();
         parameters.put(IMAGE_KEY_PAIR, requestBody.optString(IMAGE_KEY_PAIR)); // OPTIONAL (wired public key)
@@ -1133,6 +1134,9 @@ public class Optimizer {
 	
 	private String generateCloudInitRuncmd(String taskId) {
 		StringBuilder sb = new StringBuilder();
+		// check if runcmd runs in two copies
+		sb.append("- [ -f /root/.entice ] && exit 0"); sb.append("\n");
+		sb.append("- touch /root/.entice"); sb.append("\n");
 
 		// update and build sztaki-java-cli-utils and image-optimizer
 		sb.append("# - cd /root/wp3-imagesynthesis/sztaki-java-cli-utils/"); sb.append("\n");

@@ -514,16 +514,16 @@ public class FCOVM extends VM {
 				throw new Exception("Cannot run cloud-init user-data.txt on host: " + ip);
 			}
 			
-			// FIXME run runcmd if not running
-			log.debug("SKIPPED: Running runcmd...");
+			// run runcmd
+			log.debug("Running runcmd...");
 			// optimize.sh starts by cloud-init
-//			stdout.clear(); stderr.clear();
-//			exitCode = ssh.executeCommand("sudo sh /var/lib/cloud/instance/scripts/runcmd", stdout, stderr);
-//			if (exitCode != 0) {
-//				log.debug(stderr.toString());
-//				throw new Exception("Cannot run /var/lib/cloud/instance/scripts/runcmd on host: " + ip);
-//			}
-//		
+			stdout.clear(); stderr.clear();
+			exitCode = ssh.executeCommand("sudo sh /var/lib/cloud/instance/scripts/runcmd", stdout, stderr);
+			if (exitCode != 0) {
+				log.debug(stderr.toString());
+				throw new Exception("Cannot run /var/lib/cloud/instance/scripts/runcmd on host: " + ip);
+			}
+		
 			log.debug("cloud-init done");
 			
 		} finally {	if (ssh!= null) ssh.close(); }
