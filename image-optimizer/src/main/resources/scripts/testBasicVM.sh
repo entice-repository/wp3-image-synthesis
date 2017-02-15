@@ -23,7 +23,7 @@ if [ $# -gt 4 ] ; then LOGIN=$5 ; fi
 
 SSHOPTS="-o ForwardX11=no -o ServerAliveInterval=5 -o ServerAliveCountMax=5 -o BatchMode=yes -o ConnectTimeout=5 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PRIVKEY"
 
-for retries in $(seq 60)
+for retries in $(seq 90)
 do
 	echo NC $retries
 	if nc -z $IP $PORT

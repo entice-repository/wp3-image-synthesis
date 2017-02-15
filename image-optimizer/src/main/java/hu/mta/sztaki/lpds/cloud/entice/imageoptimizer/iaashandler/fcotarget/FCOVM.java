@@ -53,8 +53,7 @@ import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VirtualMachine
 
 public class FCOVM extends VirtualMachine {
 	private static Logger log = Shrinker.myLogger;
-	private static final int totalReqLimit = Integer
-			.parseInt(System.getProperty("hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxUsableCPUs"));
+	private static final int totalReqLimit = Integer.parseInt(System.getProperty("hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxUsableCPUs"));
 	private static AtomicInteger reqCounter = new AtomicInteger();
 	
 	public static final String ACCESS_KEY = "accessKey";
@@ -71,42 +70,37 @@ public class FCOVM extends VirtualMachine {
 	public static final String STOPPED = "stopped";
 	public static final String TERMINATED = "terminated";
 	public static final String ERROR = "error";
-	
-//	private ExecutorService threadExecutor = Executors.newFixedThreadPool(2); // runs startServer and describeServer threads
-//	private AtomicBoolean describeInProgress = new AtomicBoolean(false); // allow new describe if no describe in progress 
-	
-	// configuration-defined fixed-parameters (optimization task-invariant)
-	private final String serverName = "Optimizer VM " + UUID.randomUUID(); 
+
+	private static final String PROPERTIES_FILE_NAME = "fco.properties";
+
 	private static final String nicResourceName = "Nic-Card-1"; 
-	
-	// user-defined required parameters (must be present in request json)
-	private String endpoint;
-	private String userEmailAddressSlashCustomerUUID;
-	private String password;
-	
-	// user-defined optional parameters (defaults set in properties files)
-	private final String imageUUID;
-	private final int diskSize;
+
+	// set in static {}
+	private static DatatypeFactory datatypeFactory;
 	private static String clusterUUID;
 	private static String networkUUID; 
 	private static String diskProductOfferUUID;
 	private static String vdcUUID;
 	private static String serverProductOfferUUID;
-	private final int cpuSize;
-	private final int ramSize;
 	
-	private String instanceType = "m1.small"; 
+	// user-defined required parameters set in parseParameters
+	private String endpoint;
+	private String userEmailAddressSlashCustomerUUID;
+	private String password;
+	
+//	private final String imageUUID; == super.getImageId()
+	private int diskSize;
+	private int cpuSize;
+	private int ramSize;
+	private String instanceType; 
+	private UserService service; // web service
 
 	// VM status 
-	private final DatatypeFactory datatypeFactory;
-	private final UserService service; // web service
-	private String serverUUID = null; // UUID of the created server
+	private String serverUUID; // UUID of the created server, DONT INITIALIZE!!
 	private String privateDnsName;
-	private String status = UNKNOWN;
+	private String status;
 	
-	private static final String PROPERTIES_FILE_NAME = "fco.properties";
-	
-	// read fixed FCO parameters from properties file: /root/fco.properties
+	// read fixed FCO parameters from properties file: fco.properties
 	static {
 		Properties prop = new Properties();
 		InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(PROPERTIES_FILE_NAME); // emits no exception but null returned
@@ -115,7 +109,6 @@ public class FCOVM extends VirtualMachine {
 			try {
 				prop.load(in);
 				try { in.close(); } catch (IOException e) {}
-
 				clusterUUID = prop.getProperty("clusterUUID");
 				networkUUID = prop.getProperty("networkUUID");
 				diskProductOfferUUID = prop.getProperty("diskProductOfferUUID");
@@ -126,108 +119,21 @@ public class FCOVM extends VirtualMachine {
 				Shrinker.myLogger.info("Properties file " + PROPERTIES_FILE_NAME + " loaded");
 			} catch (IOException e) { log.severe("Cannot read properties file: " + PROPERTIES_FILE_NAME); }
 		}
+		try {
+			datatypeFactory = DatatypeFactory.newInstance();
+		} catch (DatatypeConfigurationException x) {
+			Shrinker.myLogger.severe("Cannot create DatatypeFactory instance: " + x.getMessage());
+		}
 	}
-	
-	public static class Builder {
-		// required parameters
-		private final Map<String, List<String>> contextandcustomizeVA;
-		private final boolean testConformance;
-		private final String imageUUID;
-		// optional parameters
-		private int cpuSize = 1;
-		private int ramSize = 1024;
-		private int diskSize = 16; // GB
-		private String serverUUID = null;
 		
-		public Builder(Map<String, List<String>> contextandcustomizeVA, boolean testConformance, String imageUUID)  {
-			this.contextandcustomizeVA = contextandcustomizeVA;
-			this.testConformance = testConformance;
-			this.imageUUID = imageUUID;
-		}
-		public Builder withDiskSize(int diskSize) {
-			this.diskSize = diskSize;
-			return this;
-		}
-		public Builder withCpuSize(int cpuSize) {
-			this.cpuSize = cpuSize;
-			return this;
-		}
-		public Builder withRamSize(int ramSize) {
-			this.ramSize = ramSize;
-			return this;
-		}
-		public Builder withInstanceType(String instanceType) {
-			if ("m1.small".equals(instanceType)) {
-				cpuSize = 1;
-				ramSize = 2048;
-			} else if ("m1.medium".equals(instanceType)) {
-				cpuSize = 1;
-				ramSize = 4096;
-			} else if ("m1.large".equals(instanceType)) {
-				cpuSize = 2;
-				ramSize = 8196;
-			} else if ("m1.xlarge".equals(instanceType)) {
-				cpuSize = 4;
-				ramSize = 16384;
-			} else log.severe("Unknown instance type: " + instanceType);
-			return this;
-		}
-		public Builder withServerUUID(String serverUUID) {
-			this.serverUUID = serverUUID;
-			return this;
-		}
-		public FCOVM build() throws MalformedURLException, DatatypeConfigurationException, IOException {
-			return new FCOVM(this);
-		}
+	public FCOVM(Map<String, List<String>> contextandcustomizeVA, boolean testConformance, String imageUUID)  {
+		super(imageUUID, contextandcustomizeVA, testConformance);
 	}
-	
-	private FCOVM(Builder builder) throws MalformedURLException, DatatypeConfigurationException, IOException {
-		super(builder.imageUUID, builder.contextandcustomizeVA, builder.testConformance);
-		parseVMCreatorParameters(builder.contextandcustomizeVA); // set userEmailAddressSlashCustomerUUID, password, endpoint, instanceType
-		imageUUID = builder.imageUUID;
-		builder.withInstanceType(instanceType);
-		diskSize = builder.diskSize;
-		cpuSize = builder.cpuSize;
-		ramSize = builder.ramSize;
-		serverUUID = builder.serverUUID;
-		service = getService(endpoint, userEmailAddressSlashCustomerUUID, password);
-		datatypeFactory = DatatypeFactory.newInstance();
-	}
-	
-	private Server createServerObject() {
-		Shrinker.myLogger.info("Server name: " + serverName);
-		Server server = new Server();
-		Disk disk = new Disk();
-		disk.setClusterUUID(clusterUUID);
-	    disk.setProductOfferUUID(diskProductOfferUUID);
-	    disk.setIso(true);
-	    disk.setResourceName(serverName);
-	    disk.setResourceType(ResourceType.DISK);
-	    disk.setSize(diskSize);
-	    disk.setVdcUUID(vdcUUID);
-	    server.setClusterUUID(clusterUUID);
-	    server.setImageUUID(imageUUID);
-	    server.setProductOfferUUID(serverProductOfferUUID);
-	    server.setCpu(cpuSize);
-	    server.setRam(ramSize);
-	    server.getDisks().add(disk);
-	    server.setResourceName(serverName);
-	    server.setResourceType(ResourceType.SERVER);
-		server.setVdcUUID(vdcUUID);
-		server.setVirtualizationType(VirtualizationType.VIRTUAL_MACHINE);
-		Nic nicCard = new Nic();
-		nicCard.setClusterUUID(clusterUUID);
-		nicCard.setNetworkUUID(networkUUID);
-		nicCard.setNetworkType(NetworkType.IP);
-		nicCard.setResourceName(nicResourceName);
-		nicCard.setResourceType(ResourceType.NIC);
-		nicCard.setVdcUUID(vdcUUID);
-		server.getNics().add(nicCard);
-		return server;
-	}
-	
+	// NOTE: this is the only place where instance fields can be set, the constructor does not complete (nor field initialization) 
+	// before calling runinstance
 	@Override protected void parseVMCreatorParameters(Map<String, List<String>> parameters) {
-		super.datacollectorDelay = 2000; // 2 seconds delay between polls
+		Shrinker.myLogger.fine("Parsing parameters for creating FCO VM"); 
+		super.datacollectorDelay = 10000; // 10 seconds delay between polls
 		if (parameters == null)
 			throw new IllegalArgumentException("Missing parameters");
 		if (!parameters.containsKey(ACCESS_KEY) || parameters.get(ACCESS_KEY) == null
@@ -246,6 +152,48 @@ public class FCOVM extends VirtualMachine {
 		if (parameters.containsKey(LOGIN_NAME) && parameters.get(LOGIN_NAME) != null
 				&& parameters.get(LOGIN_NAME).size() > 0)
 			super.loginName = parameters.get(LOGIN_NAME).get(0);
+		
+		// do the rest of field initializations
+		status = UNKNOWN;
+		// defaults
+		this.cpuSize = 1;
+		this.ramSize = 1024;
+		this.diskSize = 16; // GB
+		setInstanceType(instanceType); // override cpuSize, ramSize defaults
+//		this.imageUUID == super.getImageId()
+		try {
+		this.service = getService(endpoint, userEmailAddressSlashCustomerUUID, password);
+		} catch (Exception x) {
+			Shrinker.myLogger.severe("Exception: Cannot create FCO service: " + x.getMessage());
+			System.out.println("Exception: " + x.getMessage());
+		}
+//		System.out.println("VM fields");
+//		System.out.println("endpoint: " + endpoint);
+//		System.out.println("userEmailAddressSlashCustomerUUID: " + userEmailAddressSlashCustomerUUID);
+//		System.out.println("imageUUID: " + super.getImageId());
+//		System.out.println("instanceType: " + instanceType);
+//		System.out.println("cpuSize: " + cpuSize);
+//		System.out.println("ramSize: " + ramSize);
+//		System.out.println("diskSize: " + diskSize);
+//		System.out.println("service: " + service);
+//		System.out.println("loginName: " + loginName);
+	}
+	
+	private void setInstanceType(String instanceType) {
+//		System.out.println("Setting worker VM instance type: " + instanceType);
+		if ("m1.small".equals(instanceType)) {
+			this.cpuSize = 1;
+			this.ramSize = 2048;
+		} else if ("m1.medium".equals(instanceType)) {
+			this.cpuSize = 2;
+			this.ramSize = 4096;
+		} else if ("m1.large".equals(instanceType)) {
+			this.cpuSize = 2;
+			this.ramSize = 8196;
+		} else if ("m1.xlarge".equals(instanceType)) {
+			this.cpuSize = 4;
+			this.ramSize = 16384;
+		} else log.severe("Unknown instance type: " + instanceType);
 	}
 	
 	private UserService getService(String endpoint, String userEmailAddressSlashCustomerUUID, String password) throws MalformedURLException, IOException {
@@ -259,16 +207,49 @@ public class FCOVM extends VirtualMachine {
 	    return service;
 	} 
 	
+	private Server createServerObject() {
+		String serverName = "Optimizer Worker VM " + UUID.randomUUID();
+		Server server = new Server();
+		Disk disk = new Disk();
+		disk.setClusterUUID(clusterUUID);
+	    disk.setProductOfferUUID(diskProductOfferUUID);
+	    disk.setIso(true);
+	    disk.setResourceName(serverName);
+	    disk.setResourceType(ResourceType.DISK);
+	    disk.setSize(diskSize);
+	    disk.setVdcUUID(vdcUUID);
+	    server.setClusterUUID(clusterUUID);
+	    server.setImageUUID(super.getImageId());
+	    server.setProductOfferUUID(serverProductOfferUUID);
+	    server.setCpu(cpuSize);
+	    server.setRam(ramSize);
+	    server.getDisks().add(disk);
+	    server.setResourceName(serverName);
+	    server.setResourceType(ResourceType.SERVER);
+		server.setVdcUUID(vdcUUID);
+		server.setVirtualizationType(VirtualizationType.VIRTUAL_MACHINE);
+		Nic nicCard = new Nic();
+		nicCard.setClusterUUID(clusterUUID);
+		nicCard.setNetworkUUID(networkUUID);
+		nicCard.setNetworkType(NetworkType.IP);
+		nicCard.setResourceName(nicResourceName);
+		nicCard.setResourceType(ResourceType.NIC);
+		nicCard.setVdcUUID(vdcUUID);
+		server.getNics().add(nicCard);
+		return server;
+	}
+
+	// !!!NOTE: this is invoked before the constructor completes!
 	@Override public String runInstance(String key) throws VMManagementException {
-		Shrinker.myLogger.info("Trying to start instance (" + getImageId() + "/" + instanceType + "@" + endpoint + ")");
+		Shrinker.myLogger.info("Trying to start VM... (" + getImageId() + " " + instanceType + " " + endpoint + ")");
 		int requests = reqCounter.incrementAndGet();
 		if (requests > totalReqLimit) {
 			Shrinker.myLogger.severe("Terminating shrinking process, too many non-terminated requests");
 			Thread.dumpStack();
 			System.exit(1);
 		}
-		
 		// create server
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Creating server in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		try { 
 			Shrinker.myLogger.fine("Create server...");
 			Job createServerJob = service.createServer(createServerObject(), null, null, null);
@@ -276,7 +257,8 @@ public class FCOVM extends VirtualMachine {
 			createServerJob.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
 			Job response = service.waitForJob(createServerJob.getResourceUUID(), true);	
 			Shrinker.myLogger.fine("Create server job completed");
-			serverUUID = response.getItemUUID();
+			this.serverUUID = response.getItemUUID();
+			status = PENDING;
 			if (response.getErrorCode() == null) Shrinker.myLogger.info("Server created: " + serverUUID);
 			else throw new Exception("Cannot create server: " + response.getErrorCode());
 		} catch (Exception x) {
@@ -286,6 +268,7 @@ public class FCOVM extends VirtualMachine {
 		}
 		
 		// start server
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Starting server in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		try { 
 			Shrinker.myLogger.fine("Start server...");
 			Job startServerJob = service.changeServerStatus(serverUUID, ServerStatus.RUNNING, true, null, null);
@@ -300,17 +283,16 @@ public class FCOVM extends VirtualMachine {
 			throw new VMManagementException("Cannot create server", x);
 		}
 
-		Shrinker.myLogger.info("Started instance (" + getImageId() + "/" + instanceType + "@" + endpoint + "): "+ getInstanceId());
+		Shrinker.myLogger.info("VM started (" + getImageId() + ", " + instanceType + ", " + endpoint + "): "+ getInstanceId());
 		VirtualMachine.vmsStarted.incrementAndGet();
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + getInstanceId() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Server started: " + getInstanceId() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		
         return serverUUID;
 	}
 	
-	
-	@Override public String getInstanceId() { return serverUUID; }
-	public String getStatus() { return status; }
-	
+	@Override public String getInstanceId() { 
+		return serverUUID; 
+	}
 	
 	@Override public String getIP() throws VMManagementException { 
 		describeServer();
@@ -326,14 +308,17 @@ public class FCOVM extends VirtualMachine {
 		describeServer();
 		return super.getPrivateIP();
 	}
-
 	
 	private long lastrefresh = 0l;
 	private void describeServer() throws VMManagementException {
 		long currTime = System.currentTimeMillis();
-		if (currTime - lastrefresh <= super.datacollectorDelay) return;
+		if (currTime - lastrefresh <= super.datacollectorDelay) {
+			Shrinker.myLogger.fine("Describe server ommited, last call was " + (currTime - lastrefresh) + "ms ago.");
+			return;
+		}
 		lastrefresh = currTime;
 		
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing server... " + serverUUID + " in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.fine("Describe server: " + serverUUID);
 		if (serverUUID == null) return;
 		SearchFilter searchFilter = new SearchFilter();
@@ -357,7 +342,7 @@ public class FCOVM extends VirtualMachine {
 			ArrayList<Nic> nics;
 			nics = (ArrayList<Nic>) resultServer.getNics();
 			if (nics.size() == 0) throw new Exception("No NIC found for server UUID: " + serverUUID + "");
-			if (nics.size() > 1) Shrinker.myLogger.fine("Too many NIC found for server UUID: " + serverUUID + ". Considering the first only.");
+			if (nics.size() > 1) Shrinker.myLogger.fine("Considering first NIC");
 			Nic nic0 = nics.get(0);
 			if (nic0.getIpAddresses() == null || nic0.getIpAddresses().size() == 0) throw new Exception("No IP address for NIC 0");
 			privateDnsName = nic0.getIpAddresses().get(0).getIpAddress();
@@ -381,6 +366,7 @@ public class FCOVM extends VirtualMachine {
 			super.setPort("22");
 			super.setState(VMREADY);
 		}
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describe done. Status: " + status + ", IP: " + privateDnsName + ". (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	private String mapVMStatus(ServerStatus serverStatus) {
@@ -409,6 +395,7 @@ public class FCOVM extends VirtualMachine {
 	}
 	
 	@Override public void terminateInstance() throws VMManagementException {
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Deleting server... " + serverUUID + " in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.fine("Delete server: " + serverUUID);
 		if (serverUUID == null) throw new VMManagementException("Server UUID is null", null);
 		try {
@@ -427,10 +414,12 @@ public class FCOVM extends VirtualMachine {
 				Shrinker.myLogger.info("Server deleted: " + serverUUID);
 			} else throw new VMManagementException("Cannot terminate server: " + response.getErrorCode(), null);
 		} catch (ExtilityException x) { throw new VMManagementException("Cannot terminate server", x); }
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		discard();
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Server deleted: " + getInstanceId() + " " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	@Override public void rebootInstance() throws VMManagementException {
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Rebooting server... " + serverUUID + " in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		try {
 			Shrinker.myLogger.info("Reboot server: " + serverUUID);
 			Job rebootServerJob = service.changeServerStatus(serverUUID, ServerStatus.REBOOTING, true, null, null);
@@ -443,13 +432,12 @@ public class FCOVM extends VirtualMachine {
 		} catch (Exception x) {
 			throw new VMManagementException("Cannot reboot instance", x);
 		}
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM rebooted: " + getInstanceId() + " " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Server rebooted: " + getInstanceId() + " " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 	
-//	private void discard() {
-//		Shrinker.myLogger.fine("Discarding VM with server name: " + serverName + ", server UUID: " + serverUUID);
-//		threadExecutor.shutdown();
-//	}
+	private void discard() {
+//		no resources to discard
+	}
 	
 	private static void disableHostnameVerification() {
 		try {

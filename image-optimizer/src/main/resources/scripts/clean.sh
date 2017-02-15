@@ -1,1 +1,1 @@
-rm -f Shrinker.* failure phase rmme ENTICE-Utils.log Validator0*
+rm -f Shrinker.* failure phase rmme ENTICE-Utils.* Validator* *.groupStates *.out
