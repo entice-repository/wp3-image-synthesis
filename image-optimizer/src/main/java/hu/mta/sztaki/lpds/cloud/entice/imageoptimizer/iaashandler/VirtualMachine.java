@@ -95,6 +95,8 @@ public abstract class VirtualMachine {
 	}
 
 	protected void setState(VMState state) {
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM state: " + state + ", substate: " + (substate == null ? "-" : substate.getSubStateText()) + ", instance: " + getInstanceId() + ". (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+
 		synchronized (stateLocker) {
 			Shrinker.myLogger.info("VMState change: NEW - " + state + " " + toString());
 			if (!state.equals(VMState.ACQUIRED) && (substate != null)) {
@@ -116,7 +118,7 @@ public abstract class VirtualMachine {
 				setState(VMState.ACQUIRED);
 				substate = new VMSubState();
 			} else {
-				throw new IllegalStateException("A VM can only be acquired if it is FREE!");
+				throw new IllegalStateException("A VM can only be acquired if it is FREE! (Current state: " + state + ")");
 			}
 		}
 		return substate;
@@ -138,7 +140,7 @@ public abstract class VirtualMachine {
 			if (state.equals(VMState.ACQUIRED)) {
 				setState(VMState.FREE);
 			} else {
-				throw new IllegalStateException("A VM can only be acquired if it is FREE!");
+				throw new IllegalStateException("A VM can only be released if it is ACQUIRED! (Current state: " + state + ")");
 			}
 		}
 		substate = null;

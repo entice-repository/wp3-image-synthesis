@@ -318,6 +318,13 @@ public class FCOVM extends VirtualMachine {
 		}
 		lastrefresh = currTime;
 		
+		boolean isinInitialState = initializingStates.contains(getState());
+		if (isinInitialState) {
+			super.setIP(null);
+			super.setPort(null);
+			super.setPrivateIP(null);
+		}
+		
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing server... " + serverUUID + " in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.fine("Describe server: " + serverUUID);
 		if (serverUUID == null) return;
@@ -353,19 +360,16 @@ public class FCOVM extends VirtualMachine {
 		} catch (Exception x) {
 			throw new VMManagementException("Cannot describe server", x);
 		}
-		// ??
-		boolean isinInitialState = initializingStates.contains(getState());
-		if (isinInitialState) {
-			super.setIP(null);
-			super.setPort(null);
-			super.setPrivateIP(null);
-		}
+
 		if (RUNNING.equals(status)) {
 			super.setIP(privateDnsName);
 			super.setPrivateIP(privateDnsName);
 			super.setPort("22");
-			super.setState(VMREADY);
 		}
+
+		if (super.getIP() != null && super.getPort() != null && super.getPrivateIP() != null && isinInitialState)
+			super.setState(VMREADY);
+
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describe done. Status: " + status + ", IP: " + privateDnsName + ". (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
@@ -393,8 +397,20 @@ public class FCOVM extends VirtualMachine {
 				return UNKNOWN;
 		}
 	}
-	
+
 	@Override public void terminateInstance() throws VMManagementException {
+		try {
+			terminateInstanceWithRetry() ;
+			return;
+		} catch (VMManagementException x) {
+			Shrinker.myLogger.warning("Failed to delete server: " + serverUUID + ". Retrying...");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Failed to delete server: " + serverUUID + ". Retrying... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		}
+		try { Thread.sleep(10000); } catch (InterruptedException x) {}
+		terminateInstanceWithRetry(); 
+	}
+	
+	private void terminateInstanceWithRetry() throws VMManagementException {
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Deleting server... " + serverUUID + " in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.fine("Delete server: " + serverUUID);
 		if (serverUUID == null) throw new VMManagementException("Server UUID is null", null);

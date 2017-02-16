@@ -144,7 +144,7 @@ public class SingleValidatorThread extends Thread {
 								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart detected on VM: " + vm.getInstanceId() + "");
 							}
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] executing validator script against VM: " + vm.getInstanceId() + "");
-							returner = executeTest(vm, vms);
+							returner = executeTest(vm, vms); // release VM on SUCCESS
 							
 						} catch (VMManagementException e) {
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM restart failed: " + vm.getInstanceId() + " for group " + removablesString);
@@ -198,6 +198,7 @@ public class SingleValidatorThread extends Thread {
 		ValidationState vs = actuallyExecuteTest(vm, vms); 
 		
 		if (ValidationState.SUCCESS.equals(vs)) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] validataion success. Releasing VM: " + vm.getInstanceId());
 			vm.releaseVM();
 		}
 		return vs;

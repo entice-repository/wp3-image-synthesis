@@ -33,6 +33,7 @@ public class VMTests {
 
 	public static final String vmUptimeCheck = "scripts/testuptime.sh";
 
+	// ssh ... awk -F. \'{print \$1}\' /proc/uptime
 	public static int checkUptime(String host, String port, String login)
 			throws InterruptedException, IOException, VMManagementException, TimeoutException {
 		try {
@@ -92,7 +93,7 @@ public class VMTests {
 					} catch (Throwable x) { Shrinker.myLogger.warning("Reboot from command line failed: " + x.getMessage()); } 
 				} */
 			} catch (TimeoutException e) {
-				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Timeout: " + e.getMessage());
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restartTest timeoutExzeption: " + e.getMessage());
 			}
 			Thread.sleep(delay * 1000l);
 			beforeRestart += delay;
