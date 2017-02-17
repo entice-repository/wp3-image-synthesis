@@ -175,7 +175,7 @@ public class Optimizer {
         try { cloudInit = ResourceUtils.getResorceAsString(OPTIMIZER_CLOUD_INIT_RESOURCE); }
         catch (Exception x) { return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Missing resource: " + OPTIMIZER_CLOUD_INIT_RESOURCE).build(); }
 
-        if ("".equals(requestBody.optString(ID))) log.error("No parameter " + ID + " provided for knowledge base. Optimized image will not be uploaded.");
+        if ("".equals(requestBody.optString(ID))) log.warn("No parameter " + ID + " provided for knowledge base. Optimized image will not be uploaded.");
         if (Configuration.knowledgeBaseURL == null) log.warn("knowledgeBaseURL not defined in properties file: " + Configuration.PROPERTIES_FILE_NAME + ". Optimized image will not be uploaded.");
         parameters.put(ID, requestBody.optString(ID)); // REQUIRED
         
@@ -287,7 +287,7 @@ public class Optimizer {
 		
         parameters.put(AVAILABILITY_ZONE, requestBody.optString(AVAILABILITY_ZONE)); // OPTIONAL
 
-		log.debug("Parameters: " + parameters);
+//		log.debug("Parameters: " + parameters);
 //		log.debug("Cloud-init: " + cloudInit);
 		
         // start optimizer VM  ====================================
