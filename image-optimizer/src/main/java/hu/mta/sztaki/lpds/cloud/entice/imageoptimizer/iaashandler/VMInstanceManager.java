@@ -16,6 +16,8 @@
 
 package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -372,7 +374,12 @@ public class VMInstanceManager extends Thread {
 			for (InstanceAllocationData iad : vms) {
 				Shrinker.myLogger.info("VM " + iad.vm.getInstanceId() + " status: " + iad.vm.getState());
 				if (!iad.vm.isInFinalState()) {
-					iad.vm.terminate();
+					try {
+						iad.vm.terminate();
+					} catch (VMManagementException x) {
+						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Cannot terminate VM: " + iad.vm.getInstanceId() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+						Shrinker.myLogger.info("Exception: cannot terminate VM: " + iad.vm.getInstanceId() + ""); 
+					}
 				}
 //				if (iad.vm.isInFinalState()) Shrinker.myLogger.warning("VM is in final state, still terminating...");
 //				iad.vm.terminate();
@@ -382,7 +389,7 @@ public class VMInstanceManager extends Thread {
 			terminated = true;
 			
 			Shrinker.myLogger.info("###phase: done");
-		} catch (VMManagementException e) {
+		} catch (Exception e) {
 			System.err.println(e.getMessage());
 			e.printStackTrace();
 			System.exit(1);

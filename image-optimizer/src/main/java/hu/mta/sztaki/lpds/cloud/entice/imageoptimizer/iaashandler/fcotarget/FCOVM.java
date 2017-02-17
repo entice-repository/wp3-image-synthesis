@@ -399,12 +399,14 @@ public class FCOVM extends VirtualMachine {
 	}
 
 	@Override public void terminateInstance() throws VMManagementException {
-		try {
-			terminateInstanceWithRetry() ;
-			return;
-		} catch (VMManagementException x) {
-			Shrinker.myLogger.warning("Failed to delete server: " + serverUUID + ". Retrying...");
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Failed to delete server: " + serverUUID + ". Retrying... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		for (int i = 0; i < 2; i++) {
+			try {
+				terminateInstanceWithRetry() ;
+				return;
+			} catch (VMManagementException x) {
+				Shrinker.myLogger.warning("Failed to delete server: " + serverUUID + ". Retrying...");
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Failed to delete server: " + serverUUID + ". Retrying... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			}
 		}
 		try { Thread.sleep(10000); } catch (InterruptedException x) {}
 		terminateInstanceWithRetry(); 
