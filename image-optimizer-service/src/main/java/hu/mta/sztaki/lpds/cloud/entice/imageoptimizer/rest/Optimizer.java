@@ -522,7 +522,7 @@ public class Optimizer {
 			|| optimizerVM.getStatus().equalsIgnoreCase(VM.STOPPED) 
 			|| optimizerVM.getStatus().equalsIgnoreCase(VM.STOPPING)) {
 			task.setStatus(OptimizerStatus.FAILED.name());
-			task.setFailure("Optimizer VM " + task.getInstanceId() + " is down: " + optimizerVM.getStatus() + ". (Terminated externally or unsuccessful launch.)");
+			task.setFailure("Optimizer Orchestrator VM " + task.getInstanceId() + " is down: " + optimizerVM.getStatus() + ". (Terminated externally or unsuccessful launch.)");
 			task.setSecretKey(""); // clear passwords from database
 			task.setEnded(System.currentTimeMillis()); // it is query time, not task completion time
 			persistTask(task);
@@ -1135,8 +1135,8 @@ public class Optimizer {
 	private String generateCloudInitRuncmd(String taskId) {
 		StringBuilder sb = new StringBuilder();
 		// check if runcmd runs in two copies
-		sb.append("- [ -f /root/.entice ] && exit 0"); sb.append("\n");
-		sb.append("- touch /root/.entice"); sb.append("\n");
+		sb.append("- test -f /root/.optimizer.lck && exit 0"); sb.append("\n");
+		sb.append("- touch /root/.optimizer.lck"); sb.append("\n");
 
 		// update and build sztaki-java-cli-utils and image-optimizer
 		sb.append("# - cd /root/wp3-imagesynthesis/sztaki-java-cli-utils/"); sb.append("\n");

@@ -141,7 +141,7 @@ public class FCOVM extends VM {
 				cpuSize = 1;
 				ramSize = 2048;
 			} else if ("m1.medium".equals(instanceType)) {
-				cpuSize = 1;
+				cpuSize = 2;
 				ramSize = 4096;
 			} else if ("m1.large".equals(instanceType)) {
 				cpuSize = 2;
@@ -441,7 +441,7 @@ public class FCOVM extends VM {
 		}
 		int trials = 0;
 		final int sleep = 10; // seconds
-		final int maxTrials = 5 * 6; // up to 5 minutes (6 trials / minute)  
+		final int maxTrials = 10 * 6; // up to 10 minutes (6 trials / minute)  
 		String error = "";
 		do {
 			trials++;
@@ -486,7 +486,7 @@ public class FCOVM extends VM {
 			stdout.clear(); stderr.clear();
 			exitCode = ssh.executeCommand("sudo echo " + userDataBase64 + " | base64 --decode > /root/user-data.txt", stdout, stderr);
 			if (exitCode != 0) {
-				log.debug(stderr.toString());
+				log.error(stderr.toString());
 				throw new Exception("Cannot upload file user-data.txt to host: " + ip);
 			}
 
@@ -495,7 +495,7 @@ public class FCOVM extends VM {
 			stdout.clear(); stderr.clear();
 			exitCode = ssh.executeCommand("sudo echo " + getFCOPropertiesBase64() + " | base64 --decode > /root/fco.properties", stdout, stderr);
 			if (exitCode != 0) {
-				log.debug(stderr.toString());
+				log.error(stderr.toString());
 				throw new Exception("Cannot upload file fco.properties to host: " + ip);
 			}
 
@@ -510,7 +510,7 @@ public class FCOVM extends VM {
 											"&& sudo cloud-init --file /root/user-data.txt single --name cc_runcmd", stdout, stderr);
 			// sudo cloud-init --file /root/user-data.txt single --name cc_write_files && sudo cloud-init --file /root/user-data.txt single --name cc_runcmd && sudo /var/lib/cloud/instance/scripts/runcmd
 			if (exitCode != 0) {
-				log.debug(stderr.toString());
+				log.error(stderr.toString());
 				throw new Exception("Cannot run cloud-init user-data.txt on host: " + ip);
 			}
 			
@@ -520,11 +520,9 @@ public class FCOVM extends VM {
 			stdout.clear(); stderr.clear();
 			exitCode = ssh.executeCommand("sudo sh /var/lib/cloud/instance/scripts/runcmd", stdout, stderr);
 			if (exitCode != 0) {
-				log.debug(stderr.toString());
+				log.error("Cannot run /var/lib/cloud/instance/scripts/runcmd on host " + ip + ": " + stderr.toString());
 				throw new Exception("Cannot run /var/lib/cloud/instance/scripts/runcmd on host: " + ip);
 			}
-		
-			log.debug("cloud-init done");
 			
 		} finally {	if (ssh!= null) ssh.close(); }
 	}
@@ -537,7 +535,7 @@ public class FCOVM extends VM {
 		sb.append("vdcUUID=" + Configuration.vdcUUID + "\n");
 		sb.append("serverProductOfferUUID=" + Configuration.serverProductOfferUUID + "\n");
 		sb.append("hostnameVerification=" + Configuration.hostnameVerification + "\n");
-		log.debug(sb.toString());
+//		log.debug(sb.toString());
 		
 		return ResourceUtils.base64Encode(sb.toString());
 	}
