@@ -21,6 +21,7 @@
 <table>
 	<tr><th>Property name</th><th>Value</th></tr>
 	<tr><td>localEc2Endpoint</td><td><%=Configuration.localEc2Endpoint%></td></tr>
+	<tr><td>cloudInterface</td><td><%=Configuration.cloudInterface%></td></tr>
 	<tr><td>optimizerImageId</td><td><%=Configuration.optimizerImageId%></td></tr>
 	<tr><td>optimizerInstanceType</td><td><%=Configuration.optimizerInstanceType%></td></tr>
 	<tr><td>workerInstanceType</td><td><%=Configuration.workerInstanceType%></td></tr>
