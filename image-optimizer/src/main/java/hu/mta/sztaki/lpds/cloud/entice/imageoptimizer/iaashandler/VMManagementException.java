@@ -8,7 +8,7 @@ public class VMManagementException extends Exception {
 	public VMManagementException(String m, Exception e) {
 		super(m, e);
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[2];
-		Shrinker.myLogger.warning(ste.getClassName() + "."
+		Shrinker.myLogger.warning(ste.getClassName().replaceAll("Exception", "Exzeption") + "."
 				+ ste.getMethodName()
 				+ " throws VMManagementExzeption with messsage: '" + m
 				+ "', cause: " + (e == null ? "" : e.getMessage()));

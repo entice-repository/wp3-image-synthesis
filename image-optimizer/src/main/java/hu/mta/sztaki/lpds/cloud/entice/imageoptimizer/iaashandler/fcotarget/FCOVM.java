@@ -32,7 +32,6 @@ import javax.xml.ws.BindingProvider;
 
 import com.extl.jade.user.Condition;
 import com.extl.jade.user.Disk;
-import com.extl.jade.user.ExtilityException;
 import com.extl.jade.user.FilterCondition;
 import com.extl.jade.user.Job;
 import com.extl.jade.user.ListResult;
@@ -399,6 +398,11 @@ public class FCOVM extends VirtualMachine {
 	}
 
 	@Override public void terminateInstance() throws VMManagementException {
+		int requests = reqCounter.decrementAndGet();
+		if (requests < 0) {
+			Shrinker.myLogger.severe("Too much VM termination requests");
+			Thread.dumpStack();
+		}
 		for (int i = 0; i < 2; i++) {
 			try {
 				terminateInstanceWithRetry() ;
@@ -417,11 +421,6 @@ public class FCOVM extends VirtualMachine {
 		Shrinker.myLogger.fine("Delete server: " + serverUUID);
 		if (serverUUID == null) throw new VMManagementException("Server UUID is null", null);
 		try {
-			int requests = reqCounter.decrementAndGet();
-			if (requests < 0) {
-				Shrinker.myLogger.severe("Terminating shrinking process, too much VM termination requests");
-				Thread.dumpStack();
-			}
 			Job deleteJob = service.deleteResource(serverUUID, true, null);
 			if (deleteJob == null) throw new VMManagementException("Server UUID not found: " + serverUUID + " (null job)", null);
 			deleteJob.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
@@ -431,7 +430,9 @@ public class FCOVM extends VirtualMachine {
 			if (response.getErrorCode() == null) {
 				Shrinker.myLogger.info("Server deleted: " + serverUUID);
 			} else throw new VMManagementException("Cannot terminate server: " + response.getErrorCode(), null);
-		} catch (ExtilityException x) { throw new VMManagementException("Cannot terminate server", x); }
+		} catch (Exception x) { 
+			throw new VMManagementException("Cannot terminate server", x); 
+		} 
 		discard();
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Server deleted: " + getInstanceId() + " " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}

@@ -76,7 +76,8 @@ ln -s $MAVEN_REPO_PATH/org/apache/httpcomponents/httpcore/4.2/httpcore-4.2.jar
 ln -s $MAVEN_REPO_PATH/com/fasterxml/jackson/core/jackson-annotations/2.1.1/jackson-annotations-2.1.1.jar
 ln -s $MAVEN_REPO_PATH/com/fasterxml/jackson/core/jackson-core/2.1.1/jackson-core-2.1.1.jar
 ln -s $MAVEN_REPO_PATH/com/fasterxml/jackson/core/jackson-databind/2.1.1/jackson-databind-2.1.1.jar
-ln -s $MAVEN_REPO_PATH/joda-time/joda-time/2.9.4/joda-time-2.9.4.jar
+ln -s $MAVEN_REPO_PATH/joda-time/joda-time/2.9.7/joda-time-2.9.7.jar
+ln -s $MAVEN_REPO_PATH/extl/jadeclient/1.0/jadeclient-1.0.jar
 cd ..
 
 3. Set root SSH key...
