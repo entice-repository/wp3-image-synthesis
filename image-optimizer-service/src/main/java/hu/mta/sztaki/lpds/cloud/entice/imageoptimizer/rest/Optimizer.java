@@ -1071,7 +1071,7 @@ public class Optimizer {
 		else sb.append("# "); // comment if no s3Path
 		sb.append("aws --endpoint-url " + parameters.get(S3_ENDPOINT_URL) + " --no-verify-ssl s3 cp " + OPTIMIZED_IMAGE_FILE + " s3://" + parameters.get(S3_PATH) + " --quiet 2> upload.out");
 		sb.append(" || { ");
-		sb.append("echo 'Cannot upload optimized image file " + OPTIMIZED_IMAGE_FILE + " to S3 server " + parameters.get(S3_ENDPOINT_URL) + " with access key: " + parameters.get(S3_ACCESS_KEY) + ", secret key: " + parameters.get(S3_SECRET_KEY).substring(0, 3) + "...' > failure");
+		sb.append("echo 'Cannot upload optimized image file " + OPTIMIZED_IMAGE_FILE + " to S3 server " + parameters.get(S3_ENDPOINT_URL) + " with access key: " + parameters.get(S3_ACCESS_KEY) + ", secret key: " + (parameters.get(S3_SECRET_KEY) != null ? parameters.get(S3_SECRET_KEY).substring(0, 3) : parameters.get(S3_SECRET_KEY)) + "...' > failure");
 		sb.append(" ; exit 1 ; }"); sb.append("\n");
 	
 		// econe-upload --access-key ahajnal@sztaki.hu --secret-key 60a... --url http://cfe2.lpds.sztaki.hu:4567 /mnt/optimized-image.qcow2
