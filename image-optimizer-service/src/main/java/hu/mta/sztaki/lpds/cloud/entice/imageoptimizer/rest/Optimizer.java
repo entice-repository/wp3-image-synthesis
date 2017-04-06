@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -458,7 +459,8 @@ public class Optimizer {
 	public Response status(
 			@PathParam("id") String id,
 			@Context HttpHeaders headers,
-			@Context HttpServletRequest request) {
+			@Context HttpServletRequest request,
+			@HeaderParam("KeepVM") String keepVM) {
 		
 		Task task = retrieveTask(id);
 		if (task == null) return Response.status(Status.BAD_REQUEST).entity("Invalid task id: " + id).build();
@@ -789,10 +791,17 @@ public class Optimizer {
 		// if task DONE/FAILED, kill VM, cleanup
 		if (task.getStatus().equalsIgnoreCase(OptimizerStatus.DONE.name()) ||
 			task.getStatus().equalsIgnoreCase(OptimizerStatus.FAILED.name())) {
-			log.debug("Shutting down optimizer VM: " + optimizerVM.getInstanceId() + "...");
-			try { optimizerVM.terminate(); } // can wait up to 30 seconds
-			catch (Exception x) {} 
-			task.setVmStatus(optimizerVM.getStatus()); // NOTE: VM state may remain in shutting down but will terminate later
+			
+			if (!"true".equals(keepVM)) {
+				log.debug("Shutting down optimizer VM: " + optimizerVM.getInstanceId() + "...");
+				try { optimizerVM.terminate(); } // can wait up to 30 seconds
+				catch (Exception x) {} 
+				task.setVmStatus(optimizerVM.getStatus()); // NOTE: VM state may remain in shutting down but will terminate later
+			} else {
+				task.setVmStatus(VM.TERMINATED);
+				log.warn("VM " + optimizerVM.getInstanceId() + " is in done/failed status but not terminated due to KeepVM header parameter. The VM must be terminated manually!");
+			}
+			
 			log.debug("Removing task and VM from cache...");
 			taskCache.remove(task.getId()); // remove Task from task cache (assuming the user will not query it again)
 			optimizerVMCache.remove(task.getId()); // remove VM from VM cache
