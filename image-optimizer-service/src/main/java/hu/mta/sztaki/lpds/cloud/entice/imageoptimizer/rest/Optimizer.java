@@ -15,6 +15,7 @@ import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.fco.FCOVM;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.OutputStreamWrapper;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.ResourceUtils;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.SshSession;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.wt.WTVM;
 
 import javax.persistence.EntityManager;
 import javax.servlet.http.HttpServletRequest;
@@ -264,6 +265,11 @@ public class Optimizer {
         				.withInstanceType(parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE))
         				.withDiskSize(16) // GB
         				.build();  
+        	} else if (WTVM.CLOUD_INTERFACE.equals(cloudInterface)) {
+        		String username = parameters.get(CLOUD_ACCESS_KEY);
+        		String password = parameters.get(CLOUD_SECRET_KEY);
+        		optimizerVM = new WTVM.Builder(task.getEndpoint(), username, password)
+        				.build(); 
         	} else return Response.status(Status.BAD_REQUEST).entity("Invalid cloud interface: " + cloudInterface).build(); 
         } catch (Exception x) { return Response.status(Status.BAD_REQUEST).entity("Cannot create optimizer VM: " + x.getMessage()).build(); }
 
@@ -296,6 +302,7 @@ public class Optimizer {
         try {
         	Map<String, String> pars = new HashMap<String, String>();
         	pars.put(VM.USER_DATA_BASE64, ResourceUtils.base64Encode(cloudInit)); 
+        	pars.put(VM.USER_DATA, cloudInit); 
         	pars.put(EC2VM.AVAILABILITY_ZONE, parameters.get(AVAILABILITY_ZONE));
         	pars.put(VM.LOGIN, Configuration.optimizerRootLogin);
         	
@@ -371,7 +378,11 @@ public class Optimizer {
 		        		vm = new FCOVM.Builder(task.getEndpoint(), userEmailAddressSlashCustomerUUID, password, Configuration.optimizerImageId)
 		        				.withServerUUID(task.getInstanceId())
 		        				.build(); 
-		        		// get IP and status
+					} else if (WTVM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
+		        		String username = task.getAccessKey();
+		        		String password = task.getSecretKey();
+		        		vm = new WTVM.Builder(task.getEndpoint(), username, password)
+		        				.build(); 
 					} else log.error("Invalid cloud interface in database: " + task.getCloudInterface());
 	        		vm.describeInstance();
 				} catch (Exception x) { log.error("Cannot recover VM: " + x.getMessage()); }
