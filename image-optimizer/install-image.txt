@@ -78,6 +78,10 @@ ln -s $MAVEN_REPO_PATH/com/fasterxml/jackson/core/jackson-core/2.1.1/jackson-cor
 ln -s $MAVEN_REPO_PATH/com/fasterxml/jackson/core/jackson-databind/2.1.1/jackson-databind-2.1.1.jar
 ln -s $MAVEN_REPO_PATH/joda-time/joda-time/2.9.7/joda-time-2.9.7.jar
 ln -s $MAVEN_REPO_PATH/extl/jadeclient/1.0/jadeclient-1.0.jar
+ln -s $MAVEN_REPO_PATH/com/sun/jersey/jersey-bundle/1.19/jersey-bundle-1.19.jar
+ln -s $MAVEN_REPO_PATH/com/sun/jersey/jersey-core/1.19/jersey-core-1.19.jar
+ln -s $MAVEN_REPO_PATH/javax/ws/rs/jsr311-api/1.1.1/jsr311-api-1.1.1.jar
+ln -s $MAVEN_REPO_PATH/org/json/20140107/json-20140107.jar
 cd ..
 
 3. Set root SSH key...
