@@ -1,0 +1,32 @@
+# java opts
+JAVA_OPTS=-Djava.security.egd=file:///dev/urandom
+
+# IP MUST BE UPDATED accordingly to hosting IP/hostname!!!
+PUBLIC_VIRTUAL_IMAGE_COMPOSER_REST_URL=http://IP:8083/virtual-image-composer/rest
+
+# virtual-image-composer
+VIRTUAL_IMAGE_COMPOSER_REST_URL=http://virtual-image-composer:8080/virtual-image-composer/rest
+
+# virtual-image-manager
+VIRTUAL_IMAGE_MANAGER_TOKEN=entice
+VIRTUAL_IMAGE_MANAGER_REST_URL=http://virtual-image-manager:8080/virtual-image-manager/rest
+
+# installer-storage
+INSTALLER_STORAGE_TOKEN=entice-storage
+INSTALLER_STORAGE_PATH=/mnt/installers
+INSTALLER_STORAGE_URL=http://installer-storage:8080/installer-storage/rest/installers
+
+# virtual-image-decomposer
+VIRTUAL_IMAGE_DECOMPOSER_TOKEN=entice
+VIRTUAL_IMAGE_DECOMPOSER_PATH=/mnt/decomposer
+VIRTUAL_IMAGE_DECOMPOSER_REST_URL=http://virtual-image-decomposer:8080/virtual-image-decomposer/rest
+
+# fragment-storage: S3
+S3_ENDPOINT=https://s3.lpds.sztaki.hu
+S3_BUCKET_NAME=entice-fragments
+AWS_ACCESS_KEY_ID=Entice-admin
+AWS_SECRET_ACCESS_KEY=7d1d4f104ccde26ec2ea09efc199dccdeab8aee5
+
+# fragment-storage: knowledge-base
+# FRAGMENT_STORAGE_TOKEN=entice
+# FRAGMENT_STORAGE_URL=https://entice.lpds.sztaki.hu:8443/fragment-storage/rest/fragments

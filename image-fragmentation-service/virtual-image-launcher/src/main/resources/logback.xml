@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+	 	<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      		<level>DEBUG</level>
+    	</filter>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>[%date{dd/MM/yy HH:mm:ss}] %-5level %logger{0}: %msg \(%thread\)%n</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="LOG_FILE"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${catalina.base}/logs/virtual-image-launcher.log</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${catalina.base}/logs/virtual-image-launcher.%d{yyyy-MM-dd}.log</fileNamePattern><!-- daily rollover -->
+			<maxHistory>30</maxHistory><!-- keep 30 days' worth of history -->
+		</rollingPolicy>
+		<encoder>
+			<pattern>[%date{dd/MM/yy HH:mm:ss}] %-5level %logger{0}.%M: %msg \(%thread\)%n</pattern>
+		</encoder>
+	</appender>
+
+	<logger name="hu.mta.sztaki.lpds" level="trace">
+		<appender-ref ref="LOG_FILE" />
+	</logger>
+
+	<root level="info">
+		<appender-ref ref="STDOUT" />
+	</root>
+
+</configuration>

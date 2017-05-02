@@ -1,0 +1,73 @@
+These instructions are for Ubuntu, but should work on other distros with slight modifications (yum, pacman, ...)
+
+
+1. Build the war files...
+=========================
+
+apt-get install -y default-jdk git-all maven curl
+git clone https://github.com/entice-repository/wp3-image-synthesis.git
+mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-fragmentation-service/pom.xml
+
+
+2. Install tomcat and mysql...
+==============================
+
+apt-get install -y tomcat7 mysql mysql-server
+
+
+3. Configure the service...
+===========================
+
+Setup the database:
+
+$ mysql -u root -p
+
+mysql> create database virtualimages;
+mysql>  create user 'entice'@'%' IDENTIFIED BY 'entice';
+mysql> grant all privileges on virtualimages.* TO 'entice'@'%';
+mysql> flush privileges;
+
+Note: you may change the password and restrict access from the host of the web applications for security reasons
+
+Edit wp3-image-synthesis/image-fragmentation-service/setenv.sh,
+update fields according to current deployment place:
+
+- PUBLIC_VIRTUAL_IMAGE_COMPOSER_REST_URL: it should point to the IP/hostname of the hosting machine, which must be accessible from VMs under assembly
+- VIRTUAL_IMAGE_DECOMPOSER_PATH: working dir to compute fragments, /mnt/decomposer by default
+- INSTALLER_STORAGE_PATH: dir of installers, /mnt/installers by default
+
+Copy setenv.sh to tomcat's bin folder (/usr/share/tomcat7/bin/).
+
+Create these directories according to the above parameters with chown tomcat7:tomcat7:
+$ mkdir /mnt/decomposer
+$ chown tomcat7:tomcat7 /mnt/decomposer
+$ mkdir /mnt/installers
+$ chown tomcat7:tomcat7 /mnt/installers
+- (optional) On public IPs updating *TOKENS are recommended for security reasons.
+
+Make tomcat7 sudoer:
+$ sudo adduser tomcat7 sudo
+$ echo 'tomcat7 ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+Note: you may add sudoer privileges for scripts in dir: /var/lib/tomcat7/webapps/virtual-image-decomposer/WEB-INF/classes/scripts/
+
+4. Deploy web applications...
+=============================
+
+Copy war files to tomcat's webapps folder (/var/lib/tomcat7/webapps): 
+
+$ cp wp3-image-synthesis/image-fragmentation-service/installer-storage/target/installer-storage.war /var/lib/tomcat7/webapps
+$ cp wp3-image-synthesis/image-fragmentation-service/virtual-image-composer/target/virtual-image-composer.war /var/lib/tomcat7/webapps
+$ cp wp3-image-synthesis/image-fragmentation-service/virtual-image-decomposer/target/virtual-image-decomposer.war /var/lib/tomcat7/webapps
+$ cp wp3-image-synthesis/image-fragmentation-service/virtual-image-launcher/target/virtual-image-launcher.war /var/lib/tomcat7/webapps
+$ cp wp3-image-synthesis/image-fragmentation-service/virtual-image-manager/target/virtual-image-manager.war /var/lib/tomcat7/webapps
+
+
+5. Test deployment...
+=====================
+
+wget http://localhost:8080/virtual-image-manager/
+wget http://localhost:8081/installer-storage/
+
+Scripts in file: image-fragmentation-service-docker-compose.tar.gz/_tests/
+

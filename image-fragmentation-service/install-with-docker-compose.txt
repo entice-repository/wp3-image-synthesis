@@ -1,0 +1,63 @@
+1. Build all...
+===========================
+
+apt-get install -y default-jdk git-all maven curl
+git clone https://github.com/entice-repository/wp3-image-synthesis.git
+mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-fragmentation-service/pom.xml
+
+tar -xvf wp3-image-synthesis/image-fragmentation-service/image-fragmentation-service-docker-compose.tar.gz
+
+cp wp3-image-synthesis/image-fragmentation-service/installer-storage/target/installer-storage.war image-fragmentation-service-docker-compose/installer-storage/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-composer/target/virtual-image-composer.war image-fragmentation-service-docker-compose/virtual-image-composer/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-decomposer/target/virtual-image-decomposer.war image-fragmentation-service-docker-compose/virtual-image-decomposer/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-launcher/target/virtual-image-launcher.war image-fragmentation-service-docker-compose/virtual-image-launcher/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-manager/target/virtual-image-manager.war image-fragmentation-service-docker-compose/virtual-image-manager/
+
+
+2. Configure the services...
+===========================
+
+Edit wp3-image-fragmentation/env-docker-compose:
+- PUBLIC_VIRTUAL_IMAGE_COMPOSER_REST_URL: it should point to the IP/hostname of the hosting machine, which must be accessible from VMs under assembly
+- VIRTUAL_IMAGE_DECOMPOSER_PATH: working dir to compute fragments, /mnt/decomposer by default
+- INSTALLER_STORAGE_PATH: dir of installers, /mnt/installers by default
+
+Create these directories according to the above parameters (at non-docker use with chown tomcat7:tomcat7):
+- /mnt/decomposer
+- /mnt/installers
+- /mnt/database (virtual-image-manager)
+
+- (Optional) On public IPs updating *TOKENS are recommended for security reasons.
+
+
+3. Install docker and docker-compose...
+========================================
+
+# docker engine
+apt-get update
+sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" | sudo tee /etc/apt/sources.list.d/docker.list
+apt-get install apt-transport-https
+apt-get update
+apt-cache policy docker-engine
+apt-get install linux-image-extra-$(uname -r) linux-image-extra-virtual
+apt-get install docker-engine
+service docker status
+
+# docker-compose
+curl -L "https://github.com/docker/compose/releases/download/1.8.1/docker-compose-$(uname -s)-$(uname -m)" > /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+
+5. Start...
+=======================
+
+cd image-fragmentation-service-docker-compose
+docker-compose up
+
+
+6. Test...
+=======================
+
+wget http://localhost:8080/virtual-image-manager/
+wget http://localhost:8081/installer-storage/
