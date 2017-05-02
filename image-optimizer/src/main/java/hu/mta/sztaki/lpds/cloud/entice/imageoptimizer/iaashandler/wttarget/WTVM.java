@@ -51,6 +51,7 @@ public class WTVM extends VirtualMachine {
 	private String endpoint;
 	private String username;
 	private String password;
+	private String ovfURL;
 
 	// VM status 
 	private String vmId; 
@@ -85,6 +86,9 @@ public class WTVM extends VirtualMachine {
 				&& parameters.get(LOGIN_NAME).size() > 0)
 			super.loginName = parameters.get(LOGIN_NAME).get(0);
 		
+		this.ovfURL = System.getProperty("hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ovfURL");
+		if (this.ovfURL == null) Shrinker.myLogger.severe("ERROR: Missing WT parameter (system property): hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ovfURL");
+
 		// do the rest of field initializations
 		status = UNKNOWN;
 	}
@@ -214,7 +218,8 @@ public class WTVM extends VirtualMachine {
 			log.info("Sending POST to '" + service + "'");
 			log.info("Username: '" + username + "'");
 			
-			// TODO disk template
+			// TODO disk: this.imageId
+			// TODO ovf template: this.
 	
 			// send POST
 			client = Client.create();
@@ -224,7 +229,6 @@ public class WTVM extends VirtualMachine {
 					.type(MediaType.MULTIPART_FORM_DATA)
 					.accept(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
-			
 			
 			if (response.getStatus() != 200) {
 				log.severe("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));

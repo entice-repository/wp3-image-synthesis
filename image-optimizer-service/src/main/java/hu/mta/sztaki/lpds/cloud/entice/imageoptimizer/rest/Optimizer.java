@@ -68,6 +68,7 @@ public class Optimizer {
 	public static final String ID = "id"; // REQUIRED by optimized-image upload
 	public static final String IMAGE_URL = "imageURL"; // REQUIRED
 	public static final String IMAGE_ID = "imageId"; // REQUIRED
+	public static final String OVF_URL = "ovfURL"; // OPTIONAL (required in VMware)
 	public static final String IMAGE_KEY_PAIR = "imageKeyPair"; // OPTIONAL (will use image wired public key if absent)
 	public static final String IMAGE_PRIVATE_KEY = "imagePrivateKey"; // REQUIRED
 	public static final String IMAGE_USER_NAME = "imageUserName"; // OPTIONAL (default: root, properties file)
@@ -195,6 +196,11 @@ public class Optimizer {
         
         String cloudInterface = requestBody.optString(CLOUD_INTERFACE, Configuration.cloudInterface);
         parameters.put(CLOUD_INTERFACE, cloudInterface); 
+
+        String ovfURL = requestBody.optString(OVF_URL);
+        if (WTVM.CLOUD_INTERFACE.equals(cloudInterface) && "".equals(ovfURL)) 
+        	return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + OVF_URL).build();
+        parameters.put(OVF_URL, ovfURL);
         
         parameters.put(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, requestBody.optString(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, Configuration.optimizerInstanceType)); // OPTIONAL
        	parameters.put(CLOUD_WORKER_VM_INSTANCE_TYPE, requestBody.optString(CLOUD_WORKER_VM_INSTANCE_TYPE, Configuration.workerInstanceType)); // OPTIONAL
@@ -987,6 +993,7 @@ public class Optimizer {
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.sourceimagefilename=" + SOURCE_IMAGE_FILE); sb.append(" \\" + "\n");
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".loginName=" + parameters.get(IMAGE_USER_NAME) + " \\"); sb.append("\n");
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.targetimagefilename=" + OPTIMIZED_IMAGE_FILE); sb.append(" \\" + "\n");
+		if (!"".equals(parameters.get(OVF_URL))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ovfURL=" + parameters.get(OVF_URL)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(MAX_ITERATIONS_NUM))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxIterationsNum=" + parameters.get(MAX_ITERATIONS_NUM)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(MAX_NUMBER_OF_VMS))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxNumberOfVMs=" + parameters.get(MAX_NUMBER_OF_VMS)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(AIMED_REDUCTION_RATIO))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.aimedReductionRatio=" + parameters.get(AIMED_REDUCTION_RATIO)); sb.append(" \\" + "\n"); }
@@ -1019,6 +1026,16 @@ public class Optimizer {
 		} else {
 			sb.append("    echo 'Not supported protocol in source image URL:  " + parameters.get(IMAGE_URL) + "' > failure "); sb.append("\n");
 			sb.append("    exit 1"); sb.append("\n");
+		}
+		
+		// convert vmdk to qcow2
+		if (WTVM.CLOUD_INTERFACE.equals(parameters.get(CLOUD_INTERFACE))) {
+			sb.append("    mv " + SOURCE_IMAGE_FILE + " " + SOURCE_IMAGE_FILE + ".vmdk"); sb.append("\n");
+			sb.append("    qemu-img convert -f vmdk -O qcow2 " + SOURCE_IMAGE_FILE + ".vmdk " + SOURCE_IMAGE_FILE + "");
+			sb.append(" || { ");
+			sb.append("echo 'Cannot convert source image from vmdk to qcow2" + "' > failure");
+			sb.append(" ; exit 1 ; }"); sb.append("\n");
+			sb.append("    rm " + SOURCE_IMAGE_FILE + ".vmdk "); sb.append("\n");
 		}
 		
 		// download validator script
