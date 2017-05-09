@@ -15,7 +15,7 @@ export VIRTUAL_IMAGE_MANAGER_REST_URL=http://localhost:8080/virtual-image-manage
 # virtual-image-decomposer
 export VIRTUAL_IMAGE_DECOMPOSER_TOKEN=entice
 export VIRTUAL_IMAGE_DECOMPOSER_PATH=/mnt/decomposer
-export INSTALLER_STORAGE_URL=http://localhost:8080/installer-storage/rest/installers
+export INSTALLER_STORAGE_URL=http://localhost:8080/installer-storage/rest
 export VIRTUAL_IMAGE_COMPOSER_REST_URL=http://localhost:8080/virtual-image-composer/rest
 # S3:
 export S3_ENDPOINT=https://s3.lpds.sztaki.hu
