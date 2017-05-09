@@ -9,11 +9,22 @@ git clone https://github.com/entice-repository/wp3-image-synthesis.git
 mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-fragmentation-service/pom.xml
 
 
-2. Install tomcat and mysql...
+2. Install tomcat, mysql, other...
 ==============================
 
 apt-get install -y tomcat7 mysql mysql-server
 
+On the host of virtual-image-decomposer, install:
+ 
+$ apt-get install -y curl unzip sudo module-init-tools python-pip python-dev qemu-utils
+
+... install aws cli if fragments are stored in S3
+
+$ curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
+$ unzip awscli-bundle.zip
+$ ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+$ pip install --upgrade pip
+$ pip install awscli
 
 3. Configure the service...
 ===========================
