@@ -85,10 +85,17 @@ public class Installers {
 		logRequest("GET INIT", headers, request);
 		if (!installerMetadata.containsKey(id)) return Response.status(Status.BAD_REQUEST).entity("Invalid installer id: " + id).build();
 		File initFile = new File(Configuration.installerStoragePath + "/" + id + "/" + Installers.INSTALLER_INIT_SCRIPT_FILE_NAME);
-		if (!initFile.exists()) return Response.status(Status.BAD_REQUEST).entity("Init script file is missing: " + initFile.getAbsolutePath()).build(); 
-		return Response.ok(initFile, "text/x-shellscript")
+		if (!initFile.exists()) { 
+			return Response.ok()
+				 .header("Content-Disposition", "attachment; filename=\"" + id + "-init.sh" + "\"" )
+				 .entity("#!/bin/sh\n")
+				 .build();
+//			return Response.status(Status.BAD_REQUEST).entity("Init script file is missing: " + initFile.getAbsolutePath()).build(); 
+		} else {
+			return Response.ok(initFile, "text/x-shellscript")
 						 .header("Content-Disposition", "attachment; filename=\"" + id + "-init.sh" + "\"" )
 						 .build();
+		}
 	} 	 
 
 	// TODO

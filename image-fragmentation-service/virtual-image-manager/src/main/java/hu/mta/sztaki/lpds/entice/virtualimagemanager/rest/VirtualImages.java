@@ -73,7 +73,12 @@ public class VirtualImages {
         // verify required parameters
         if ("".equals(requestBody.optString(Image.OWNER))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + Image.OWNER).build(); 
         if ("".equals(requestBody.optString(Image.PARENT_VIRTUAL_IMAGE_ID))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + Image.PARENT_VIRTUAL_IMAGE_ID).build(); 
-        if ((requestBody.optJSONArray(Edge.INSTALLER_IDS) == null || requestBody.getJSONArray(Edge.INSTALLER_IDS).length() == 0) && "".equals(requestBody.optString(Edge.SNAPSHOT_URL))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + Edge.INSTALLER_IDS + "/" + Edge.SNAPSHOT_URL).build(); 
+
+        // if not snapshot installer ids ir installerBase64 is required
+        
+        if ((requestBody.optJSONArray(Edge.INSTALLER_IDS) == null || requestBody.getJSONArray(Edge.INSTALLER_IDS).length() == 0) &&  "".equals(requestBody.optString(Edge.INSTALLER_BASE64)) && "".equals(requestBody.optString(Edge.SNAPSHOT_URL))) {
+        	return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + Edge.INSTALLER_IDS + "/" + Edge.INSTALLER_BASE64 + "/" + Edge.SNAPSHOT_URL).build(); 
+        }
         
     	String knowledgeBaseRef = requestBody.optString(KNOWLEDGE_BASE_REF);
     	if ("".equals(knowledgeBaseRef)) log.warn("Missing parameter: " + KNOWLEDGE_BASE_REF);
@@ -111,7 +116,7 @@ public class VirtualImages {
         Edge edge = new Edge();
         edge.setStatus(EdgeStatus.PENDING);
         String fragmentCalculationId;
-		try { fragmentCalculationId = initiateFragmentCalculation(requestBody, parentImage, edge, knowledgeBaseRef, debug); } 
+		try { fragmentCalculationId = initiateFragmentCalculation(requestBody, parentImage, edge, requestBody.optString(Edge.INSTALLER_BASE64), requestBody.optString(Edge.INIT_BASE64), knowledgeBaseRef, debug); }  // TODO
 		catch (Exception x) { 
 			log.error(x.getMessage());
 			return Response.status(Status.BAD_REQUEST).entity(x.getMessage()).build(); 
@@ -375,7 +380,7 @@ public class VirtualImages {
 		return tags;
 	}
 	
-	private String initiateFragmentCalculation(JSONObject requestBody, final Image parent, final Edge edge, final String knowledgeBaseRef, final boolean debug) throws Exception {
+	private String initiateFragmentCalculation(JSONObject requestBody, final Image parent, final Edge edge, final String installerBase64, final String initBase64, final String knowledgeBaseRef, final boolean debug) throws Exception {
 		Client client = Client.create();
 		String service = Configuration.virtualImageDecomposerRestURL + "/tasks";
 		try {
@@ -385,6 +390,10 @@ public class VirtualImages {
 			request.put(Image.SOURCE_BASE_IMAGE_URL, BaseImages.getBaseImageUrl(parent));
 			request.put(Image.PARTITION, BaseImages.getBaseImagePartition(parent));
 			request.put(Image.SOURCE_VIRTUAL_IMAGE_ID, parent.getId());
+			
+			if (!"".equals(installerBase64)) request.put(Edge.INSTALLER_BASE64, installerBase64);
+			if (!"".equals(initBase64)) request.put(Edge.INIT_BASE64, initBase64);
+			
 			if (requestBody.optJSONArray(Edge.INSTALLER_IDS) != null) request.put(Edge.INSTALLER_IDS, requestBody.getJSONArray(Edge.INSTALLER_IDS));
 			if (!"".equals(requestBody.optString(Edge.SNAPSHOT_URL))) request.put(Edge.SNAPSHOT_URL, requestBody.optString(Edge.SNAPSHOT_URL));
 			if (!"".equals(knowledgeBaseRef)) request.put(KNOWLEDGE_BASE_REF, parent.getId());

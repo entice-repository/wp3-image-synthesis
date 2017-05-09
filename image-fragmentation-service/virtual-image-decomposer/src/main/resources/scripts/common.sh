@@ -135,6 +135,9 @@ function cleanup() {
 		# download-snapshot.sh/run-installers
 		rm -rf $TARGET_IMAGE_DIR
 		rm -f $TARGET_IMAGE_FILE
+
+		# remove service init file
+		rm -f $INIT_FILE
 		
 		# compute-diff.sh 
 		rm -f $CHANGE_LOG

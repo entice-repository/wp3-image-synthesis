@@ -23,11 +23,15 @@ Setup the database:
 $ mysql -u root -p
 
 mysql> create database virtualimages;
-mysql>  create user 'entice'@'%' IDENTIFIED BY 'entice';
+mysql> create user 'entice'@'%' IDENTIFIED BY 'entice';
 mysql> grant all privileges on virtualimages.* TO 'entice'@'%';
 mysql> flush privileges;
 
 Note: you may change the password and restrict access from the host of the web applications for security reasons
+
+Add "database host" to /etc/hosts:
+
+echo "127.0.0.1 virtual-image-manager-database" >> /etc/hosts
 
 Edit wp3-image-synthesis/image-fragmentation-service/setenv.sh,
 update fields according to current deployment place:
@@ -35,8 +39,9 @@ update fields according to current deployment place:
 - PUBLIC_VIRTUAL_IMAGE_COMPOSER_REST_URL: it should point to the IP/hostname of the hosting machine, which must be accessible from VMs under assembly
 - VIRTUAL_IMAGE_DECOMPOSER_PATH: working dir to compute fragments, /mnt/decomposer by default
 - INSTALLER_STORAGE_PATH: dir of installers, /mnt/installers by default
+- AWS_SECRET_ACCESS_KEY: secret key for S3 storage (if applicable)
 
-Copy setenv.sh to tomcat's bin folder (/usr/share/tomcat7/bin/).
+Copy setenv.sh to tomcat's bin folder (/usr/share/tomcat7/bin/), restart tomcat7 service.
 
 Create these directories according to the above parameters with chown tomcat7:tomcat7:
 $ mkdir /mnt/decomposer
@@ -50,6 +55,10 @@ $ sudo adduser tomcat7 sudo
 $ echo 'tomcat7 ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 Note: you may add sudoer privileges for scripts in dir: /var/lib/tomcat7/webapps/virtual-image-decomposer/WEB-INF/classes/scripts/
+
+Note: for directory /mnt/decomposer (used by virtual image decomposer component) there must be enough disk space for
+8 parallel fragment calculation x ( 2 qcow2 image + 1 difference image), worst case: 24 x max image size   
+
 
 4. Deploy web applications...
 =============================

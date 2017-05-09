@@ -28,6 +28,9 @@ import javax.persistence.Transient;
 	@Transient public final static String FRAGMENT_URL = "fragmentUrl";
 	@Transient public final static String SNAPSHOT_URL = "snapshotUrl";
 
+	@Transient public final static String INSTALLER_BASE64 = "installerBase64";
+	@Transient public final static String INIT_BASE64 = "initBase64";	
+	
 	@Transient public final static long BUILD_TIMEOUT = 24 * 60 * 60l; // one day in seconds
 
 	// id

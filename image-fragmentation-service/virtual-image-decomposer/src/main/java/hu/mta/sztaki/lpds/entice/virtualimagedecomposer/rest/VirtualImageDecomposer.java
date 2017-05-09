@@ -21,6 +21,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -28,6 +29,7 @@ import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.sun.jersey.api.client.ClientResponse.Status;
+import com.sun.jersey.core.util.Base64;
 
 @Path("/tasks") 
 public class VirtualImageDecomposer {
@@ -40,13 +42,17 @@ public class VirtualImageDecomposer {
 	private final static String SOURCE_BASE_IMAGE_URL = "sourceBaseImageUrl";
 	private final static String SOURCE_VIRTUAL_IMAGE_ID = "sourceVirtualImageId";
 	private final static String INSTALLER_IDS = "installerIds";
+	private final static String INSTALLER_BASE64 = "installerBase64";
+	private final static String INSTALLER_FILE = ".delta-install.sh";
+	
 	private final static String SNAPSHOT_URL = "snapshotUrl";
 	private final static String KNOWLEDGE_BASE_REF = "knowledgeBaseRef";
 	private final static String DEBUG = "debug"; // for devops only
 	private final static String DEBUG_FILE = "debug"; // for devops only
-	
 	private final static String PARTITION = "partition";
-	
+	private final static String INIT_BASE64 = "initBase64";	
+	final static String INIT_FILE = ".delta-init.sh";	
+
 	// response fields
 	private final static String FRAGMENT_URL = "fragmentUrl";
 	private final static String STATUS = "status";
@@ -144,6 +150,29 @@ public class VirtualImageDecomposer {
 			log.error(x.getMessage(), x);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot save parameters file: " + INPUTS_FILE + " (" + x.getMessage() + ")").build() ; 		
 		} finally { if (out != null) out.close(); }
+
+		// write custom init script file
+		if (!"".equals(requestBody.optString(INIT_BASE64)))
+		out = null;
+		try {
+			out = new PrintWriter(workingDir + INIT_FILE);
+			out.println(Base64.base64Decode(requestBody.optString(INIT_BASE64)));
+		} catch (IOException x) {
+			log.error(x.getMessage(), x);
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot save init file: " + INIT_FILE + " (" + x.getMessage() + ")").build() ; 		
+		} finally { if (out != null) out.close(); }
+
+		// write custom install script file
+		if (!"".equals(requestBody.optString(INSTALLER_BASE64)))
+		out = null;
+		try {
+			out = new PrintWriter(workingDir + INSTALLER_FILE);
+			out.println(Base64.base64Decode(requestBody.optString(INSTALLER_BASE64)));
+		} catch (IOException x) {
+			log.error(x.getMessage(), x);
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot save installer file: " + INSTALLER_FILE + " (" + x.getMessage() + ")").build() ; 		
+		} finally { if (out != null) out.close(); }
+		
 		
 		// queue fragment computation
 		if (!fragmentComputationTasksQueue.isShutdown()) fragmentComputationTasksQueue.execute(new FragmentComputationTask(workingDir));
