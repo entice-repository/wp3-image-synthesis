@@ -18,6 +18,10 @@ On the host of virtual-image-decomposer, install:
  
 $ apt-get install -y curl unzip sudo module-init-tools python-pip python-dev qemu-utils
 
+on Ubuntu 16:
+$ apt-get install -y curl unzip sudo module-init-tools python-pip python-dev qemu
+
+
 ... install aws cli if fragments are stored in S3
 
 $ curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
@@ -25,6 +29,11 @@ $ unzip awscli-bundle.zip
 $ ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
 $ pip install --upgrade pip
 $ pip install awscli
+
+test installs:
+qemu-nbd -h
+modprobe -a nbd
+
 
 3. Configure the service...
 ===========================

@@ -258,7 +258,7 @@ public class VirtualImages {
         }
 		if (virtualImage == null) return Response.status(Status.BAD_REQUEST).entity("Invalid virtual image id: " + id).build();
 		log.debug("Virtual image found");
-		if (!"admin".equals(user) && !virtualImage.getOwner().equals(user))  return Response.status(Status.BAD_REQUEST).entity("Header field user differs from author: " + user).build();
+		if (!"admin".equals(user) && !virtualImage.getOwner().equals(user))  return Response.status(Status.BAD_REQUEST).entity("Header field " + CustomHTTPHeaders.HTTP_HEADER_OWNER + " differs from owner: " + user).build();
 		if (virtualImage.getOutgoingEdges().size() > 0) return Response.status(Status.BAD_REQUEST).entity("Virtual image has child virtual image(s)").build();
         // do the deletion
 		try {
