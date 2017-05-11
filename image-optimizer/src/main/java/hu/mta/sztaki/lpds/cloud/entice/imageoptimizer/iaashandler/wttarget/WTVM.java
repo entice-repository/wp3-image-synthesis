@@ -6,7 +6,6 @@ import java.util.logging.Logger;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.codec.binary.Base64;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -158,7 +157,7 @@ public class WTVM extends VirtualMachine {
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing server... " + vmId + " in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.fine("Describe server: " + vmId);
 
-		if (vmId == null) lookupVMId();
+//		if (vmId == null) lookupVMId();
 		if (vmId == null) return;
 
 		describeVM();
@@ -218,17 +217,22 @@ public class WTVM extends VirtualMachine {
 			log.info("Sending POST to '" + service + "'");
 			log.info("Username: '" + username + "'");
 			
-			// TODO disk: this.imageId
-			// TODO ovf template: this.
-	
+			// disk: this.imageId
+			// ovf template: this.
+			// { "imageId": "http://s3entice.wtelecom.es:9000/minio/redmine/redmine.ovf", "imageUrl": "http://s3entice.wtelecom.es:9000/minio/redmine/redmine-disk1.vmdk" }
+			JSONObject jsonContent = new JSONObject();
+			jsonContent.put("imageUrl",getImageId());
+			jsonContent.put("imageId", this.ovfURL);
+			
 			// send POST
 			client = Client.create();
 			WebResource webResource = client.resource(service);
 			ClientResponse response = webResource
 					.header("Authorization", "Basic " + base64Encode(this.username + ":" + this.password))
-					.type(MediaType.MULTIPART_FORM_DATA)
+//					.type(MediaType.MULTIPART_FORM_DATA)
+					.type(MediaType.APPLICATION_JSON)
 					.accept(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class);
+					.post(ClientResponse.class, jsonContent.toString());
 			
 			if (response.getStatus() != 200) {
 				log.severe("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
@@ -245,13 +249,23 @@ public class WTVM extends VirtualMachine {
 				throw new Exception("Invalid JSON: " + e.getMessage());
 	    	}
 			
-			String message = responseJSON.optString("message");
-			log.info("message: " + message);
-	    	String status = responseJSON.optString("status");
+	    	JSONObject statusJSON = null;
+	    	try { statusJSON = responseJSON.getJSONObject("status"); }
+	    	catch (JSONException e) { 
+				log.severe("Invalid JSON, key 'status' not found: " + e.getMessage());
+				throw new Exception("Invalid JSON, key 'status' not found: " + e.getMessage());
+	    	}
+	    	
+			String message = statusJSON.optString("message");
+	    	String status = statusJSON.optString("status");
 	    	this.status = mapVMStatus(status);
-			this.vmName = responseJSON.optString("name");
-			log.info("status: " + this.status);
+			this.vmName = statusJSON.optString("name");
+			this.vmId = statusJSON.optString("vmid");
+			
+			log.info("vmId: " + this.vmId);
 			log.info("name: " + this.vmName);
+			log.info("status: " + this.status);
+			log.info("message: " + message);
 
 		} finally {
 			if (client != null) client.destroy();
@@ -260,8 +274,8 @@ public class WTVM extends VirtualMachine {
 
 	private void describeVM() throws VMManagementException {
 		log.info("Describe instance: " + vmId);
-		if (vmId == null) lookupVMId();
-		if (vmId == null) {	log.info("vmid not yet available"); return; }
+//		if (vmId == null) lookupVMId();
+		if (vmId == null) {	log.severe("vmid not yet available"); return; }
 		
 		Client client = null;
 		try {
@@ -304,7 +318,7 @@ public class WTVM extends VirtualMachine {
 		}
 	}	
 
-	private void lookupVMId() throws VMManagementException {
+	/* private void lookupVMId() throws VMManagementException {
 		if (vmId != null) {	log.fine("vmid already set"); return; }
 		log.fine("Looking VM id by VM name: " + this.vmName);
 		Client client = null;
@@ -350,10 +364,9 @@ public class WTVM extends VirtualMachine {
 		} finally {
 			if (client != null) client.destroy();
 		}
-	}
+	} */
 	
 	private String mapVMStatus(String serverStatus) {
-		// FIXME
 		if (RUNNING.equalsIgnoreCase(serverStatus)) return RUNNING;
 		else if (PENDING.equalsIgnoreCase(serverStatus)) return PENDING;
 		else if (STOPPING.equalsIgnoreCase(serverStatus)) return STOPPING;

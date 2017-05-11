@@ -37,8 +37,8 @@ cd /root
 # download/build image optimizer source codes
 echo Building image optizer source codes
 git clone https://github.com/entice-repository/wp3-image-synthesis.git
-mvn install -f wp3-image-synthesis/sztaki-java-cli-utils/pom.xml
-mvn install -f wp3-image-synthesis/image-optimizer/pom.xml
+mvn install -f wp3-image-synthesis/sztaki-java-cli-utils/pom.xml -Dmaven.test.skip=true
+mvn install -f wp3-image-synthesis/image-optimizer/pom.xml -Dmaven.test.skip=true
 
 # create symlinks to scripts
 mkdir -p scripts
@@ -81,7 +81,7 @@ ln -s $MAVEN_REPO_PATH/extl/jadeclient/1.0/jadeclient-1.0.jar
 ln -s $MAVEN_REPO_PATH/com/sun/jersey/jersey-bundle/1.19/jersey-bundle-1.19.jar
 ln -s $MAVEN_REPO_PATH/com/sun/jersey/jersey-core/1.19/jersey-core-1.19.jar
 ln -s $MAVEN_REPO_PATH/javax/ws/rs/jsr311-api/1.1.1/jsr311-api-1.1.1.jar
-ln -s $MAVEN_REPO_PATH/org/json/20140107/json-20140107.jar
+ln -s $MAVEN_REPO_PATH/org/json/json/20140107/json-20140107.jar
 cd ..
 
 3. Set root SSH key...

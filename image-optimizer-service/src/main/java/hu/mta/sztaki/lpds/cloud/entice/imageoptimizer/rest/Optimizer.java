@@ -274,7 +274,7 @@ public class Optimizer {
         	} else if (WTVM.CLOUD_INTERFACE.equals(cloudInterface)) {
         		String username = parameters.get(CLOUD_ACCESS_KEY);
         		String password = parameters.get(CLOUD_SECRET_KEY);
-        		optimizerVM = new WTVM.Builder(task.getEndpoint(), username, password)
+        		optimizerVM = new WTVM.Builder(endpoint, username, password)
         				.build(); 
         	} else return Response.status(Status.BAD_REQUEST).entity("Invalid cloud interface: " + cloudInterface).build(); 
         } catch (Exception x) { return Response.status(Status.BAD_REQUEST).entity("Cannot create optimizer VM: " + x.getMessage()).build(); }
