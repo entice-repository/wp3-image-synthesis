@@ -89,7 +89,7 @@ public class VirtualImageComposer {
 			if (!"".equals(fragmentUrls)) sb.append(getFragmentInstaller(fragmentUrls, cloud, withInit));
 		}
 		// echo goes to /var/log/cloud-init-output.log 
-		sb.append("echo Fragment installation time: $((`date +\"%s\"` - ${START_TIME}))s\n");
+		sb.append("echo Fragment installation time: $((`date +\"%s\"` - ${START_TIME}))s >> /var/lib/cloud/vvmi.log\n");
 //		log.debug("Script: \n" + sb.toString());
 		return Response.status(Status.OK).entity(sb.toString())
 //						.header("Content-Disposition", "attachment; filename=\"" + id + ".sh" + "\"" )
@@ -104,6 +104,7 @@ public class VirtualImageComposer {
 			cloudPostfix = cloud;
 			if (fragmentUrl == null || !fragmentUrl.endsWith("/")) cloudPostfix = "/" + cloudPostfix;
 		}
+		sb.append("echo \"Merging fragment: " + fragmentUrl + "\" >> /var/lib/cloud/vvmi.log\n");
 		sb.append("wget --tries=3 -q -O " + DELTA_PACKAGE_FILE + " " + fragmentUrl + cloudPostfix + " || echo 'Cannot download fragment: " + fragmentUrl + cloudPostfix + "' > .delta-failure"); sb.append("\n");
 		sb.append("tar -xf " + DELTA_PACKAGE_FILE); sb.append("\n");
 		sb.append("rm " + DELTA_PACKAGE_FILE); sb.append("\n");

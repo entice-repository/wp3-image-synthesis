@@ -50,6 +50,11 @@ if [ -f "$INIT_FILE" ]; then
   chmod u+x "${DELTA_DIR}"/"${INIT_FILE}"
 fi
 
+# watermark target image
+mkdir -p "${DELTA_DIR}"/var/lib/cloud/
+echo "${TARGET_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"/var/lib/cloud/vvmi.id || echo "Cannot save parent virtual image id" 
+echo "${SOURCE_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"/var/lib/cloud/vvmi.parent || echo "Cannot save parent virtual image id" 
+
 echo '  'creating tarball
 tar -zcf $DELTA_FILE -C $DELTA_DIR . &> /dev/null || error ${LINENO} "ERROR: Cannot create delta tar.gz" 46
 

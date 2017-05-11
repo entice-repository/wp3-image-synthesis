@@ -111,19 +111,21 @@ public class VirtualImages {
 			log.error(x.getMessage());
 			return Response.status(Status.BAD_REQUEST).entity(x.getMessage()).build(); 
 		}
-        
+
+		// create virtual image
+	    Image virtualImage = new Image();
+
         // initiate fragment calculation
         Edge edge = new Edge();
         edge.setStatus(EdgeStatus.PENDING);
         String fragmentCalculationId;
-		try { fragmentCalculationId = initiateFragmentCalculation(requestBody, parentImage, edge, requestBody.optString(Edge.INSTALLER_BASE64), requestBody.optString(Edge.INIT_BASE64), knowledgeBaseRef, debug); }  // TODO
+		try { fragmentCalculationId = initiateFragmentCalculation(requestBody, virtualImage, parentImage, edge, requestBody.optString(Edge.INSTALLER_BASE64), requestBody.optString(Edge.INIT_BASE64), knowledgeBaseRef, debug); }  // TODO
 		catch (Exception x) { 
 			log.error(x.getMessage());
 			return Response.status(Status.BAD_REQUEST).entity(x.getMessage()).build(); 
 		}
 		
-		// create virtual image, connect with parent image, set edge attributes, and persist
-	    Image virtualImage = new Image();
+		// connect new virtual image with parent image, set edge attributes, and persist
         try {
 			EntityManager entityManager = DBManager.getInstance().getEntityManager();
 			entityManager.getTransaction().begin();
@@ -372,15 +374,15 @@ public class VirtualImages {
 		tags.addAll(image.getTags());
 		if (!image.getIncomingEdges().isEmpty()) {
 			Edge edge = image.getIncomingEdges().get(0); // assumes a single parent
-			// add incoming edge tags
-			tags.addAll(edge.getTags());
+			// add incoming edge tags NOTE: edge tags are added to image tags
+			// tags.addAll(edge.getTags());
 			// recursively descend to predecessor(s)
 			aggregateTags(edge.getFromImage(), tags);
 		}
 		return tags;
 	}
 	
-	private String initiateFragmentCalculation(JSONObject requestBody, final Image parent, final Edge edge, final String installerBase64, final String initBase64, final String knowledgeBaseRef, final boolean debug) throws Exception {
+	private String initiateFragmentCalculation(JSONObject requestBody, final Image target, final Image parent, final Edge edge, final String installerBase64, final String initBase64, final String knowledgeBaseRef, final boolean debug) throws Exception {
 		Client client = Client.create();
 		String service = Configuration.virtualImageDecomposerRestURL + "/tasks";
 		try {
@@ -390,6 +392,7 @@ public class VirtualImages {
 			request.put(Image.SOURCE_BASE_IMAGE_URL, BaseImages.getBaseImageUrl(parent));
 			request.put(Image.PARTITION, BaseImages.getBaseImagePartition(parent));
 			request.put(Image.SOURCE_VIRTUAL_IMAGE_ID, parent.getId());
+			request.put(Image.TARGET_VIRTUAL_IMAGE_ID, target.getId());
 			
 			if (!"".equals(installerBase64)) request.put(Edge.INSTALLER_BASE64, installerBase64);
 			if (!"".equals(initBase64)) request.put(Edge.INIT_BASE64, initBase64);

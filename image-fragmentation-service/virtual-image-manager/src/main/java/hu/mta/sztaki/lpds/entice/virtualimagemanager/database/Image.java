@@ -40,6 +40,7 @@ import javax.persistence.Transient;
 	@Transient public final static String TAGS = "tags"; // optional
 	@Transient public final static String CLOUD_IMAGE_IDS = "cloudImageIds"; // optional
 	@Transient public final static String SOURCE_VIRTUAL_IMAGE_ID = "sourceVirtualImageId"; // required (build VI)
+	@Transient public final static String TARGET_VIRTUAL_IMAGE_ID = "targetVirtualImageId"; // optional (build VI)
 	@Transient public final static String SOURCE_BASE_IMAGE_URL = "sourceBaseImageUrl"; // required (build VI)
 
 	@Transient public final static String FRAGMENT_IDS = "fragmentIds";

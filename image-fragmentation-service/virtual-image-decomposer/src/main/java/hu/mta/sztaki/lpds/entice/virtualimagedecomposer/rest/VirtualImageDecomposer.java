@@ -41,6 +41,7 @@ public class VirtualImageDecomposer {
 	// request fields
 	private final static String SOURCE_BASE_IMAGE_URL = "sourceBaseImageUrl";
 	private final static String SOURCE_VIRTUAL_IMAGE_ID = "sourceVirtualImageId";
+	private final static String TARGET_VIRTUAL_IMAGE_ID = "targetVirtualImageId";
 	private final static String INSTALLER_IDS = "installerIds";
 	private final static String INSTALLER_BASE64 = "installerBase64";
 	private final static String INSTALLER_FILE = ".delta-install.sh";
@@ -126,9 +127,10 @@ public class VirtualImageDecomposer {
 
 			// SH
 			out = new PrintWriter(workingDir + INPUTS_FILE);
-			
+
 			out.println("SOURCE_BASE_IMAGE_URL" + "=\"" + requestBody.optString(SOURCE_BASE_IMAGE_URL) + "\"");
 			out.println("SOURCE_VIRTUAL_IMAGE_ID" + "=\"" + requestBody.optString(SOURCE_VIRTUAL_IMAGE_ID) + "\"");
+			out.println("TARGET_VIRTUAL_IMAGE_ID" + "=\"" + requestBody.optString(TARGET_VIRTUAL_IMAGE_ID) + "\"");
 			out.println("VIRTUAL_IMAGE_COMPOSER_URL" + "=\"" + Configuration.virtualImageComposerRestUrl + "/scripts/" + "\"");
 			out.println("PARTITION" + "=\"" + partition + "\"");
 			out.println("VOLUME_GROUP" + "=\"" + volumeGroup + "\"");
@@ -152,26 +154,28 @@ public class VirtualImageDecomposer {
 		} finally { if (out != null) out.close(); }
 
 		// write custom init script file
-		if (!"".equals(requestBody.optString(INIT_BASE64)))
-		out = null;
-		try {
-			out = new PrintWriter(workingDir + INIT_FILE);
-			out.println(Base64.base64Decode(requestBody.optString(INIT_BASE64)));
-		} catch (IOException x) {
-			log.error(x.getMessage(), x);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot save init file: " + INIT_FILE + " (" + x.getMessage() + ")").build() ; 		
-		} finally { if (out != null) out.close(); }
+		if (!"".equals(requestBody.optString(INIT_BASE64))) {
+			out = null;
+			try {
+				out = new PrintWriter(workingDir + INIT_FILE);
+				out.println(Base64.base64Decode(requestBody.optString(INIT_BASE64)));
+			} catch (IOException x) {
+				log.error(x.getMessage(), x);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot save init file: " + INIT_FILE + " (" + x.getMessage() + ")").build() ; 		
+			} finally { if (out != null) out.close(); }
+		}
 
 		// write custom install script file
-		if (!"".equals(requestBody.optString(INSTALLER_BASE64)))
-		out = null;
-		try {
-			out = new PrintWriter(workingDir + INSTALLER_FILE);
-			out.println(Base64.base64Decode(requestBody.optString(INSTALLER_BASE64)));
-		} catch (IOException x) {
-			log.error(x.getMessage(), x);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot save installer file: " + INSTALLER_FILE + " (" + x.getMessage() + ")").build() ; 		
-		} finally { if (out != null) out.close(); }
+		if (!"".equals(requestBody.optString(INSTALLER_BASE64))) {
+			out = null;
+			try {
+				out = new PrintWriter(workingDir + INSTALLER_FILE);
+				out.println(Base64.base64Decode(requestBody.optString(INSTALLER_BASE64)));
+			} catch (IOException x) {
+				log.error(x.getMessage(), x);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot save installer file: " + INSTALLER_FILE + " (" + x.getMessage() + ")").build() ; 		
+			} finally { if (out != null) out.close(); }
+		}
 		
 		
 		// queue fragment computation
