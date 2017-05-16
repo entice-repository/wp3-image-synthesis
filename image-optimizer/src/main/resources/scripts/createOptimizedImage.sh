@@ -87,21 +87,37 @@ echo '  '$MOUNT_POINT unmounted
 
 # phase 1: done =============================================
 # phase 2: zerofree, convert =============================================
+if [ -z "$FS_TYPE" ] || [[ $SF_TYPE == ext* ]]; then
+	# mount (read-only) --------------------
+	echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(read-only\) ...
+	mount -o ro $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+	echo '  '$MOUNT_POINT mounted
+	
+	# zerofree --------------------
+	echo Running zerofree on $DEVICE_PARTITION ...
+	zerofree $DEVICE_PARTITION
+	echo '  'done 
+	
+	# unmount --------------------
+	echo Unmounting $MOUNT_POINT ...
+	umount $MOUNT_POINT &> /dev/null || { echo "ERROR: Could not unmount $MOUNT_POINT" ; exit 243 ; }
+	echo '  '$MOUNT_POINT unmounted
+else
+	# mount (read-only) --------------------
+	echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(read-only\) ...
+	mount $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+	echo '  '$MOUNT_POINT mounted
 
-# mount (read-only) --------------------
-echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(read-only\) ...
-mount -o ro $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
-echo '  '$MOUNT_POINT mounted
+	echo Zeroing empty space using dd ...
+	dd if=/dev/zero of=$MOUNT_POINT/empty.dd bs=1048576 || { echo '  'dd done ; }
+	sync
+	rm $MOUNT_POINT/empty.dd
 
-# zerofree --------------------
-echo Running zerofree on $DEVICE_PARTITION ...
-zerofree $DEVICE_PARTITION
-echo '  'done 
-
-# unmount --------------------
-echo Unmounting $MOUNT_POINT ...
-umount $MOUNT_POINT &> /dev/null || { echo "ERROR: Could not unmount $MOUNT_POINT" ; exit 243 ; }
-echo '  '$MOUNT_POINT unmounted
+	# unmount --------------------
+	echo Unmounting $MOUNT_POINT ...
+	umount $MOUNT_POINT &> /dev/null || { echo "ERROR: Could not unmount $MOUNT_POINT" ; exit 243 ; }
+	echo '  '$MOUNT_POINT unmounted
+fi
 
 # unload logical volumes --------------------
 if [ "$#" -gt 3 ]; then

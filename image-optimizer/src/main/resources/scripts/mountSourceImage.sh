@@ -50,7 +50,7 @@ else
   vgchange -a y $VOLUME_GROUP &> /dev/null
 
   # mount device partition to mount point
-  mount -o ro,noload /dev/$VOLUME_GROUP/$LOGICAL_VOLUME $MOUNT_POINT || { echo "ERROR: Could not mount device /dev/$VOLUME_GROUP/$LOGICAL_VOLUME onto $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+  mount /dev/$VOLUME_GROUP/$LOGICAL_VOLUME $MOUNT_POINT || { echo "ERROR: Could not mount device /dev/$VOLUME_GROUP/$LOGICAL_VOLUME onto $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
 
   echo $IMAGE_FILE mounted on $MOUNT_POINT \(/dev/$VOLUME_GROUP/$LOGICAL_VOLUME\) 
 

@@ -75,6 +75,8 @@ public class Optimizer {
 	public static final String IMAGE_CONTEXTUALIZATION = "imageContextualization"; // OPTIONAL 
 	public static final String IMAGE_CONTEXTUALIZATION_URL = "imageContextualizationURL"; // OPTIONAL 
 	public static final String IMAGE_ROOT_FILE_SYSTEM_PARTITION = "fsPartition"; // OPTIONAL (default: 1st partition, no LVM), partno || volgroup logvolume
+	public static final String IMAGE_ROOT_FILE_SYSTEM_TYPE = "fsType"; // OPTIONAL (default: ext2-ext4)
+	public static final String IMAGE_FORMAT = "imageFormat"; // OPTIONAL (default: qcow2) vmdk, vdi, vhd, vhdx, qcow1, qed, raw
 	
 	public static final String VALIDATOR_SCRIPT = "validatorScript"; // REQUIRED one of VALIDATOR_*
 	public static final String VALIDATOR_SCRIPT_URL = "validatorScriptURL"; // REQUIRED one of VALIDATOR_*
@@ -187,6 +189,17 @@ public class Optimizer {
         
         if ("".equals(requestBody.optString(IMAGE_URL))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_URL + "").build();
         parameters.put(IMAGE_URL, requestBody.getString(IMAGE_URL)); // REQUIRED
+
+        String imageFormat = requestBody.optString(IMAGE_FORMAT); 
+        if (!"".equals(imageFormat)) {
+        	if (!"vmdk".equals(imageFormat) &&
+       			!"qcow".equals(imageFormat) &&
+       			!"qcow2".equals(imageFormat) &&
+       			!"raw".equals(imageFormat))
+				log.error("Unsupported image fomat: " + imageFormat); 
+			else 
+				parameters.put(IMAGE_FORMAT, imageFormat); 
+        }
         
         if ("".equals(requestBody.optString(VALIDATOR_SCRIPT)) && "".equals(requestBody.optString(VALIDATOR_SCRIPT_URL)) && "".equals(requestBody.optString(VALIDATOR_SERVER_URL)))
         	return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + VALIDATOR_SCRIPT + " or " + VALIDATOR_SCRIPT_URL + "").build();
@@ -215,6 +228,7 @@ public class Optimizer {
         parameters.put(IMAGE_CONTEXTUALIZATION, requestBody.optString(IMAGE_CONTEXTUALIZATION)); // OPTIONAL
         parameters.put(IMAGE_CONTEXTUALIZATION_URL, requestBody.optString(IMAGE_CONTEXTUALIZATION_URL)); // OPTIONAL
         parameters.put(IMAGE_ROOT_FILE_SYSTEM_PARTITION, requestBody.optString(IMAGE_ROOT_FILE_SYSTEM_PARTITION)); // OPTIONAL
+        parameters.put(IMAGE_ROOT_FILE_SYSTEM_TYPE, requestBody.optString(IMAGE_ROOT_FILE_SYSTEM_TYPE)); // OPTIONAL 
         
         parameters.put(S3_ENDPOINT_URL, requestBody.optString(S3_ENDPOINT_URL)); // REQUIRED
         parameters.put(S3_ACCESS_KEY, requestBody.optString(S3_ACCESS_KEY)); // REQUIRED
@@ -1028,14 +1042,14 @@ public class Optimizer {
 			sb.append("    exit 1"); sb.append("\n");
 		}
 		
-		// convert vmdk to qcow2
-		if (WTVM.CLOUD_INTERFACE.equals(parameters.get(CLOUD_INTERFACE))) {
-			sb.append("    mv " + SOURCE_IMAGE_FILE + " " + SOURCE_IMAGE_FILE + ".vmdk"); sb.append("\n");
-			sb.append("    qemu-img convert -f vmdk -O qcow2 " + SOURCE_IMAGE_FILE + ".vmdk " + SOURCE_IMAGE_FILE + "");
+		// convert image format to qcow2
+		if (parameters.get(IMAGE_FORMAT) != null && !"".equals(parameters.get(IMAGE_FORMAT)) && !"qcow2".equals(parameters.get(IMAGE_FORMAT))) {
+			sb.append("    mv " + SOURCE_IMAGE_FILE + " " + SOURCE_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT)); sb.append("\n");
+			sb.append("    qemu-img convert -f " + parameters.get(IMAGE_FORMAT) + " -O qcow2 " + SOURCE_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT) + " " + SOURCE_IMAGE_FILE + "");
 			sb.append(" || { ");
-			sb.append("echo 'Cannot convert source image from vmdk to qcow2" + "' > failure");
+			sb.append("echo 'Cannot convert source image to qcow2" + "' > failure");
 			sb.append(" ; exit 1 ; }"); sb.append("\n");
-			sb.append("    rm " + SOURCE_IMAGE_FILE + ".vmdk "); sb.append("\n");
+			sb.append("    rm " + SOURCE_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT)); sb.append("\n");
 		}
 		
 		// download validator script
@@ -1069,6 +1083,11 @@ public class Optimizer {
 			}
 		}
 		
+		// export FS type parameters (absent on default ext2-ext4)
+		if (!"".equals(parameters.get(IMAGE_ROOT_FILE_SYSTEM_TYPE))) {
+			sb.append("    export FS_TYPE=" + parameters.get(IMAGE_ROOT_FILE_SYSTEM_TYPE)); sb.append("\n");
+		}
+
 		// mount source image
 		sb.append("    echo 'Mounting source image' > phase"); sb.append("\n");
 		sb.append("    ");
