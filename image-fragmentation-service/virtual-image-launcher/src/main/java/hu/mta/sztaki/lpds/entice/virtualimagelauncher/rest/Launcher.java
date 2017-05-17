@@ -22,6 +22,7 @@ import com.sun.jersey.api.client.WebResource;
 
 import hu.mta.sztaki.lpds.entice.virtualimagelauncher.ec2.EC2VM;
 import hu.mta.sztaki.lpds.entice.virtualimagelauncher.fco.FCOVM;
+import hu.mta.sztaki.lpds.entice.virtualimagelauncher.wt.WTVM;
 
 import com.sun.jersey.api.client.ClientResponse.Status;
 
@@ -145,11 +146,11 @@ public class Launcher {
 	        				.build();  
 	        		vm.run(userDataBase64);
 	        		instanceId = vm.getInstanceId();vm.run(userDataBase64);
+	        	} else if (cloudInterface.equalsIgnoreCase(WTVM.cloudInterface)) {
+	        		instanceId = WTVM.runInstance(requestBody.optString(EC2_ENDPOINT), requestBody.optString(ACCESS_KEY), requestBody.optString(SECRET_KEY), userDataBase64, cloudImageId);
 	        	} else {
 	        		return Response.status(Status.BAD_REQUEST).entity("Unsupported cloud interface: " + cloudInterface).build();
 	        	}
-	        	
-	        	// TODO FCO, VMWARE
 
 	        } catch (Exception x) {
 	        	return Response.status(Status.BAD_REQUEST).entity(x.getMessage()).build();	
