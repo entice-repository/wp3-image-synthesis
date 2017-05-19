@@ -33,8 +33,11 @@ chrootMounts
 # run custom installer (if applicable)
 if [ -f "$INSTALLER_FILE" ]; then
 	echo Running custom installer...
+	# remove potential carriage returns
+	sed -i 's/\r$//' "$INSTALLER_FILE"
 	cp "$INSTALLER_FILE" "${TARGET_IMAGE_DIR}"
 	chmod u+x ${TARGET_IMAGE_DIR}/${INSTALLER_FILE}
+	cat ${TARGET_IMAGE_DIR}/${INSTALLER_FILE}
 	chroot ${TARGET_IMAGE_DIR}/ ./${INSTALLER_FILE} || { chrootUmounts ; error ${LINENO} "ERROR: Cannot run custom install" 22 ; }
 	rm ${TARGET_IMAGE_DIR}/${INSTALLER_FILE}
 fi

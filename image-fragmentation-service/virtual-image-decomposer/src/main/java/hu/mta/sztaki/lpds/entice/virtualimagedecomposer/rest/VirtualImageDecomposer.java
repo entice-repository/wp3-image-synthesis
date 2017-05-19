@@ -93,7 +93,7 @@ public class VirtualImageDecomposer {
         if ("".equals(requestBody.optString(SOURCE_BASE_IMAGE_URL))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + SOURCE_BASE_IMAGE_URL).build(); 
         if ("".equals(requestBody.optString(SOURCE_VIRTUAL_IMAGE_ID))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + SOURCE_VIRTUAL_IMAGE_ID).build(); 
         if ("".equals(requestBody.optString(KNOWLEDGE_BASE_REF))) log.warn("Missing parameter: " + KNOWLEDGE_BASE_REF); 
-        if (requestBody.optJSONArray(INSTALLER_IDS) == null && "".equals(requestBody.optString(SNAPSHOT_URL))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + INSTALLER_IDS + " || " + SNAPSHOT_URL).build(); 
+        if (requestBody.optJSONArray(INSTALLER_IDS) == null && "".equals(requestBody.optString(SNAPSHOT_URL)) && "".equals(requestBody.optString(INSTALLER_BASE64))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + INSTALLER_IDS + " || " + SNAPSHOT_URL + " || " + INSTALLER_BASE64).build(); 
         
         String partition = "1";
         String volumeGroup = "";
