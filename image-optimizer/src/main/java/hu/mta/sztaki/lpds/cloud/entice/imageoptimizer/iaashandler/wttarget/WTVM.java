@@ -65,7 +65,7 @@ public class WTVM extends VirtualMachine {
 	// NOTE: this is the only place where instance fields can be set, the constructor does not complete (nor field initialization) 
 	// before calling runinstance
 	@Override protected void parseVMCreatorParameters(Map<String, List<String>> parameters) {
-		Shrinker.myLogger.fine("Parsing parameters for creating FCO VM"); 
+		Shrinker.myLogger.fine("Parsing parameters for creating VMware VM"); 
 		super.datacollectorDelay = 10000; // 10 seconds delay between polls
 		if (parameters == null)
 			throw new IllegalArgumentException("Missing parameters");
@@ -223,6 +223,8 @@ public class WTVM extends VirtualMachine {
 			JSONObject jsonContent = new JSONObject();
 			jsonContent.put("imageUrl",getImageId());
 			jsonContent.put("imageId", this.ovfURL);
+			
+			log.info("This is to post: " + jsonContent.toString());
 			
 			// send POST
 			client = Client.create();

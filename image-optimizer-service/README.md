@@ -1,5 +1,11 @@
 # Image Optimizer Service
 
+Image Optimizer Service performs image size optimization by removing parts of the original VM image that prove to irrelevant 
+with respect to the required functionality (validated against a test script). 
+
+Image optimizer service is capable of optimizing one VM image at a time. Depending on the parameters, the procedure is done
+in parallel by launching several VMs from the same image to speed up optimization. 
+
 ## Endpoint 
 https://IP:8443/image-optimizer-service/rest/
 
@@ -25,18 +31,18 @@ Example:
 Input JSON object fields
 
 > {
-> imageURL: 'http://…', # location of the original, un-optimized image   
+> imageURL: 'http://ï¿½', # location of the original, un-optimized image   
 > 
 > imageId: 'ami-00001459',  # image id if it is already in the optimizer's cloud
 > 
 > imageContextualizationURL: '', # location of cloud-init file to be used to contextualize
 > 
-> imageLogin: ‘root’, # default user with root permissions, contextualized with cloudKeyPair
+> imageLogin: ï¿½rootï¿½, # default user with root permissions, contextualized with cloudKeyPair
 > 
 > 
 > validatorScript: 'BASE64 encoded text', # test script source in encoded form
 > 
-> validatorScriptURL: 'http://…/validator-script.sh', # location of the validation script
+> validatorScriptURL: 'http://ï¿½/validator-script.sh', # location of the validation script
 > 
 > validatorImageURL: '', # image of the validator VM
 > 
@@ -45,20 +51,20 @@ Input JSON object fields
 > 
 > cloudAccessKey: 'ahajnal@sztaki.hu', # EC2 access key of the user
 > 
-> cloudSecretKey: '2af…', # EC2 secret key of the user
+> cloudSecretKey: '2afï¿½', # EC2 secret key of the user
 > 
 > cloudKeyPair: 'mykeypair', # EC2 key pair to be used to contextualize VMs
 > 
-> cloudPrivateKey: 'BASE64encoded private key', # cloudKeyPair’s private part
+> cloudPrivateKey: 'BASE64encoded private key', # cloudKeyPairï¿½s private part
 > 
-> cloudVMInstanceType: 'm1.medium', # worker VM type in (m1.small, m1.medium, …)
+> cloudVMInstanceType: 'm1.medium', # worker VM type in (m1.small, m1.medium, ï¿½)
 > 
 > 
 > s3EndpointURL: 'https://s3.lpds.sztaki.hu', # S3 endpoint URL where to upload the optimized image
 >  
 > s3AccessKey: 'ahajnal', # S3 access key of the user
 > 
-> s3SecretKey: '2af…', # S3 secret key of the user
+> s3SecretKey: '2afï¿½', # S3 secret key of the user
 > 
 > s3Path: 'mybucket/myimage', # object name of the optimized image including bucket name
 > 
