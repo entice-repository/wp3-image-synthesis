@@ -49,13 +49,14 @@ do
 	INSTALLER_URL="${INSTALLER_STORAGE_URL}installers/${INSTALLER_ID}/install"
 	curl ${CURL_OPTIONS} "${INSTALLER_URL}" -o ${TARGET_IMAGE_DIR}/${INSTALLER_FILE} || { chrootUmounts ; error ${LINENO} "ERROR: Cannot download installer: ${INSTALLER_URL}" 21 ; }
 	chmod u+x ${TARGET_IMAGE_DIR}/${INSTALLER_FILE}
-	echo Running installer: $INSTALLER_ID:
+	echo Running installer $INSTALLER_ID
 #	cat ${TARGET_IMAGE_DIR}/${INSTALLER_FILE}
 	chroot ${TARGET_IMAGE_DIR}/ ./${INSTALLER_FILE} || { chrootUmounts ; error ${LINENO} "ERROR: Cannot install: ${INSTALLER_ID}" 22 ; }
 	rm ${TARGET_IMAGE_DIR}/${INSTALLER_FILE}
 	# concatenate init scripts
-	INIT_URL="${INSTALLER_STORAGE_URL}${INSTALLER_ID}/init"
-	curl ${CURL_OPTIONS} "${INSTALLER_URL}" >> ${INIT_FILE}
+	echo Preparing init script $INSTALLER_ID
+	INIT_URL="${INSTALLER_STORAGE_URL}installers/${INSTALLER_ID}/init"
+	curl ${CURL_OPTIONS} "${INIT_URL}" >> ${INIT_FILE}
 done
 
 chrootUmounts

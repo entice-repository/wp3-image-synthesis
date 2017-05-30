@@ -46,6 +46,8 @@ chmod u+x $DELTA_DIR/$DELETIONS_SCRIPT_FILE
 
 # copy .delta-init.sh to delta dir (if exists)
 if [ -f "$INIT_FILE" ]; then
+  // remove carriage returns
+  sed -i 's/\r$//' "$INIT_FILE"
   cp "${INIT_FILE}" "${DELTA_DIR}"
   chmod u+x "${DELTA_DIR}"/"${INIT_FILE}"
 fi
@@ -53,7 +55,7 @@ fi
 # watermark target image
 mkdir -p "${DELTA_DIR}"/var/lib/cloud/
 echo "${TARGET_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"/var/lib/cloud/vvmi.id || echo "Cannot save parent virtual image id" 
-echo "${SOURCE_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"/var/lib/cloud/vvmi.parent || echo "Cannot save parent virtual image id" 
+echo "${SOURCE_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"/var/lib/cloud/vvmi.parent.id || echo "Cannot save parent virtual image id" 
 
 echo '  'creating tarball
 tar -zcf $DELTA_FILE -C $DELTA_DIR . &> /dev/null || error ${LINENO} "ERROR: Cannot create delta tar.gz" 46

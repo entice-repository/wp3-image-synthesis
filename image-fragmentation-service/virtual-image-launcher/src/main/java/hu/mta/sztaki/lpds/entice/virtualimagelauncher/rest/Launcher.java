@@ -125,11 +125,11 @@ public class Launcher {
 	        	StringBuilder userData = new StringBuilder();
 	        	userData.append("#cloud-config\n");
 	        	userData.append("runcmd:\n");
-	        	String msg = "Merging fragments of VVMI " + virtualImageId;
-	        	userData.append("- echo \"" + msg + "\" >> /var/lib/cloud/vvmi.log || echo \"" + msg + "\"\n");
+//	        	String msg = "Merging fragments of VVMI " + virtualImageId;
+//	        	userData.append("- echo \"" + msg + "\" >> /var/lib/cloud/vvmi.log || echo \"" + msg + "\"\n");
 	        	userData.append("- wget -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh\n");
-	        	msg = "Fragments merged";
-	        	userData.append("- echo \"" + msg + "\" >> /var/lib/cloud/vvmi.log || echo \"" + msg + "\"\n");
+//	        	msg = "Fragments merged";
+//	        	userData.append("- echo \"" + msg + "\" >> /var/lib/cloud/vvmi.log || echo \"" + msg + "\"\n");
 	        	userDataBase64 = base64Encode(userData.toString());
 	        }
 	        

@@ -105,6 +105,7 @@ for (Image image: baseList) {
 	</tr>
 <%
 for (Image image: virtualList) {
+	List<String> aggregatedTags = VirtualImages.aggregateTags(image, new ArrayList<String>());
 %>
 	<tr>
 		<jsp:setProperty name="created" property="time" value="<%=image.getCreated()%>" />	
@@ -114,7 +115,7 @@ for (Image image: virtualList) {
 	    <td><%=image.getStatus()%></td>
 	    <td><%=image.getMessage()%></td>
 	    <td><a href="rest/virtualimages/<%=image.getIncomingEdges().get(0).getFromImage().getId()%>"><%=image.getIncomingEdges().get(0).getFromImage().getId()%></a></td>
-	    <td><%=image.getTags()%></td>
+	    <td><%=aggregatedTags.toString()%></td>
 	    <td><%=image.getOwner()%></td>
 	    <td><%=image.getDescription()%></td>
 	    <td><a href="../virtual-image-composer/rest/scripts/<%=image.getId()%>">script</a></td>

@@ -369,7 +369,7 @@ public class VirtualImages {
 	}
 	
 	// get tags in reversed order: first highest level tags, last base image tags
-	private List<String> aggregateTags(final Image image, List <String> tags) {
+	public static List<String> aggregateTags(final Image image, List <String> tags) {
 		// add current image tags
 		tags.addAll(image.getTags());
 		if (!image.getIncomingEdges().isEmpty()) {
