@@ -1,0 +1,48 @@
+Configure S3 storage for fragments
+==================================
+
+Component virtual-image-composer is responsible for storing fragments, therefore
+you need to configure setenv.sh (or directly virtual-image-decomposer.properties) in related webapp container (tomcat)
+using these keys (values to be changed are in capital letters):
+
+export S3_ENDPOINT=https://S3_ENDPOINT_ADDRESS
+export S3_BUCKET_NAME=entice-fragments
+export AWS_ACCESS_KEY_ID=S3_ACCESS_KEY
+export AWS_SECRET_ACCESS_KEY=S3_SECRET_KEY_SHA1_ENCODED
+
+Restarting tomcat (or the webapp in the case of properties change) is required.
+
+
+Create base image 
+=================
+
+To register a base image in virtual-image-manager you can use the curl tool, e.g. for Ubuntu 16
+
+curl -X POST -s -H "Token: entice" -H "Content-Type: application/json" -d '{owner:admin,url:"http://source-images.S3_ENDPOINT_ADDRESS/ami-000001654.qcow2",name:"Ubuntu 16.04",tags:[ubuntu,ubuntu16,"16.04"],description:"[BASE OFFICIAL] Ubuntu 16.04.02",partition:"1",cloudImageIds:{sztaki:"ami-000001654"}}' http://VIRTUAL_IMAGE_MANAGER_HOST:8080/virtual-image-manager/rest/baseimages/ > baseImageId
+
+Notes:
+- if token changed in setent.sh VIRTUAL_IMAGE_MANAGER_TOKEN (or virtual-image-manager.properties), change header "Token:"
+- the URL of the base image (of qcow2) must be available as given in url 
+- cloudImageIds record contains a map of "cloud_name -> cloud_image_id"s. Base image must be registered in the cloud.
+- change name, tags, description accordingly
+- partition refers to the partition where the root of file system is  
+
+After the above curl command, the file "baseImageId" should contain the UUID of the registered base image  
+
+curl http://VIRTUAL_IMAGE_MANAGER_HOST:8080/virtual-image-manager/rest/virtualimages/$(cat baseImageId)
+{"tags":["16.04","ubuntu16","ubuntu"],"message":"","id":"72664992-8ccc-432f-ad48-a507f90476c5","created":1494332409958,"status":"READY","description":"[BASE OFFICIAL] Ubuntu 16.04","name":"Ubuntu 16.04","owner":"admin","type":"BASE"}
+
+
+Launch base image
+=================
+
+To test the base image can be launched properly, use the folloing command:
+
+curl -X POST -v -H "Content-Type: application/json" -d '{virtualImageId:"'$(cat baseImageId)'",cloud:sztaki,endpoint:"http://EC2_ENDPOINT:4567",accessKey:"ACCESS_KEY",secretKey:SECRET_KEY_SHA1,instanceType:m1.medium}' http://VIRTUAL_IMAGE_MANAGER_HOST:8080/virtual-image-launcher/rest/launcher
+
+Change fields: EC2_ENDPOINT, ACCESS_KEY, SECREY_KEY_SHA1 accordingly
+If at registering the image id with a cloud different from name "sztaki" (e.g. deimos), change, json key "cloud:sztaki" accordingly (cloud:deimos)
+
+
+
+
