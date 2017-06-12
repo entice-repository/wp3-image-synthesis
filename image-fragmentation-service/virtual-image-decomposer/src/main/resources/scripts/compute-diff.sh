@@ -46,7 +46,7 @@ chmod u+x $DELTA_DIR/$DELETIONS_SCRIPT_FILE
 
 # copy .delta-init.sh to delta dir (if exists)
 if [ -f "$INIT_FILE" ]; then
-  // remove carriage returns
+  # remove carriage returns
   sed -i 's/\r$//' "$INIT_FILE"
   cp "${INIT_FILE}" "${DELTA_DIR}"
   chmod u+x "${DELTA_DIR}"/"${INIT_FILE}"
