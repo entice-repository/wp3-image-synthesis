@@ -29,7 +29,6 @@
 	<tr><td>grouperToUse</td><td><%=Configuration.grouperToUse%></td></tr>
 	<tr><td>maxUsableCPUs</td><td><%=Configuration.maxUsableCPUs%></td></tr>
 	<tr><td>parallelVMNum</td><td><%=Configuration.parallelVMNum%></td></tr>
-	<tr><td>vmFactory</td><td><%=Configuration.vmFactory%></td></tr>
 	<tr><td>scriptPrefix</td><td><%=Configuration.scriptPrefix%></td></tr>
 	<tr><td>optimizerRootLogin</td><td><%=Configuration.optimizerRootLogin%></td></tr>
 </table>
