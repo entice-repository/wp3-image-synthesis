@@ -395,6 +395,7 @@ public class Optimizer {
 		        		// read parameters from database
 		        		String userEmailAddressSlashCustomerUUID = task.getAccessKey();
 		        		String password = task.getSecretKey();
+		        		// Configuration.optimizerImageId is used anyway? 
 		        		vm = new FCOVM.Builder(task.getEndpoint(), userEmailAddressSlashCustomerUUID, password, Configuration.optimizerImageId)
 		        				.withServerUUID(task.getInstanceId())
 		        				.build(); 
@@ -982,7 +983,13 @@ public class Optimizer {
 	}
 	
 	private String generateCloudInitWriteFiles(Map<String,String> parameters) {
-		String vmFactoryClass = Configuration.vmFactory != null && Configuration.vmFactory.contains(".") ? Configuration.vmFactory.substring(Configuration.vmFactory.lastIndexOf(".") + 1) : "EC2";
+		String vmFactory;
+		// set vmFactory according to cloudInterface
+		String cloudInterface = parameters.get(CLOUD_INTERFACE); // must not be null
+       	if (FCOVM.CLOUD_INTERFACE.equals(cloudInterface)) vmFactory = "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.fcotarget.SOAP";
+       	else if (WTVM.CLOUD_INTERFACE.equals(cloudInterface)) vmFactory = "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.wttarget.REST";
+       	else vmFactory = "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget.EC2";
+		String vmFactoryClass = vmFactory.substring(vmFactory.lastIndexOf(".") + 1); // e.g., "EC2";
 		
 		StringBuilder sb = new StringBuilder();
 		sb.append("- path: /root/optimize.sh"); sb.append("\n");
@@ -994,7 +1001,7 @@ public class Optimizer {
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.grouping.GrouperToUse=" + Configuration.grouperToUse + " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxUsableCPUs=" + parameters.get(NUMBER_OF_PARALLEL_WORKER_VMS) /*Configuration.maxUsableCPUs */+ " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.validator.ParallelVMNum=" + parameters.get(NUMBER_OF_PARALLEL_WORKER_VMS) /*Configuration.parallelVMNum*/ + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory=" + Configuration.vmFactory + " \\"); sb.append("\n"); 
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory=" + vmFactory + " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".accessKey=" + parameters.get(CLOUD_ACCESS_KEY) + " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".secretKey=" + parameters.get(CLOUD_SECRET_KEY) + " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".endpoint=" + parameters.get(CLOUD_ENDPOINT_URL) + " \\"); sb.append("\n"); 

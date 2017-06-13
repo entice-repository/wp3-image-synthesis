@@ -37,7 +37,7 @@ public class Configuration {
 	public static String grouperToUse;
 	public static String maxUsableCPUs;
 	public static String parallelVMNum;
-	public static String vmFactory;
+//	public static String vmFactory;
 	public static String scriptPrefix;
 	
 	public static String optimizerRootLogin = "root"; // login name for optimizer VM instances
@@ -110,7 +110,7 @@ public class Configuration {
 				grouperToUse = prop.getProperty("grouperToUse") != null ? prop.getProperty("grouperToUse") : "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.grouping.DirectoryGroupManager";
 				maxUsableCPUs = prop.getProperty("maxUsableCPUs") != null ? prop.getProperty("maxUsableCPUs") : "8";
 				parallelVMNum = prop.getProperty("parallelVMNum") != null ? prop.getProperty("parallelVMNum") : "8";
-				vmFactory = prop.getProperty("vmFactory") != null ? prop.getProperty("vmFactory") : "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget.EC2";
+//				vmFactory = prop.getProperty("vmFactory") != null ? prop.getProperty("vmFactory") : "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget.EC2";
 				scriptPrefix = prop.getProperty("scriptPrefix") != null ? prop.getProperty("scriptPrefix") : "/root/";
 				
 				optimizerRootLogin = prop.getProperty("optimizerRootLogin") != null ? prop.getProperty("optimizerRootLogin") : "root";
