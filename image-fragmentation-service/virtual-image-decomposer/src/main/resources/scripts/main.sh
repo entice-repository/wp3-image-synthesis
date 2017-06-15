@@ -21,6 +21,8 @@ CHANGE_LOG="delta.changelog"
 INCLUDES="delta.includes"
 
 DEBUG_FILE="debug"
+IMAGE_SIZE_FILE="imageSize"
+FRAGMENT_SIZE_FILE="fragmentSize"
 
 # check parameters
 if [ "$#" -ne 2 ]; then
@@ -96,6 +98,11 @@ fi
 cd "${WORKING_DIR}"
 set_phase "${WORKING_DIR}" "compute-diff.sh"
 . "${SCRIPT_DIR}/compute-diff.sh"
+
+# save statistics
+cd "${WORKING_DIR}"
+stat -c '%s' "${TARGET_IMAGE_FILE}" >> $"{IMAGE_SIZE_FILE}" || echo '0' >> $"{IMAGE_SIZE_FILE}"
+stat -c '%s' "${$DELTA_FILE}" >> $"{FRAGMENT_SIZE_FILE}" || echo '0' >> $"{FRAGMENT_SIZE_FILE}"
 
 # Step 4: upload delta
 cd "${WORKING_DIR}"

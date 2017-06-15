@@ -59,6 +59,8 @@ public class VirtualImageDecomposer {
 	private final static String STATUS = "status";
 	private final static String MESSAGE = "message";
 	private enum CalculationStatus { DONE, PENDING, RUNNING, FAILED }
+	private final static String FRAGMENT_SIZE = "fragmentSize";
+	private final static String IMAGE_SIZE = "imageSize";
 
 	// other constants
 	final static String INPUTS_FILE = "input.sh";
@@ -224,6 +226,22 @@ public class VirtualImageDecomposer {
 		if (new File(workingDir + URL_FILE).exists()) {
 			// read url content
 			response.put(FRAGMENT_URL, fileContent(workingDir + URL_FILE));
+		}
+		
+		// image size
+		if (new File(workingDir + IMAGE_SIZE).exists()) {
+			String sizeString = fileContent(workingDir + IMAGE_SIZE);
+			long size = 0l;
+			try { size = Long.parseLong(sizeString); }  catch (NumberFormatException x) { log.warn("Cannot parse image size string: '" + sizeString + "'" ); }
+			response.put(IMAGE_SIZE, size);
+		}
+
+		// fragment size
+		if (new File(workingDir + FRAGMENT_SIZE).exists()) {
+			String sizeString = fileContent(workingDir + FRAGMENT_SIZE);
+			long size = 0l;
+			try { size = Long.parseLong(sizeString); }  catch (NumberFormatException x) { log.warn("Cannot parse fragment size string: '" + sizeString + "'" ); }
+			response.put(FRAGMENT_SIZE, size);
 		}
 		
 		return Response.status(Status.OK).entity(response.toString()).build();

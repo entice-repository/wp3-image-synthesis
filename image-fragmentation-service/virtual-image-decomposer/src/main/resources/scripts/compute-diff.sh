@@ -6,6 +6,7 @@
 
 DELETIONS_FILE=".delta-delete"
 DELETIONS_SCRIPT_FILE=".delta-delete.sh"
+ID_FILE="/var/lib/cloud/virtual-image.id"
 
 # LVM rename to avoid conflict
 changeSourceVgUuid
@@ -56,7 +57,7 @@ fi
 # remove potential previous cloud-init history from /var/lib/cloud/ (can occur in the case of snapthot)
 rm -rf "${DELTA_DIR}"/var/lib/cloud/
 mkdir -p "${DELTA_DIR}"/var/lib/cloud/
-echo "${TARGET_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"/var/lib/cloud/vvmi.id || echo "Cannot save parent virtual image id" 
+echo "${TARGET_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"${"ID_FILE}" || echo "Cannot save virtual image id" 
 # echo "${SOURCE_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"/var/lib/cloud/vvmi.parent.id || echo "Cannot save parent virtual image id" 
 
 echo '  'creating tarball

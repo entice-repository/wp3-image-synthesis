@@ -91,6 +91,7 @@ public class VirtualImages {
     		EntityManager entityManager = DBManager.getInstance().getEntityManager();
 			entityManager.getTransaction().begin();
 			log.debug("Searching for parent image: " + requestBody.optString(Image.PARENT_VIRTUAL_IMAGE_ID) + "...");
+			// TODO let decomposer to find parent image id on snapshot
 			parentImage = entityManager.find(Image.class, requestBody.optString(Image.PARENT_VIRTUAL_IMAGE_ID));
 			entityManager.getTransaction().commit();
 			entityManager.close();
@@ -389,6 +390,7 @@ public class VirtualImages {
 			WebResource webResource = client.resource(service);
 			// prepare request
 			JSONObject request = new JSONObject();
+			// TODO can we detect parent image from snapshot?
 			request.put(Image.SOURCE_BASE_IMAGE_URL, BaseImages.getBaseImageUrl(parent));
 			request.put(Image.PARTITION, BaseImages.getBaseImagePartition(parent));
 			request.put(Image.SOURCE_VIRTUAL_IMAGE_ID, parent.getId());
