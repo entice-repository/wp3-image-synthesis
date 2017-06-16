@@ -28,6 +28,8 @@ import javax.persistence.Transient;
 	@Transient public final static String FRAGMENT_URL = "fragmentUrl";
 	@Transient public final static String SNAPSHOT_URL = "snapshotUrl";
 
+	@Transient public final static String FRAGMENT_SIZE = "fragmentSize";
+	
 	@Transient public final static String INSTALLER_BASE64 = "installerBase64";
 	@Transient public final static String INIT_BASE64 = "initBase64";	
 	
@@ -42,6 +44,11 @@ import javax.persistence.Transient;
 	private long created = System.currentTimeMillis();
 	public void setCreated(long created) { this.created = created; }
 	public long getCreated() { return this.created; }
+
+	// fragment size
+	private Long fragmentSize = 0l;
+	public Long getFragmentSize() { return fragmentSize;	}
+	public void setFragmentSize(Long fragmentSize) {	this.fragmentSize = fragmentSize; }
 
 	// from
 	@ManyToOne @JoinColumn(name="fromImage") Image fromImage;

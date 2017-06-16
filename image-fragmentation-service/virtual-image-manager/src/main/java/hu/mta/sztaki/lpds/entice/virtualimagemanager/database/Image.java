@@ -43,6 +43,9 @@ import javax.persistence.Transient;
 	@Transient public final static String TARGET_VIRTUAL_IMAGE_ID = "targetVirtualImageId"; // optional (build VI)
 	@Transient public final static String SOURCE_BASE_IMAGE_URL = "sourceBaseImageUrl"; // required (build VI)
 
+	@Transient public final static String IMAGE_SIZE = "imageSize";
+
+	
 	@Transient public final static String FRAGMENT_IDS = "fragmentIds";
 	@Transient public final static int MAX_NUMBER_OF_ACCUMULATED_TAGS = 1000; 
 
@@ -92,6 +95,11 @@ import javax.persistence.Transient;
 	@Lob private String url = "";
 	public String getUrl() { return url; }
 	public void setUrl(String url) { this.url = url; }
+
+	// image size (if it had been built from fragments)
+	private Long imageSize = 0l;
+	public Long getImageSize() { return imageSize; }
+	public void setImageSize(Long imageSize) { this.imageSize = imageSize; }
 
 	// partition number or logical volume (volume-group logical-volume-name) of the root file system
 	private String diskPartition = "";

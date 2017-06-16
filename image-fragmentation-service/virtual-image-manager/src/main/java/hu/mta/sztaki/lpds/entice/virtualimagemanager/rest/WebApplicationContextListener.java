@@ -181,6 +181,8 @@ public class WebApplicationContextListener implements ServletContextListener {
 				String status = responseJSON.optString(Edge.STATUS);
 				String message = responseJSON.optString(Image.MESSAGE);
 				String fragmentUrl = responseJSON.optString(Edge.FRAGMENT_URL);
+				long imageSize = responseJSON.optLong(Image.IMAGE_SIZE, 0l);
+				long fragmentSize = responseJSON.optLong(Edge.FRAGMENT_SIZE, 0l);
 				if ("".equals(status)) log.error("Missing key in status response:" + Edge.STATUS);
 				
 				// store result
@@ -192,10 +194,12 @@ public class WebApplicationContextListener implements ServletContextListener {
 						if ("done".equalsIgnoreCase(status)) {
 							edge.setStatus(Edge.EdgeStatus.READY);
 							edge.getToImage().setStatus(Image.ImageStatus.READY);
+							edge.getToImage().setImageSize(imageSize);
 							if (!"".equals(fragmentUrl))	{
 								log.debug("Fragment URL: " + fragmentUrl);
 								edge.setFragmentUrl(fragmentUrl);
 							} else log.error("Missing key in status reponse: " + Edge.FRAGMENT_URL);
+							edge.setFragmentSize(fragmentSize);
 							done = true;
 						} else if ("failed".equalsIgnoreCase(status)) {
 							edge.setStatus(Edge.EdgeStatus.FAILED);

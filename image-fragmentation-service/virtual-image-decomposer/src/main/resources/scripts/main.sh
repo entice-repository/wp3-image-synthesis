@@ -101,8 +101,8 @@ set_phase "${WORKING_DIR}" "compute-diff.sh"
 
 # save statistics
 cd "${WORKING_DIR}"
-stat -c '%s' "${TARGET_IMAGE_FILE}" >> $"{IMAGE_SIZE_FILE}" || echo '0' >> $"{IMAGE_SIZE_FILE}"
-stat -c '%s' "${$DELTA_FILE}" >> $"{FRAGMENT_SIZE_FILE}" || echo '0' >> $"{FRAGMENT_SIZE_FILE}"
+stat -c '%s' "${TARGET_IMAGE_FILE}" >> "${IMAGE_SIZE_FILE}" || echo '0' >> "${IMAGE_SIZE_FILE}"
+stat -c '%s' "${DELTA_FILE}" >> "${FRAGMENT_SIZE_FILE}" || echo '0' >> "${FRAGMENT_SIZE_FILE}"
 
 # Step 4: upload delta
 cd "${WORKING_DIR}"
