@@ -29,6 +29,25 @@
 	
 </table>
 
+<%
+int numberOfBaseImages = 0;
+int numberOfVirtualImages = 0;
+int numberOfFragments = 0;
+long sizeOfBaseImages = 0l;
+long sizeOfVirtualImages = 0l;
+long sizeOfFragments = 0;
+%>
+
+<%!
+public static String humanReadableByteCount(long bytes, boolean si) {
+    int unit = si ? 1000 : 1024;
+    if (bytes < unit) return bytes + " B";
+    int exp = (int) (Math.log(bytes) / Math.log(unit));
+    String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
+    return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+}
+%>
+
 <h4>Base Images:</h4>
 <%
 		List<Image> baseList = new Vector<Image>();
@@ -54,9 +73,12 @@
 	    <th>Description</th>
 	    <th>Partition</th>
 	    <th>Cloud image ids</th>
+	    <th>Size</th>
 </tr>
 <%
 for (Image image: baseList) {
+	numberOfBaseImages++;
+	if (image.getImageSize() != null) sizeOfBaseImages += image.getImageSize();
 %>
 <tr>
 		<jsp:useBean id="created" class="java.util.Date" />
@@ -70,6 +92,7 @@ for (Image image: baseList) {
 	    <td><%=image.getDescription()%></td>
 	    <td><%=image.getDiskPartition()%></td>
 	    <td><%=image.getImageIds()%></td>
+	    <td><%=image.getImageSize()%></td>
 	</tr>
 <%
 } // for each image 
@@ -101,10 +124,14 @@ for (Image image: baseList) {
 	    <th>Tags</th>
 	    <th>Owner</th>
 	    <th>Description</th>
+	    <th>Size</th>
 	    <th>Delta script</th>
 	</tr>
 <%
 for (Image image: virtualList) {
+	numberOfVirtualImages++;
+	if (image.getImageSize() != null) sizeOfVirtualImages += image.getImageSize();
+
 	List<String> aggregatedTags = VirtualImages.aggregateTags(image, new ArrayList<String>());
 %>
 	<tr>
@@ -118,6 +145,7 @@ for (Image image: virtualList) {
 	    <td><%=aggregatedTags.toString()%></td>
 	    <td><%=image.getOwner()%></td>
 	    <td><%=image.getDescription()%></td>
+	    <td><%=image.getImageSize()%></td>
 	    <td><a href="../virtual-image-composer/rest/scripts/<%=image.getId()%>">script</a></td>
 	</tr>
 <%
@@ -148,9 +176,12 @@ for (Image image: virtualList) {
 	    <th>Fragment URL</th>
 	    <th>Snapshot URL</th>
 	    <th>Task id</th>
+	    <th>Fragment size</th>
 	</tr>
 <%
 for (Edge edge: edgeList) {
+	numberOfFragments++;
+	if (edge.getFragmentSize() != null) sizeOfFragments += edge.getFragmentSize();
 %>
 	<tr>
 		<td><a href="rest/virtualimages/<%=edge.getToImage().getId()%>"><%=edge.getToImage().getId()%></a></td>
@@ -161,10 +192,40 @@ for (Edge edge: edgeList) {
 	    <td><a href="<%=edge.getFragmentUrl()%>"><%=edge.getFragmentUrl()!=null?edge.getFragmentUrl():""%></a></td>
 	    <td><a href="<%=edge.getSnapshotUrl()%>"><%=edge.getSnapshotUrl()!=null?edge.getSnapshotUrl():""%></a></td>
 	    <td><%=edge.getFragmentComputationTaskId()!=null?edge.getFragmentComputationTaskId():""%></td>
+	    <td><%=edge.getFragmentSize()%></td>
 	</tr>
 <%
 } // for each edge
 %>
 </table>
+
+<h4>Storage statistics:</h4>
+
+<table>
+<tr>
+	    <th></th>
+	    <th>Number</th>
+	    <th>Size</th>
+</tr>
+<tr>
+	<td>Base images</td>
+	<td><%=numberOfBaseImages%></td>
+	<td><%=humanReadableByteCount(sizeOfBaseImages, true)%></td>
+</tr>
+<tr>
+	<td>Virtual images</td>
+	<td><%=numberOfVirtualImages%></td>
+	<td><%=humanReadableByteCount(sizeOfVirtualImages, true)%></td>
+</tr>
+<tr>
+	<td>Fragments</td>
+	<td><%=numberOfFragments%></td>
+	<td><%=humanReadableByteCount(sizeOfFragments, true)%></td>
+</tr>
+</table>
+
+<br/>
+Storage space reduction (sizeof(base images + fragments) / sizeof(base images + virtual images)): <%=humanReadableByteCount(sizeOfBaseImages + sizeOfFragments, true)%> / <%=humanReadableByteCount(sizeOfBaseImages + sizeOfVirtualImages, true)%><br/>
+Reduction ratio (1 - virtual size/real size): <%=sizeOfBaseImages==0l?"-":String.format("%.1f", 100 - 100*((double)sizeOfBaseImages + (double)sizeOfFragments)/((double)sizeOfBaseImages + (double)sizeOfVirtualImages))%>% 
 
 </body></html>
