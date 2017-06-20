@@ -21,6 +21,9 @@ $ apt-get install -y curl unzip sudo module-init-tools python-pip python-dev qem
 on Ubuntu 16:
 $ apt-get install -y curl unzip sudo module-init-tools python-pip python-dev qemu
 
+Add mysql lib to tomcat where virtual-image-manager
+
+cp mysql-connector-java-5.1.24.jar /usr/share/tomcat7/lib/
 
 ... install aws cli if fragments are stored in S3
 
