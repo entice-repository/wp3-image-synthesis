@@ -95,6 +95,7 @@ public class Optimizer {
 	public static final String S3_SECRET_KEY = "s3SecretKey"; // OPTIONAL
 	public static final String S3_PATH = "s3Path"; // OPTIONAL (bucket/filename)
 	public static final String S3_REGION = "s3Region"; // OPTIONAL (Amazon requires)
+	public static final String S3_SIGNATURE_VERSION = "s3SignatureVersion"; // OPTIONAL (Amazon requires)
 	
 	public static final String MAX_ITERATIONS_NUM = "maxIterationsNum"; // OPTIONAL (algorithm stops at reaching the plateau)
 	public static final String MAX_NUMBER_OF_VMS = "maxNumberOfVMs"; // OPTIONAL
@@ -235,7 +236,8 @@ public class Optimizer {
         parameters.put(S3_SECRET_KEY, requestBody.optString(S3_SECRET_KEY)); // REQUIRED
         parameters.put(S3_PATH, requestBody.optString(S3_PATH)); // REQUIRED
         parameters.put(S3_REGION, requestBody.optString(S3_REGION));
-
+        parameters.put(S3_SIGNATURE_VERSION, requestBody.optString(S3_SIGNATURE_VERSION));
+        
         // check potential s3 parameters and required credentials
         if (	(!"".equals(requestBody.optString(IMAGE_URL)) && requestBody.optString(IMAGE_URL).startsWith("s3://")) ||
         		(!"".equals(requestBody.optString(VALIDATOR_SCRIPT_URL)) && requestBody.optString(VALIDATOR_SCRIPT_URL).startsWith("s3://")) ||
@@ -1021,6 +1023,13 @@ public class Optimizer {
 		if (!"".equals(parameters.get(AIMED_SIZE))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.aimedSize=" + parameters.get(AIMED_SIZE)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(MAX_RUNNING_TIME))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxRunningTime=" + parameters.get(MAX_RUNNING_TIME)); sb.append(" \\" + "\n"); }
 		sb.append("    -Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.NoOpLog"); sb.append("\""); sb.append("\n");
+		
+		// FIXME in the case of WT set signature version
+		if (!"".equals(parameters.get(S3_SIGNATURE_VERSION))) {
+			sb.append("    ");
+			sb.append("aws configure set default.s3.signature_version " + parameters.get(S3_SIGNATURE_VERSION)); // s3v4
+			sb.append("\n");
+		}
 		
 		// if HTTP(s)
 		if (parameters.get(IMAGE_URL).startsWith("http://") || parameters.get(IMAGE_URL).startsWith("https://")) {
