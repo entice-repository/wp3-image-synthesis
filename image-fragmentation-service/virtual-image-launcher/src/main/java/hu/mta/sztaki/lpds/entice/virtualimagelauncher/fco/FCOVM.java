@@ -1,11 +1,15 @@
 package hu.mta.sztaki.lpds.entice.virtualimagelauncher.fco;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,6 +36,7 @@ import com.extl.jade.user.ResourceType;
 import com.extl.jade.user.SearchFilter;
 import com.extl.jade.user.Server;
 import com.extl.jade.user.ServerStatus;
+import com.extl.jade.user.SshKey;
 import com.extl.jade.user.UserAPI;
 import com.extl.jade.user.UserService;
 import com.extl.jade.user.VirtualizationType;
@@ -43,17 +48,19 @@ public class FCOVM {
 	private static final Logger log = LoggerFactory.getLogger(Launcher.class);
 
 	
-	public static final String cloudInterface = "ec2";
+	public static final String cloudInterface = "fco";
 	
 	private ExecutorService threadExecutor = Executors.newFixedThreadPool(2); // runs startServer and describeServer threads
 	private AtomicBoolean describeInProgress = new AtomicBoolean(false); // allow new describe if no describe in progress 
 	
 	private String userDataBase64; // cloud-init
-	private String login; // for cloud-init
-	private String sshKeyPath; // for cloud-init
+	
+	private String login = Configuration.rootLogin;
+	private String sshKeyPath = Configuration.sshKeyPath;
+	private String sshPubPath = Configuration.sshPubPath;
 	
 	// configuration-defined fixed-parameters (optimization task-invariant)
-	private final String serverName = "Optimizer Orchestrator VM " + UUID.randomUUID(); 
+	private final String serverName = "VM assembled from fragments " + UUID.randomUUID(); 
 	private static final String nicResourceName = "Nic-Card-1"; 
 	
 	// user-defined required parameters (must be present in request json)
@@ -216,6 +223,13 @@ public class FCOVM {
 	    server.setResourceType(ResourceType.SERVER);
 		server.setVdcUUID(vdcUUID);
 		server.setVirtualizationType(VirtualizationType.VIRTUAL_MACHINE);
+		server.setInitialUser("root");
+		SshKey key = new SshKey();
+		key.setPublicKey(getFileAsString(sshPubPath));
+		server.getSshkeys().add(key); // FIXME
+		log.info("Public key added to server: server.getSshkeys().add(key)");
+		log.info("Public key: " + getFileAsString(sshPubPath));
+		
 		// add NIC
 		Nic nicCard = new Nic();
 		nicCard.setClusterUUID(clusterUUID);
@@ -231,8 +245,6 @@ public class FCOVM {
 	public void run(String userDataBase64) throws Exception {
 		log.info("Launching VM in FCO...");
 	
-		login = Configuration.rootLogin;
-		sshKeyPath = Configuration.sshKeyPath;
 		this.userDataBase64 = userDataBase64;
 		
 		// create server
@@ -548,4 +560,19 @@ public class FCOVM {
 	private static String base64Encode(String value) {
 		return value != null ? new String(Base64.encodeBase64(value.getBytes())) : "";
 	}	
+
+	private static String getFileAsString(String file) {
+		try {
+			InputStream in = new FileInputStream(file);
+			try {
+				Scanner s = new Scanner(in).useDelimiter("\\A");
+				String content = s.hasNext() ? s.next() : "";
+				return content;
+			} 
+			finally { try { in.close(); } catch (IOException e) {} }
+		} catch (FileNotFoundException x) {
+			log.error(x.getMessage(), x);
+			return "";
+		}
+	}
 }

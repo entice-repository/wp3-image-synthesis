@@ -34,6 +34,7 @@ public class Configuration {
 	public static String serverProductOfferUUID;
 	public static String rootLogin = "root";
 	public static String sshKeyPath;
+	public static String sshPubPath;
 	public static boolean hostnameVerification = true;
 	
 	static {
@@ -56,6 +57,7 @@ public class Configuration {
 				vdcUUID = prop.getProperty("vdcUUID");
 				serverProductOfferUUID = prop.getProperty("serverProductOfferUUID");
 				sshKeyPath = prop.getProperty("sshKeyPath");
+				sshPubPath = prop.getProperty("sshPubPath");
 				if (prop.getProperty("hostnameVerification") != null && prop.getProperty("hostnameVerification").startsWith("disable")) {
 					hostnameVerification = false;
 					disableHostnameVerification();
@@ -92,6 +94,18 @@ public class Configuration {
 					if (sshKeyPath.startsWith("file:\\")) sshKeyPath = sshKeyPath.substring("file:\\".length());
 					else if (sshKeyPath.startsWith("file:/")) sshKeyPath = sshKeyPath.substring("file:".length());
 				} else log.error("Private SSH key not found for launched VMs: " + "id.rsa" + "");
+			} catch (Throwable x) {}
+		}
+
+		// if not set, try to locate SSH key public part
+		if (sshPubPath == null) {
+			try {
+				log.warn("Using default sshPubPath");
+				sshPubPath = Thread.currentThread().getContextClassLoader().getResource("pub.rsa").toString();
+				if (sshPubPath != null) { 
+					if (sshPubPath.startsWith("file:\\")) sshPubPath = sshPubPath.substring("file:\\".length());
+					else if (sshPubPath.startsWith("file:/")) sshPubPath = sshPubPath.substring("file:".length());
+				} else log.error("Public SSH key not found for launched VMs: " + "pub.rsa" + "");
 			} catch (Throwable x) {}
 		}
 		
