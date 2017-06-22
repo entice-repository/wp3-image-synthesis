@@ -36,7 +36,6 @@ import com.extl.jade.user.ResourceType;
 import com.extl.jade.user.SearchFilter;
 import com.extl.jade.user.Server;
 import com.extl.jade.user.ServerStatus;
-import com.extl.jade.user.SshKey;
 import com.extl.jade.user.UserAPI;
 import com.extl.jade.user.UserService;
 import com.extl.jade.user.VirtualizationType;
@@ -79,6 +78,9 @@ public class FCOVM {
 	private final int cpuSize;
 	private final int ramSize;
 
+	private final String keypairName;
+
+	
 	// VM status
 	public static final String UNKNOWN = "unknown";
 	public static final String PENDING = "pending";
@@ -113,7 +115,9 @@ public class FCOVM {
 		private int ramSize = 1024;
 		private int diskSize = 16; // GB
 		private String serverUUID = null;
-		
+
+		private String keypairName;
+
 		public Builder(String endpoint, String userEmailAddressSlashCustomerUUID, String password, String imageUUID)  {
 			this.endpoint = endpoint;
 			this.userEmailAddressSlashCustomerUUID = userEmailAddressSlashCustomerUUID;
@@ -172,6 +176,12 @@ public class FCOVM {
 			this.serverUUID = serverUUID;
 			return this;
 		}
+
+		public Builder withKeypair(String keypairName) {
+			this.keypairName = keypairName;
+			return this;
+		}
+
 		
 		public FCOVM build() throws MalformedURLException, DatatypeConfigurationException, IOException {
 			return new FCOVM(this);
@@ -196,6 +206,8 @@ public class FCOVM {
 		ramSize = builder.ramSize;
 
 		serverUUID = builder.serverUUID;
+
+		keypairName = builder.keypairName;
 		
 		service = getService(endpoint, userEmailAddressSlashCustomerUUID, password);
 		datatypeFactory = DatatypeFactory.newInstance();
@@ -224,9 +236,10 @@ public class FCOVM {
 		server.setVdcUUID(vdcUUID);
 		server.setVirtualizationType(VirtualizationType.VIRTUAL_MACHINE);
 		server.setInitialUser("root");
-		SshKey key = new SshKey();
-		key.setPublicKey(getFileAsString(sshPubPath));
-		server.getSshkeys().add(key); // FIXME
+//		SshKey key = new SshKey();
+//		key.setPublicKey(getFileAsString(sshPubPath));
+//		key.setPublicKey("1d6aec86-0c1d-3c0e-97e0-dfbb1e9c290d");
+//		server.getSshkeys().add(key); 
 		log.info("Public key added to server: server.getSshkeys().add(key)");
 		log.info("Public key: " + getFileAsString(sshPubPath));
 		
@@ -452,6 +465,7 @@ public class FCOVM {
 			
 			if (privateDnsName != null && RUNNING.equals(status)) {
 				try {
+					if (!"".equals(this.keypairName)) attachSSHKey(this.keypairName); // FIXME "1d6aec86-0c1d-3c0e-97e0-dfbb1e9c290d"
 					emulateCloudInit(privateDnsName, login, sshKeyPath);
 					log.debug("Cloud-init done");
 					break;
@@ -552,6 +566,17 @@ public class FCOVM {
 		log.debug("Waiting for Delete server job to complete...");
 		Job response = service.waitForJob(deleteJob.getResourceUUID(), true);
 		log.debug("Delete server job completed");
+		if (response.getErrorCode() == null) {
+			log.info("Server deleted: " + serverUUID);
+		} else throw new Exception("Cannot terminate server: " + response.getErrorCode());
+	}
+	
+	private void attachSSHKey(String keypairName) throws Exception {
+		log.debug("Attach ssh key");
+		if (serverUUID == null) throw new Exception("Server UUID is null");
+		Job attachSSHKeyJob = service.attachSSHKey(serverUUID, keypairName, datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
+		if (attachSSHKeyJob == null) throw new Exception("Server UUID not found: " + serverUUID + " (null job)");
+		Job response = service.waitForJob(attachSSHKeyJob.getResourceUUID(), true);
 		if (response.getErrorCode() == null) {
 			log.info("Server deleted: " + serverUUID);
 		} else throw new Exception("Cannot terminate server: " + response.getErrorCode());

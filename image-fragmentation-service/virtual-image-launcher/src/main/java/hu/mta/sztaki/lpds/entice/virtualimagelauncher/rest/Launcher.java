@@ -143,6 +143,7 @@ public class Launcher {
 	        		FCOVM vm = new FCOVM.Builder(requestBody.optString(EC2_ENDPOINT), requestBody.optString(ACCESS_KEY), requestBody.optString(SECRET_KEY), cloudImageId)
 	        				.withInstanceType(requestBody.optString(INSTANCE_TYPE, "m1.small"))
 	        				.withDiskSize(16) // GB
+	        				.withKeypair(requestBody.optString(KEYPAIR_NAME))
 	        				.build();  
 	        		vm.run(userDataBase64);
 	        		instanceId = vm.getInstanceId();vm.run(userDataBase64);
