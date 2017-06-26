@@ -572,14 +572,14 @@ public class FCOVM {
 	}
 	
 	private void attachSSHKey(String keypairName) throws Exception {
-		log.debug("Attach ssh key");
+		log.debug("Attach ssh key: " + keypairName);
 		if (serverUUID == null) throw new Exception("Server UUID is null");
 		Job attachSSHKeyJob = service.attachSSHKey(serverUUID, keypairName, datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
 		if (attachSSHKeyJob == null) throw new Exception("Server UUID not found: " + serverUUID + " (null job)");
 		Job response = service.waitForJob(attachSSHKeyJob.getResourceUUID(), true);
 		if (response.getErrorCode() == null) {
-			log.info("Server deleted: " + serverUUID);
-		} else throw new Exception("Cannot terminate server: " + response.getErrorCode());
+			log.info("SSH key attached deleted: " + serverUUID);
+		} else throw new Exception("Cannot attach SSH key: " + response.getErrorCode());
 	}
 	
 	private static String base64Encode(String value) {
