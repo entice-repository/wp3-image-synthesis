@@ -80,6 +80,7 @@ public class BaseImages {
 			baseImage.setDescription(requestBody.optString(Image.DESCRIPTION));
 			baseImage.setUrl(requestBody.optString(Image.URL));
 			baseImage.setDiskPartition(requestBody.optString(Image.PARTITION));
+			baseImage.setImageSize(requestBody.optLong(Image.IMAGE_SIZE, 0l));
 			// process tags
 			JSONArray tags = requestBody.optJSONArray(Image.TAGS);
 			if (tags != null) {
@@ -187,6 +188,7 @@ public class BaseImages {
 		json.put(Image.CREATED, image.getCreated());
 		json.put(Image.OWNER, image.getOwner());
 		json.put(Image.DESCRIPTION, image.getDescription());
+		json.put(Image.IMAGE_SIZE, image.getImageSize());
 		JSONArray tags = new JSONArray();
 		for (String tag: image.getTags()) tags.put(tag);
 		json.put(Image.TAGS, tags);

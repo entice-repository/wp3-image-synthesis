@@ -80,23 +80,23 @@ done
 
 # Step 1: download and assemble source virtual image in file SOURCE_IMAGE_FILE (when done, umounted/detached)
 cd "${WORKING_DIR}"
-set_phase "${WORKING_DIR}" "build-source-image.sh"
+set_phase "${WORKING_DIR}" "Building source image..."
 . "${SCRIPT_DIR}/build-source-image.sh"
 
 # Step 2: build target image either using installers or by downloading snapshot in file TARGET_IMAGE_FILE (when done, umounted/detached)
 if [ -z "${SNAPSHOT_URL}" ]; then
 	cd "${WORKING_DIR}"
-	set_phase "${WORKING_DIR}" "run-installers.sh"
+	set_phase "${WORKING_DIR}" "Running installers..."
 	. "${SCRIPT_DIR}/run-installers.sh"
 else
 	cd "${WORKING_DIR}"
-	set_phase "${WORKING_DIR}" "download-snapshot.sh"
+	set_phase "${WORKING_DIR}" "Downloading snapshot image..."
 	. "${SCRIPT_DIR}/download-snapshot.sh"
 fi
 
 # Step 3: compute delta by mounting SOURCE_IMAGE_FILE and TARGET_IMAGE_FILE
 cd "${WORKING_DIR}"
-set_phase "${WORKING_DIR}" "compute-diff.sh"
+set_phase "${WORKING_DIR}" "Computing diff..."
 . "${SCRIPT_DIR}/compute-diff.sh"
 
 # save statistics
@@ -106,10 +106,10 @@ stat -c '%s' "${DELTA_FILE}" >> "${FRAGMENT_SIZE_FILE}" || echo '0' >> "${FRAGME
 
 # Step 4: upload delta
 cd "${WORKING_DIR}"
-set_phase "${WORKING_DIR}" "upload-fragment.sh"
+set_phase "${WORKING_DIR}" "Uploading fragment..."
 . "${SCRIPT_DIR}/upload-fragment.sh"
 
-set_phase "${WORKING_DIR}" "build done"
+set_phase "${WORKING_DIR}" "Done"
 
 cleanup
 

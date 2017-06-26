@@ -137,6 +137,8 @@ public class VirtualImages {
 			virtualImage.setName(requestBody.optString(Image.NAME));
 			virtualImage.setOwner(requestBody.optString(Image.OWNER));
 			virtualImage.setDescription(requestBody.optString(Image.DESCRIPTION));
+			virtualImage.setImageSize(0l);
+
 			virtualImage.setMessage("building...");
 			// process image tags
 			JSONArray tags = requestBody.optJSONArray(Image.TAGS);
@@ -358,6 +360,7 @@ public class VirtualImages {
 		json.put(Image.CREATED, image.getCreated());
 		json.put(Image.OWNER, image.getOwner());
 		json.put(Image.DESCRIPTION, image.getDescription());
+		json.put(Image.IMAGE_SIZE, image.getImageSize());
 	}
 	
 	private JSONObject getAggregatedVirtualImageMetadata(final Image image) {
