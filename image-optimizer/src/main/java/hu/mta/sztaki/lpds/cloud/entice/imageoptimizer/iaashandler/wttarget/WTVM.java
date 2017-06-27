@@ -154,7 +154,7 @@ public class WTVM extends VirtualMachine {
 			super.setPrivateIP(null);
 		}
 		
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing server... " + vmId + " in FCO... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing VM: " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.fine("Describe server: " + vmId);
 
 //		if (vmId == null) lookupVMId();
@@ -171,7 +171,7 @@ public class WTVM extends VirtualMachine {
 		if (super.getIP() != null && super.getPort() != null && super.getPrivateIP() != null && isinInitialState)
 			super.setState(VMREADY);
 
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describe done. Status: " + status + ", IP: " + privateDnsName + ". (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describe done. Status: " + status + ", IP: " + privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	@Override public void terminateInstance() throws VMManagementException {

@@ -314,25 +314,5 @@ public class WTVM extends VM {
 		this.vmName = null;
 		this.privateDnsName = null;
 		this.privateDnsName = null;
-	}
-	
-	public static void main(String [] args) throws Exception {
-		String endpoint = "http://api-endpoint";
-		String username = "user";
-		String password = "password";
-		WTVM vm = new WTVM.Builder(endpoint, username, password).build();
-		Map <String, String> params = new HashMap<String, String>();
-		params.put(USER_DATA, ResourceUtils.base64Decode("I2Nsb3VkLWNvbmZpZw0Kd3JpdGVfZmlsZXM6DQotIHBhdGg6IC9yb290L29wdGltaXplLnNoDQogIHBlcm1pc3Npb25zOiAiMDcwMCINCiAgY29udGVudDogfA0KICAgICMhL2Jpbi9iYXNoDQpydW5jbWQ6DQotIGVjaG8gJ0hlbGxvIHdvcmxkIScgPiAvcm9vdC9oZWxsby13b3JsZC50eHQ="));
-		vm.run(params);
-//		vm.lookupVMId();
-//		vm.vmId = "474";
-//		vm.describeInstance();
-//		vm.terminate();
-		do {
-			Thread.sleep(10000);
-			log.debug("Polling VM status...");
-			if (vm.vmId != null) try { vm.describeInstance(); } catch (Exception x) { log.debug(x.getMessage()); }
-		} while (!vm.status.equals(VM.RUNNING));
-		vm.terminate();
-	}
+	}	
 }

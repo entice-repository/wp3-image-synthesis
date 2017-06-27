@@ -292,13 +292,14 @@ public class VMInstanceManager extends Thread {
 				@Override
 				public void run() {
 					Shrinker.myLogger.info("Shutdown hook handler launched");
+					Shrinker.myLogger.info("Context.running=" + sc.isRunning());
+					sc.stop();
 					long time = System.currentTimeMillis();
-					// Wait 30 seconds before giving up waiting on VMI to terminate
-					while (!terminated && System.currentTimeMillis() - time < 30000)
+					// Wait 60 seconds before giving up waiting on VMI to terminate
+					while (!terminated && System.currentTimeMillis() - time < 60000)
 						yield();
-					if(!terminated) {
-						Shrinker.myLogger.warning("Exiting without complete termination of managed VMs!");
-					}
+					if(!terminated) Shrinker.myLogger.warning("Exiting without complete termination of managed VMs!");
+					else Shrinker.myLogger.info("Managed VMs terminated!");
 				}
 			});
 			for (int i = 0; i < maxvm; i++) {

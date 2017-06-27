@@ -80,6 +80,11 @@ public class Shrinker extends Thread {
 			return running;
 		}
 
+		public void stop() {
+			running = false;
+		}
+
+		
 		@Override
 		public String toString() {
 			return "ShrinkingContext(id: " + hashCode() + " OrigVA: " + origVaid + " va: " + vaid + " test: "
@@ -221,6 +226,15 @@ public class Shrinker extends Thread {
 			} // no such path
 			try {
 				dgm.getGroup(sc.getMountPoint().toString() + "/sbin").setTestState(Group.GroupState.CORE_GROUP);
+			} catch (NullPointerException x) {
+			} // no such path
+
+			try {
+				dgm.getGroup(sc.getMountPoint().toString() + "/usr/lib").setTestState(Group.GroupState.CORE_GROUP);
+			} catch (NullPointerException x) {
+			} // no such path
+			try {
+				dgm.getGroup(sc.getMountPoint().toString() + "/usr/share").setTestState(Group.GroupState.CORE_GROUP);
 			} catch (NullPointerException x) {
 			} // no such path
 		}
@@ -418,10 +432,12 @@ public class Shrinker extends Thread {
 			shrinkerThread[0].start();
 			shrinkerThread[0].join();
 			Shrinker.getContext(tg, null).running = false;
+			Shrinker.myLogger.info("Shrinker ended with no exzeption. Context.running=false.");
 		} else {
 			Exception e = ex.get(0);
 			System.out.println(e.getMessage());
 			e.printStackTrace();
+			Shrinker.myLogger.severe("Shrinker ended with exzeption.");
 		}
 	}
 }
