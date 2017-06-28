@@ -334,10 +334,10 @@ public class SingleValidatorThread extends Thread {
 						vm = removables.size() > 1 ? vim.getNewVMAndAcquire() : vim.getAndAcquireNextAvailableVM(); // FIXME acquire VM at getNew/getNext? vm.setAcquired()
 						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM acquired: " + (vm != null ? vm.getInstanceId() : "?") + " (" + (removables.size() > 1 ? "getNewVM" : "getNextAvailableVM") + ") for group " + removablesString);
 					}
-//					if (vm == null) { // FIXME dead code?
-//						Shrinker.myLogger.severe(getName() + "failed to acquire VM!");
-//						return;
-//					}
+					if (vm == null) {
+						Shrinker.myLogger.severe(getName() + "failed to acquire VM!");
+						return;
+					}
 					Shrinker.myLogger.info(getName() + " acquires " + (vm != null ? vm.toString() : vm));
 					try {
 						vs = noMMVA ? executeTest(vm, null) // no SSH

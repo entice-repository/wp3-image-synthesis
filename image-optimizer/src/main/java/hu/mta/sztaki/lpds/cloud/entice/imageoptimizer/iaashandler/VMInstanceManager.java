@@ -195,6 +195,7 @@ public class VMInstanceManager extends Thread {
 				}
 			}
 		}
+		Shrinker.myLogger.severe("Returning null VM");
 		return null;
 	}
 
@@ -223,7 +224,9 @@ public class VMInstanceManager extends Thread {
 	public VirtualMachine getAndAcquireNextAvailableVM() {
 		String threadName = Thread.currentThread().getName();
 		Shrinker.myLogger.info("VM request (get and acquire) " + threadName);
+		int maxtestcount = 60*20; // 20 mins
 		while (sc.isRunning() && isAlive()) {
+			
 			synchronized (vms) {
 				Collections.shuffle(vms);
 				for (InstanceAllocationData iad : vms) {
@@ -237,6 +240,11 @@ public class VMInstanceManager extends Thread {
 			try {
 				sleep(new java.util.Random().nextInt(1000));
 			} catch (InterruptedException e) {}
+			maxtestcount--;
+			if (maxtestcount <= 0) {
+				Shrinker.myLogger.severe("Cannot acquire VM  for " + maxtestcount + "s. Returning null");
+				return null;
+			}
 		}
 		Shrinker.myLogger.info("VMInstanceManager getAndAcquireNextAvailableVM after context down " + threadName);
 		return null;

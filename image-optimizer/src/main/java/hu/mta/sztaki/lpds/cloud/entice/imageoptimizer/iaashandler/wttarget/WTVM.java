@@ -96,8 +96,9 @@ public class WTVM extends VirtualMachine {
 	@Override public String runInstance(String key) throws VMManagementException {
 		Shrinker.myLogger.info("Trying to start VM... (" + getImageId() + " " + endpoint + ")");
 		int requests = reqCounter.incrementAndGet();
+		Shrinker.myLogger.info("runInstance requests " + requests + ", max: " + totalReqLimit);
 		if (requests > totalReqLimit) {
-			Shrinker.myLogger.severe("Terminating shrinking process, too many non-terminated requests");
+			Shrinker.myLogger.severe("Terminating shrinking process, runInstance requests " + requests + " > " + totalReqLimit);
 			Thread.dumpStack();
 			System.exit(1);
 		}
@@ -108,6 +109,7 @@ public class WTVM extends VirtualMachine {
 		} catch (Exception x) {
 			log.severe("Cannot create VM: " + x.getMessage());
 			status = TERMINATED;
+			reqCounter.decrementAndGet(); // note: in the case of null instanceId, this.terminateInstance() is not called from VirtualMacine.terminate, therefore we must decrement here
 			throw new VMManagementException("Cannot create server", x);
 		}
 		
@@ -175,6 +177,7 @@ public class WTVM extends VirtualMachine {
 	}
 
 	@Override public void terminateInstance() throws VMManagementException {
+		Shrinker.myLogger.info("Terminating VM: " + getInstanceId());
 		int requests = reqCounter.decrementAndGet();
 		if (requests < 0) {
 			Shrinker.myLogger.severe("Too much VM termination requests");
