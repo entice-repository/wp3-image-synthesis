@@ -71,6 +71,14 @@ public class SingleValidatorThread extends Thread {
 	private static ValidationState executeRemovalAndTest(VirtualMachine vm, String localRemoveScript,
 			final boolean testRestart, String removablesString) throws VMManagementException, IllegalStateException {
 //		VMSubState vms = vm.setAcquired(); its state already acquired at getAndAcuireNextAvailableVM
+		if (vm == null) {
+			try {
+				throw new Exception("NPE");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			return ValidationState.FAILURE;
+		}
 		VMSubState vms = vm.getSubState();
 		
 		SingleValidatorThread.ValidationState returner = SingleValidatorThread.ValidationState.FAILURE;
