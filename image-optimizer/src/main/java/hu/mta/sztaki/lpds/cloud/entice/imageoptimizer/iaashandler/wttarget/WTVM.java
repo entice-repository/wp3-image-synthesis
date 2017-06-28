@@ -306,7 +306,9 @@ public class WTVM extends VirtualMachine {
 	    	}
 			
 			this.status = mapVMStatus(responseJSON.optString("status"));
-			this.privateDnsName = responseJSON.optString("address");
+			if (RUNNING.equals(status)) {
+				this.privateDnsName = responseJSON.optString("address");
+			}
 			
 			log.info("Instance name: " + this.vmName);
 			log.info("Instance id: " + this.vmId);
