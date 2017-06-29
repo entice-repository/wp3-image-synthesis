@@ -15,6 +15,8 @@
  */
 package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler;
 
+import static hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VirtualMachine.VMState.VMREADY;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -189,32 +191,38 @@ public abstract class VirtualMachine {
 		try {
 			do {
 				if (instanceid != null) {
+					System.out.println("testBasicVM.sh failed: " + getInstanceId() + ". killing current vm...");
 					setState(VMState.REINIT);
 					terminate();
+					System.out.println("VM " + getInstanceId() + " terminated");
 				} else {
 					setState(VMState.INIT);
 				}
+
+				System.out.println("New VM will be created");
+
 				instanceid = runInstance(System.getProperty(keyPairID));
-				int datacounter = 0; // Provides the amount of instance data
-										// that is currently available
+				System.out.println("New instance id: " + instanceid);
+				
 				long exceptiontime = System.currentTimeMillis() + 20 * 60000;
-				while (datacounter < 3) {
+				int datacounter = 0; // Provides the amount of instance data that is currently available
+				while (datacounter < 3) { // sets ip, private ip, port, till 20 mins, setState(VMREADY) if successful
 					// This loop waits till the instance is in the cache
 					try {
 						datacounter = 0;
-						datacounter += getIP() == null ? 0 : 1;
+						datacounter += getIP() == null ? 0 : 1; // calls describe
 						Thread.sleep(datacollectorDelay);
-						datacounter += getPrivateIP() == null ? 0 : 1;
+						datacounter += getPrivateIP() == null ? 0 : 1; // calls describe
 						Thread.sleep(datacollectorDelay);
-						datacounter += getPort() == null ? 0 : 1;
+						datacounter += getPort() == null ? 0 : 1; // calls describe
 						Thread.sleep(datacollectorDelay);
-					} catch (InterruptedException e) {
-					}
+					} catch (InterruptedException e) {}
 					if (exceptiontime < System.currentTimeMillis()) {
+						System.out.println("The VM did not get to its running state in 20 minutes");
 						throw new VMManagementException("The VM did not get to its running state in 20 minutes", null);
 					}
 				}
-				while (getState().equals(VMState.INIT)) {
+				while (getState().equals(VMState.INIT)) { // FIXME ? how can it be
 					Thread.sleep(datacollectorDelay);
 				}
 				if (getState().equals(VMState.VMREADY)) {

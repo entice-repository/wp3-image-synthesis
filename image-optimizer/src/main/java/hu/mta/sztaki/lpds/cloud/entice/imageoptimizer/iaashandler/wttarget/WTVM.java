@@ -170,8 +170,10 @@ public class WTVM extends VirtualMachine {
 			super.setPort("22");
 		}
 
-		if (super.getIP() != null && super.getPort() != null && super.getPrivateIP() != null && isinInitialState)
+		if (super.getIP() != null && super.getPort() != null && super.getPrivateIP() != null && isinInitialState) {
+			System.out.println("VM " + getInstanceId() + " VMREADY");
 			super.setState(VMREADY);
+		}
 
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describe done. Id: " + getInstanceId() + ", status: " + status + ", IP: " + privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
@@ -307,7 +309,12 @@ public class WTVM extends VirtualMachine {
 			
 			this.status = mapVMStatus(responseJSON.optString("status"));
 			if (RUNNING.equals(status)) {
-				this.privateDnsName = responseJSON.optString("address");
+				String address = responseJSON.optString("address");
+				if (!"".equals(address)) this.privateDnsName = address;
+				else {
+					log.info("VM running " + getInstanceId() + " but has no IP");
+					this.status = UNKNOWN;
+				}
 			}
 			
 			log.info("Instance name: " + this.vmName);
