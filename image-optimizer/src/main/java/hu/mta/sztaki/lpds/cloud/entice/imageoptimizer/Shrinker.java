@@ -233,6 +233,11 @@ public class Shrinker extends Thread {
 				dgm.getGroup(sc.getMountPoint().toString() + "/usr/lib").setTestState(Group.GroupState.CORE_GROUP);
 			} catch (NullPointerException x) {
 			} // no such path
+			try {
+				dgm.getGroup(sc.getMountPoint().toString() + "/var/lib").setTestState(Group.GroupState.CORE_GROUP);
+			} catch (NullPointerException x) {
+			} // no such path
+
 		}
 		try {
 			dgm.loadGroupStates();
