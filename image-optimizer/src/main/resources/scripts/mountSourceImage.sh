@@ -28,7 +28,9 @@ DEVICE=/dev/nbd0
 modprobe -a nbd &> /dev/null || { echo "ERROR: Cannot load NBD kernel module" ; exit 243 ; }
 
 # connect VM image as device nbd0 using qemu-nbd
-qemu-nbd --read-only -c $DEVICE $IMAGE_FILE || { echo "ERROR: Could not attach $DEVICE" ; rmmod nbd &> /dev/null ; exit 243 ; }
+qemu-nbd --read-only -c $DEVICE $IMAGE_FILE || { echo "ERROR: Could not attach $DEVICE" &> /dev/null ; exit 243 ; }
+# wait 3 seconds for attach
+sleep 3
 
 if [ "$#" -lt 4 ]; then
 
@@ -36,7 +38,7 @@ if [ "$#" -lt 4 ]; then
   if [ "$#" -gt 2 ]; then PARTITION_NUMBER=$3 ; fi
 
   # mount device partition to mount point
-  mount -o ro,noload $DEVICE"p"$PARTITION_NUMBER $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICEp$PARTITION_NUMBER onto $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+  mount -o ro,noload $DEVICE"p"$PARTITION_NUMBER $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICEp$PARTITION_NUMBER onto $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; exit 243 ; }
 
   echo $IMAGE_FILE mounted on $MOUNT_POINT \($DEVICE"p"$PARTITION_NUMBER\)
 
@@ -50,7 +52,7 @@ else
   vgchange -a y $VOLUME_GROUP &> /dev/null
 
   # mount device partition to mount point
-  mount /dev/$VOLUME_GROUP/$LOGICAL_VOLUME $MOUNT_POINT || { echo "ERROR: Could not mount device /dev/$VOLUME_GROUP/$LOGICAL_VOLUME onto $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+  mount /dev/$VOLUME_GROUP/$LOGICAL_VOLUME $MOUNT_POINT || { echo "ERROR: Could not mount device /dev/$VOLUME_GROUP/$LOGICAL_VOLUME onto $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; exit 243 ; }
 
   echo $IMAGE_FILE mounted on $MOUNT_POINT \(/dev/$VOLUME_GROUP/$LOGICAL_VOLUME\) 
 
