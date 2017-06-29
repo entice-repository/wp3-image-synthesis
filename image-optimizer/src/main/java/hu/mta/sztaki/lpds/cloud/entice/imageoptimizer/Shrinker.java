@@ -142,7 +142,7 @@ public class Shrinker extends Thread {
 		sc.mountPoint = mountPoint;
 		sc.vaid = vaid;
 		// The file to report the progress of the optimisation
-		sc.groupStatesFile = new File(vaid.hashCode() + ".groupStates");
+		sc.groupStatesFile = new File(Math.abs(vaid.hashCode()) + ".groupStates");
 		sc.testScript = vaTestScript;
 		myLogger.info("Shrinking session started using context: " + sc);
 		new File(removeScript).delete();

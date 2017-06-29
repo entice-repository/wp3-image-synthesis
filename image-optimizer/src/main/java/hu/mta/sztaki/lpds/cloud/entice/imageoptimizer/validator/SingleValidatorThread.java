@@ -148,6 +148,7 @@ public class SingleValidatorThread extends Thread {
 								try { Thread.sleep(delay * 1000l); beforeRestart += delay; } catch (Exception x) {} // wait after reboot command
 								
 								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] checking uptime after restart on VM: " + vm.getInstanceId() + "");
+								// we should describe VM before trying to test restart
 								VMTests.restartTest(vm.getIP(), vm.getPort(), vm.getLoginName(), beforeRestart);
 								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart detected on VM: " + vm.getInstanceId() + "");
 							}
