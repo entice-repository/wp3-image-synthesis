@@ -191,39 +191,34 @@ public abstract class VirtualMachine {
 		try {
 			do {
 				if (instanceid != null) {
-					System.out.println("testBasicVM.sh failed: " + getInstanceId() + ". killing current vm...");
+					Shrinker.myLogger.info("testBasicVM.sh failed on instance " + getInstanceId() + ", killing...");
 					setState(VMState.REINIT);
 					terminate();
-					System.out.println("VM " + getInstanceId() + " terminated");
+					Shrinker.myLogger.info("VM " + getInstanceId() + " terminated");
 				} else {
 					setState(VMState.INIT);
 				}
 
-				System.out.println("New VM will be created");
-
 				instanceid = runInstance(System.getProperty(keyPairID));
-				System.out.println("New instance id: " + instanceid);
 				
-				long exceptiontime = System.currentTimeMillis() + 20 * 60000;
+				long exceptiontime = System.currentTimeMillis() + 20 * 60000; // 20 mins to give up
 				int datacounter = 0; // Provides the amount of instance data that is currently available
 				while (datacounter < 3) { // sets ip, private ip, port, till 20 mins, setState(VMREADY) if successful
 					// This loop waits till the instance is in the cache
 					try {
+						Thread.sleep(10000l); // wait 10 sec
 						datacounter = 0;
 						datacounter += getIP() == null ? 0 : 1; // calls describe
-						Thread.sleep(datacollectorDelay);
 						datacounter += getPrivateIP() == null ? 0 : 1; // calls describe
-						Thread.sleep(datacollectorDelay);
 						datacounter += getPort() == null ? 0 : 1; // calls describe
-						Thread.sleep(datacollectorDelay);
 					} catch (InterruptedException e) {}
-					if (exceptiontime < System.currentTimeMillis()) {
-						System.out.println("The VM did not get to its running state in 20 minutes");
+					if (System.currentTimeMillis() > exceptiontime) {
+						Shrinker.myLogger.severe("The VM did not get to its running state in 20 minutes");
 						throw new VMManagementException("The VM did not get to its running state in 20 minutes", null);
 					}
 				}
 				while (getState().equals(VMState.INIT)) { // FIXME ? how can it be
-					Thread.sleep(datacollectorDelay);
+					Thread.sleep(10000l); // wait 10 sec
 				}
 				if (getState().equals(VMState.VMREADY)) {
 					if (testConformance) {

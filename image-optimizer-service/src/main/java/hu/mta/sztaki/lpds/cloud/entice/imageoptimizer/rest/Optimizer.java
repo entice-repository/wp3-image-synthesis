@@ -1136,23 +1136,36 @@ public class Optimizer {
 		sb.append("echo 'Cannot create optimized image file " + OPTIMIZED_IMAGE_FILE + " from source image " + SOURCE_IMAGE_FILE + "' > failure");
 		sb.append(" ; exit 1 ; }"); sb.append("\n");
 		
+		String optimizedImageFileName = OPTIMIZED_IMAGE_FILE;
+		
+		// convert back optimized image to the input format
+		if (parameters.get(IMAGE_FORMAT) != null && !"".equals(parameters.get(IMAGE_FORMAT)) && !"qcow2".equals(parameters.get(IMAGE_FORMAT))) {
+			sb.append("    echo 'Converting optimized image' > phase"); sb.append("\n");
+			sb.append("    qemu-img convert -O " + parameters.get(IMAGE_FORMAT) + " -f qcow2 " + OPTIMIZED_IMAGE_FILE + " " + OPTIMIZED_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT));
+			sb.append(" || { ");
+			sb.append("echo 'Cannot convert optimized image to "+  parameters.get(IMAGE_FORMAT) + "' > failure");
+			sb.append(" ; exit 1 ; }"); sb.append("\n");
+			optimizedImageFileName = OPTIMIZED_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT); 
+			sb.append("    # rm " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
+		}
+		
 		// upload optimized image to S3
 		sb.append("    echo 'Uploading optimized image' > phase"); sb.append("\n");
 		sb.append("    ");
 		if (!"".equals(parameters.get(S3_ENDPOINT_URL)) && !"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY)) && !"".equals(parameters.get(S3_PATH))) {}
 		else sb.append("# "); // comment if no s3Path
-		sb.append("aws --endpoint-url " + parameters.get(S3_ENDPOINT_URL) + " --no-verify-ssl s3 cp " + OPTIMIZED_IMAGE_FILE + " s3://" + parameters.get(S3_PATH) + " --quiet 2> upload.out");
+		sb.append("aws --endpoint-url " + parameters.get(S3_ENDPOINT_URL) + " --no-verify-ssl s3 cp " + optimizedImageFileName + " s3://" + parameters.get(S3_PATH) + " --quiet 2> upload.out");
 		sb.append(" || { ");
-		sb.append("echo 'Cannot upload optimized image file " + OPTIMIZED_IMAGE_FILE + " to S3 server " + parameters.get(S3_ENDPOINT_URL) + " with access key: " + parameters.get(S3_ACCESS_KEY) + ", secret key: " + (parameters.get(S3_SECRET_KEY) != null ? parameters.get(S3_SECRET_KEY).substring(0, 3) : parameters.get(S3_SECRET_KEY)) + "...' > failure");
+		sb.append("echo 'Cannot upload optimized image file " + optimizedImageFileName + " to S3 server " + parameters.get(S3_ENDPOINT_URL) + " with access key: " + parameters.get(S3_ACCESS_KEY) + ", secret key: " + (parameters.get(S3_SECRET_KEY) != null ? parameters.get(S3_SECRET_KEY).substring(0, 3) : parameters.get(S3_SECRET_KEY)) + "...' > failure");
 		sb.append(" ; exit 1 ; }"); sb.append("\n");
 	
 		// econe-upload --access-key ahajnal@sztaki.hu --secret-key 60a... --url http://cfe2.lpds.sztaki.hu:4567 /mnt/optimized-image.qcow2
 		sb.append("    ");
-		sb.append("# econe-upload --access-key " + parameters.get(CLOUD_ACCESS_KEY) + " --secret-key " + parameters.get(CLOUD_SECRET_KEY) + " --url " + parameters.get(CLOUD_ENDPOINT_URL) + " " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
+		sb.append("# econe-upload --access-key " + parameters.get(CLOUD_ACCESS_KEY) + " --secret-key " + parameters.get(CLOUD_SECRET_KEY) + " --url " + parameters.get(CLOUD_ENDPOINT_URL) + " " + optimizedImageFileName); sb.append("\n");
 
 		sb.append("    ");
 		if ("".equals(parameters.get(ID)) || Configuration.knowledgeBaseURL == null) sb.append("# ");
-		sb.append("curl -X POST -k -L --retry 5 --retry-delay 10 --upload-file @" + OPTIMIZED_IMAGE_FILE + " " + Configuration.knowledgeBaseURL + "/" + parameters.get(ID) + ""); sb.append("\n");
+		sb.append("curl -X POST -k -L --retry 5 --retry-delay 10 --upload-file @" + optimizedImageFileName + " " + Configuration.knowledgeBaseURL + "/" + parameters.get(ID) + ""); sb.append("\n");
 
 		// make optimized image
 		sb.append("    echo 'Done' > phase"); sb.append("\n");

@@ -11,6 +11,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 
 import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
@@ -125,17 +126,18 @@ public class WTVM extends VirtualMachine {
 	}
 	
 	@Override public String getIP() throws VMManagementException { 
+//		if (privateDnsName == null || "".equals(privateDnsName)) 
 		describeServer();
 		return privateDnsName; 
 	}
 	
 	@Override public String getPort() throws VMManagementException {
-		describeServer();
+		if (super.getPort() == null || "".equals(super.getPort())) describeServer();
 		return super.getPort();
 	}
 
 	@Override public String getPrivateIP() throws VMManagementException {
-		describeServer();
+		if (super.getPrivateIP() == null || "".equals(super.getPrivateIP())) describeServer();
 		return super.getPrivateIP();
 	}
 	
@@ -171,7 +173,7 @@ public class WTVM extends VirtualMachine {
 		}
 
 		if (super.getIP() != null && super.getPort() != null && super.getPrivateIP() != null && isinInitialState) {
-			System.out.println("VM " + getInstanceId() + " VMREADY");
+			log.info("VM " + getInstanceId() + " VMREADY");
 			super.setState(VMREADY);
 		}
 
@@ -273,7 +275,9 @@ public class WTVM extends VirtualMachine {
 			log.info("name: " + this.vmName);
 			log.info("status: " + this.status);
 			log.info("message: " + message);
-
+		} catch (ClientHandlerException x) { // thrown at get
+			log.severe("WT API ClientHandlerEzeption at run instance");
+			throw new VMManagementException("Cannot run VM: " + x.getMessage(), null);
 		} finally {
 			if (client != null) client.destroy();
 		}
@@ -327,6 +331,8 @@ public class WTVM extends VirtualMachine {
 				super.setPrivateIP(privateDnsName);
 				super.setPort("22");
 			}
+		} catch (ClientHandlerException x) { // thrown at get
+			log.severe("WT API ClientHandlerEzeption at describe: " + x.getMessage() + ". Ignoring.");
 		} finally {
 			if (client != null) client.destroy();
 		}
@@ -409,6 +415,9 @@ public class WTVM extends VirtualMachine {
 			}
 			String responseString = response.getEntity(String.class);
 			log.info("VM rebooted: " + responseString);
+		} catch (ClientHandlerException x) { // thrown at get
+			log.severe("Cannot reboot VM " + getInstanceId() + ": " + x.getMessage());
+			throw new VMManagementException("Cannot reboot VM " + getInstanceId() + ": " + x.getMessage(), null);
 		} finally {
 			if (client != null) client.destroy();
 		}
@@ -441,6 +450,8 @@ public class WTVM extends VirtualMachine {
 			}
 			String responseString = response.getEntity(String.class);
 			log.info("VM terminated: " + responseString);
+		} catch (ClientHandlerException x) { // thrown at get
+			log.severe("WT API ClientHandlerEzeption at delete VM: " + x.getMessage() + ". You must manually remove excess VMs!");
 		} finally {
 			if (client != null) client.destroy();
 		}
