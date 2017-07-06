@@ -190,7 +190,7 @@ public class SingleValidatorThread extends Thread {
 		}
 		if (!returner.equals(SingleValidatorThread.ValidationState.SUCCESS)) {
 			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] test FAILED on VM " + vm.getInstanceId() + ": " + returner.name() + " for group " + removablesString);
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] terminating VM...");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] terminating VM " + vm.getInstanceId());
 			vm.terminate();
 		} else {
 			System.out.println("[T" + + (Thread.currentThread().getId() % 100) + "] test SUCCESS on VM: " + vm.getInstanceId()  + " for group " + removablesString);

@@ -158,7 +158,7 @@ public class WTVM extends VirtualMachine {
 			super.setPrivateIP(null);
 		}
 		
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing VM: " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing VM " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.fine("Describe server: " + vmId);
 
 //		if (vmId == null) lookupVMId();
@@ -207,6 +207,7 @@ public class WTVM extends VirtualMachine {
 			rebootVM();
 			Shrinker.myLogger.fine("Reboot server job completed");
 		} catch (Exception x) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM " + getInstanceId() + " reboot error: " + x.getMessage());
 			throw new VMManagementException("Cannot reboot instance", x);
 		}
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM rebooted: " + getInstanceId() + " " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
@@ -275,6 +276,8 @@ public class WTVM extends VirtualMachine {
 			log.info("name: " + this.vmName);
 			log.info("status: " + this.status);
 			log.info("message: " + message);
+			
+			if ("".equals(vmId)) throw new VMManagementException("No VM id provided by the API", null);
 		} catch (ClientHandlerException x) { // thrown at get
 			log.severe("WT API ClientHandlerEzeption at run instance");
 			throw new VMManagementException("Cannot run VM: " + x.getMessage(), null);

@@ -15,8 +15,6 @@
  */
 package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler;
 
-import static hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VirtualMachine.VMState.VMREADY;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
