@@ -1,5 +1,7 @@
 ndg-httpsclient>=0.4.1
 flask
 flask-restful
+markupsafe
+pyasn1
 wget
 

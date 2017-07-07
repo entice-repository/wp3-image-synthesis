@@ -207,6 +207,8 @@ class ImageBuilder(object):
 
     def getImagePath(self,request_id):
         reqdir = find_dir_by_request_id(self.datadir,request_id)
+        if not reqdir:
+            return None, None
         builddir = os.path.join(reqdir,"build")
         '''
         TODO: handle non-finished request!
@@ -219,6 +221,8 @@ class ImageBuilder(object):
 
     def getLogPath(self,request_id):
         reqdir = find_dir_by_request_id(self.datadir,request_id)
+        if not reqdir:
+            return None, None
         builddir = os.path.join(reqdir,"build")
         logpath = os.path.join(builddir,"build.stderr")
         logfile = os.path.basename(logpath)

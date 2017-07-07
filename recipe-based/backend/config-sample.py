@@ -3,8 +3,19 @@ import sys
 import json
 import yaml
 import logging
+import random
+import string
+
+
+def random_string(N):
+    ''' TODO: Move this somewhere else '''
+    return ''.join(random.SystemRandom().choice(
+        string.ascii_uppercase + string.digits) for _ in range(N))
+
 
 _basedir = os.path.abspath(os.path.dirname(__file__))
+_random_string = random_string(5)
+
 
 class BaseConfiguration(object):
     """
@@ -18,10 +29,14 @@ class BaseConfiguration(object):
     DATADIR = "/tmp/entice-builder/datadir"
     # Folder for the builder module (working directory). Must be the same as for the frontend.
     SCRIPTDIR = "/tmp/entice-builder/scriptdir"
+    # Security configuration (not used here).
+    SECURITY_PASSWORD_HASH = ""
+    SECURITY_PASSWORD_SALT = ""
+    SECRET_KEY = ""
     # logging information.
     LOGLEVEL = logging.INFO
     LOGNAME = "entice-ib-backend"
-    # Sleep interval between.
+    # Sleep interval between two scans.
     SCANWAITINTERVAL = 5
     # Maximum number of parallel running jobs.
     MAX_RUNNING_JOBS = 4
@@ -31,6 +46,10 @@ class DebugConfiguration(BaseConfiguration):
     Configuration for debugging the application.
     """
     DEBUG = True
+    # Security configuration (not used here).
+    SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
+    SECURITY_PASSWORD_SALT = "CHANGE_ME"
+    SECRET_KEY = "CHANGE_ME"
     LOGLEVEL = logging.DEBUG
     DATADIR = "/tmp/datadir"
     SCRIPTDIR = "/tmp/scriptdir"
@@ -38,13 +57,26 @@ class DebugConfiguration(BaseConfiguration):
     SCANWAITINTERVAL = 5
     MAX_RUNNING_JOBS = 2
 
-
 class TestConfiguration(BaseConfiguration):
     """
     Configuration for testing environment.
     """
     TESTING = True
+    # Configuration for Flask-Security (not used yet).
+    SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
+    SECURITY_PASSWORD_SALT = ""
+    SECRET_KEY = ""
+    LOGLEVEL = logging.DEBUG
+    DATADIR = "/tmp/entice-builder-backend-testing-"+ \
+        _random_string+ "/datadir"
+    SCRIPTDIR = "/tmp/entice-builder-backend-testing-"+ \
+        _random_string+ "/scriptdir"
+    LOGNAME = "entice-ib-backend"
+    SCANWAITINTERVAL = 5
+    MAX_RUNNING_JOBS = 2
 
+class TestConfiguration(BaseConfiguration):
+    TESTING = True
 
 class LiveConfiguration(BaseConfiguration):
     """
@@ -57,10 +89,15 @@ class LiveConfiguration(BaseConfiguration):
     """
     sys.stderr.write("Loading config from JSON file.\n")
     try:
-        config_file = "/etc/entice/imagesynthesis-backend.json"
+        config_file = "/etc/entice/imagesynthesis-frontend.json"
         with open(config_file, 'r') as content_file:
             content = content_file.read()
             config_json = json.loads(content)
+        ## Use the following to read security information in a live environment:
+        #
+        # SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
+        # SECURITY_PASSWORD_SALT = config_json["imagesynthesis-frontend"].get("password_salt")
+        # SECRET_KEY = config_json["imagesynthesis-frontend"].get("secret_key")
 
     except Exception, e:
         sys.stderr.write("WARNING: Could not read configuration from LIVE config file:" + str(e) + "\n")

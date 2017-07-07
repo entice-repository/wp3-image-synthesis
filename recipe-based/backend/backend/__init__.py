@@ -15,9 +15,7 @@ FILE_BUILD_RETCODE="build.retcode"
 
 def change_reqdir_state(fullreqdir,statestr):
     datadir, reqdir, reqid, state = extract_request_details(fullreqdir)
-    log.debug("DATA: reqdir: %s, reqid: %s, statestr: %s",reqdir, reqid, state)
     newreqdirname = os.path.join(datadir,statestr+"_"+reqid)
-    log.debug("RENAME: old: %s, new: %s",fullreqdir,newreqdirname)
     os.rename(fullreqdir,newreqdirname)
     return newreqdirname
 

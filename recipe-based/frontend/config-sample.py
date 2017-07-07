@@ -1,7 +1,19 @@
 import os
 import sys
 import json
+import random
+import string
+
+
+def random_string(N):
+    ''' TODO: Move this somewhere else '''
+    return ''.join(random.SystemRandom().choice(
+        string.ascii_uppercase + string.digits) for _ in range(N))
+
+
 _basedir = os.path.abspath(os.path.dirname(__file__))
+_random_string = random_string(5)
+
 
 class BaseConfiguration(object):
     """
@@ -21,7 +33,7 @@ class BaseConfiguration(object):
     DATADIR = "/tmp/entice-builder/datadir"
     # Protocol+host+port part of the public address of the service. This is used for
     # returning the URL of the finished image for download
-    ENDPOINT = "https://entice.lpds.sztaki.hu:5443"
+    ENDPOINT = "https://localhost:5000"
     # Prefix for all webservice endpoints
     WSPATH = "/api/imagebuilder/build"
 
@@ -39,15 +51,19 @@ class DebugConfiguration(BaseConfiguration):
 
 
 class TestConfiguration(BaseConfiguration):
-    """
-    Configuration for testing environment.
-    """
     TESTING = True
+    SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
+    SECURITY_PASSWORD_SALT = ""
+    SECRET_KEY = ""
+    APP_PORT = 4000
+    DATADIR = "/tmp/entice-builder-testing-"+ \
+        _random_string+ "/datadir"
+    ENDPOINT = "http://localhost:4000"
+
 
 class LiveConfiguration(BaseConfiguration):
     """
     Live configuration.
-
     Tries to load from .json configuration file. If not found
     values defined in BaseConfiguration are used.
     This is to separate live configuration values from this file. Most of the
@@ -62,6 +78,7 @@ class LiveConfiguration(BaseConfiguration):
         SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
         SECURITY_PASSWORD_SALT = config_json["imagesynthesis-frontend"].get("password_salt")
         SECRET_KEY = config_json["imagesynthesis-frontend"].get("secret_key")
+        ENDPOINT = config_json["imagesynthesis-frontend"].get("endpoint")
 
     except Exception, e:
         sys.stderr.write("WARNING: Could not read configuration from LIVE config file:" + str(e) + "\n")

@@ -65,11 +65,24 @@ class Image(Resource):
 
     def get(self, request_id):
         imgdir, imgfile = ImageBuilder().getImagePath(request_id)
-        return send_from_directory(imgdir, imgfile, as_attachment=True)
+        if not imgdir or not imgfile:
+            result = {
+                 'status': 'failed',
+                 'message': 'Requested image does not exist!'}
+            return result, 200
+        else:
+            return send_from_directory(imgdir, imgfile, as_attachment=True)
 
 
 class Log(Resource):
 
     def get(self, request_id):
         logdir, logfile = ImageBuilder().getLogPath(request_id)
-        return send_from_directory(logdir, logfile, as_attachment=True)
+        if not logdir or not logfile:
+            result = {
+                 'status': 'failed',
+                 'message': 'Requested log does not exist!'}
+            return result, 200
+        else:
+	    return send_from_directory(logdir, logfile, as_attachment=True)
+        
