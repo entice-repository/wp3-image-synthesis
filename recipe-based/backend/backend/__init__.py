@@ -43,7 +43,7 @@ def run_backend(lconfig,llog):
     global config, log
     config = lconfig
     log = llog
-    
+
     log.info("Entice image builder backend started.")
     log.info("Datadir: %s",config.DATADIR)
     log.debug("Max running jobs: %s",config.MAX_RUNNING_JOBS)
@@ -85,7 +85,7 @@ def handle_init_requests(fullreqdir):
 def handle_running_requests(fullreqdir):
     datadir,reqdir,reqid,state = extract_request_details(fullreqdir)
     if os.path.exists(os.path.join(fullreqdir,"build","cancel")) and \
-       not os.path.exists(os.path.join(fullreqdir,"build","cancelled")):
+            not os.path.exists(os.path.join(fullreqdir,"build","cancelled")):
         pid = read_content(os.path.join(fullreqdir,"build",FILE_BUILD_PID))
         log.debug("Looking for childrens of process %s",pid)
         proc = psutil.Process(int(pid))
@@ -121,7 +121,8 @@ def start_build_process(fullreqdir):
     module = read_content(os.path.join(builddir,"module"))
     version = read_content(os.path.join(builddir,"version"))
     exepath = os.path.join(config.SCRIPTDIR,module+"-"+version)
-    command = "nohup "+exepath+" >../"+FILE_BUILD_STDOUT+" 2>../"+FILE_BUILD_STDERR+"; echo $?>../"+FILE_BUILD_RETCODE+" &"
+    command = "nohup "+ exepath+ " >../"+ FILE_BUILD_STDOUT+ " 2>../"+ FILE_BUILD_STDERR+ \
+        "; echo $?>../"+ FILE_BUILD_RETCODE+" &"
     log.debug("Executing command: %s",command)
     process = subprocess.Popen(command, cwd=sandboxdir, shell=True)
     log.debug("PID: %s",str(process.pid))

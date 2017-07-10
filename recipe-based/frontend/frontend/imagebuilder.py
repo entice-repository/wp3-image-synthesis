@@ -9,12 +9,12 @@ import urllib2
 
 request_dir_states = [ 'P', 'I', 'R', 'F' ]
 request_dir_states_str = {  'P':'prepare',
-                            'I':'init', 
+                            'I':'init',
                             'R':'running',
                             'F':'finished' }
 
 request_outcome = [ 'S', 'E', 'C', 'U' ]
-request_outcome_str = { 'S':'success', 
+request_outcome_str = { 'S':'success',
                         'E':'error',
                         'C':'cancelled',
                         'U':'undefined' }
@@ -24,24 +24,24 @@ def read_content(filename):
         content = f.read()
     return content
 
-def deploy_data(request_dir,content,target):
+def deploy_data(request_dir, content, target):
     #Create subdir
-    target_dir = os.path.join(request_dir,target)
+    target_dir = os.path.join(request_dir, target)
     os.makedirs(target_dir)
     #Create subdir
-    module = content.get(target,dict()).get('module',None)
+    module = content.get(target, dict()).get('module', None)
     if module:
-        fd = open(os.path.join(target_dir,"module"), "wb")
+        fd = open(os.path.join(target_dir, "module"), "wb")
         fd.write(str(module))
         fd.close()
     #Create version
-    version = content.get(target,dict()).get('version',None)
+    version = content.get(target, dict()).get('version',None)
     if module:
-        fd = open(os.path.join(target_dir,"version"), "wb")
+        fd = open(os.path.join(target_dir, "version"), "wb")
         fd.write(str(version))
         fd.close()
     #Save json file content
-    data = content.get(target,dict()).get('input',dict()).get('zipdata',None)
+    data = content.get(target, dict()).get('input', dict()).get('zipdata', None)
     if data:
         fd = open(os.path.join(target_dir,target+".zip"), "wb")
         fd.write(json.dumps(data,indent=4))
@@ -64,12 +64,12 @@ def deploy_data(request_dir,content,target):
             raise Exception("Invalid url specified: \""+url+"\"")
     return
 
-def deploy_request_content(datadir,request_id,content):
+def deploy_request_content(datadir, request_id, content):
     #Create request dir
-    request_dir = os.path.join(datadir,request_dir_states[0]+"_"+request_id)
+    request_dir = os.path.join(datadir, request_dir_states[0]+ "_"+ request_id)
     os.makedirs(request_dir)
-    deploy_data(request_dir,content,'build')
-    deploy_data(request_dir,content,'test')
+    deploy_data(request_dir, content, 'build')
+    deploy_data(request_dir, content, 'test')
     return
 
 def deploy_request_json(datadir,request_id,content):
@@ -94,7 +94,7 @@ def get_outcome_by_dirname(dirname):
     if get_state_by_dirname(dirname) not in ['F']:
         return 'U'
     if os.path.isfile(os.path.join(dirname,"build","cancelled")):
-        return 'C' 
+        return 'C'
     if os.path.isfile(os.path.join(dirname,"build","build.retcode")) and\
        os.path.isfile(os.path.join(dirname,"build","build.image_url")):
 	return 'S'
@@ -122,7 +122,7 @@ def collect_log_info(request_id):
 class ImageBuilder(object):
 
     def __init__(self):
-        global log 
+        global log
         log = self.log = frontend.app.logger
         self.datadir = frontend.app.config.get("DATADIR")
         if not os.path.exists(self.datadir): os.makedirs(self.datadir)
@@ -133,14 +133,14 @@ class ImageBuilder(object):
             request_id = ""
             contentdict = json.loads(content)
             request_id = str(uuid.uuid4())
-            deploy_request_content(self.datadir,request_id,contentdict)
-            deploy_request_json(self.datadir,request_id,content)
-            set_request_dir_state(self.datadir,request_id,request_dir_states[0],request_dir_states[1])
+            deploy_request_content(self.datadir, request_id, contentdict)
+            deploy_request_json(self.datadir, request_id, content)
+            set_request_dir_state(self.datadir, request_id, request_dir_states[0], request_dir_states[1])
             return True, "", request_id
         except Exception, e:
             if request_id is not "":
-                shutil.rmtree(os.path.join(self.datadir,"P_"+request_id))
-            return False, "Error: "+str(e), None
+                shutil.rmtree(os.path.join(self.datadir, "P_"+request_id))
+            return False, "Error: "+ str(e), None
 
     def state(self,request_id):
         try:
@@ -161,7 +161,7 @@ class ImageBuilder(object):
                 return False, "Unknown request ID!"
             state = get_state_by_dirname(dirname)
             if state not in ['I','R']:
-                return False, "Cancel operation not allowed in current state ("+request_dir_states_str[state        ] +")!"
+                return False, "Cancel operation not allowed in current state ("+request_dir_states_str[state] +")!"
             fd = open(os.path.join(dirname,"build","cancel"), "wb")
             fd.write("Cancel request by frontend")
             fd.close()
@@ -179,9 +179,9 @@ class ImageBuilder(object):
                 return False, "Unknown request ID!"
             state = get_state_by_dirname(dirname)
             if state not in ['F']:
-                return False, "Delete operation not allowed in current state ("+request_dir_states_str[state    ] +")!"
+                return False, "Delete operation not allowed in current state ("+request_dir_states_str[state] +")!"
             shutil.rmtree(dirname, ignore_errors=True, onerror=None)
-            return True, "" 
+            return True, ""
         except Exception, e:
             return False, "Error: "+str(e)
 
@@ -192,8 +192,9 @@ class ImageBuilder(object):
                 return False, "Unknown request ID!", None
             state = get_state_by_dirname(dirname)
             if state not in ['F']:
-                return False, "Get result operation not allowed in current state ("+request_dir_states_str[state] +")!", None
-	    '''
+                return False, "Get result operation not allowed in current state ("+ \
+                    request_dir_states_str[state] +")!", None
+    	    '''
             TODO: Handle CANCELLED request
             '''
 	    image_info = collect_image_info(request_id)

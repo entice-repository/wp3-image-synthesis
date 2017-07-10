@@ -21,7 +21,7 @@ class Request(Resource):
         result = {'status': 'ok' if outcome else 'failed',
                   'message': '' if outcome else message,
                   'result': '' if not outcome else
-                  dict({'request_id': request_id, 
+                  dict({'request_id': request_id,
                         'request_status': reqstate,
                         'outcome:': reqoutcome})}
         return result, 200
@@ -42,6 +42,7 @@ class Result(Resource):
                  'message': '' if outcome else message,
                  'result': '' if not outcome else ret }
         return result, 200
+        '''
         result = {
                  'status': 'OK',
                  'message': '',
@@ -52,6 +53,7 @@ class Result(Resource):
                         'id' : "ami-001234"}},
                     'log_url': "http://somewhere.com/log" }
         return result, 200
+        '''
 
     def delete(self, request_id):
         outcome, message = ImageBuilder().delete(request_id)
@@ -84,5 +86,5 @@ class Log(Resource):
                  'message': 'Requested log does not exist!'}
             return result, 200
         else:
-	    return send_from_directory(logdir, logfile, as_attachment=True)
-        
+            return send_from_directory(logdir, logfile, as_attachment=True)
+
