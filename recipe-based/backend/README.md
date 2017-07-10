@@ -1,4 +1,7 @@
 ENTICE-WP3-ImageSynthesis Backend
-==================================
+=================================
 
-Nothing to see here yet, please move along...
+Running tests
+-------------
+
+Install pytest and execute `python -m pytest tests/` in frontend and backend directories.

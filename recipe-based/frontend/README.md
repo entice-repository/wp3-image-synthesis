@@ -31,3 +31,36 @@ Running tests
 -------------
 
 Install pytest and execute `python -m pytest tests/` in frontend and backend directories.
+
+
+Sample input
+------------
+
+```
+{
+    "build": {
+        "module": "packer",
+        "version": "1.0",
+        "input": {
+            "zipdata": ... <content of packer data .zip>
+            OR
+            "zipurl": ... <url containing packer data .zip>
+        }
+    },
+    "test": {
+        "module": "exec-internal",
+        "version": "1.0",
+        "input": {
+            "command" : "run_test.sh",
+            "zipdata": ... <content of packer test .zip>
+            OR
+            "zipurl": ... <url containing packer test .zip>
+        }
+    }
+}
+```
+
+TODO
+----
+
+* Testing is not implemented.
