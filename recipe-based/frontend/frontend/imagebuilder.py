@@ -87,36 +87,36 @@ def set_request_dir_state(datadir,request_id,oldstate,newstate):
 def get_state_by_dirname(dirname):
     basedirname = os.path.basename(dirname)
     if basedirname[0] not in request_dir_states:
-        raise Exception("Invalide state detected: "+basedirname)
+        raise Exception("Invalide state detected: " + basedirname)
     return basedirname[0]
 
 def get_outcome_by_dirname(dirname):
     if get_state_by_dirname(dirname) not in ['F']:
         return 'U'
-    if os.path.isfile(os.path.join(dirname,"build","cancelled")):
+    if os.path.isfile(os.path.join(dirname, "build", "cancelled")):
         return 'C'
-    if os.path.isfile(os.path.join(dirname,"build","build.retcode")) and\
-       os.path.isfile(os.path.join(dirname,"build","build.image_url")):
-	return 'S'
+    if os.path.isfile(os.path.join(dirname, "build", "build.retcode")) and \
+            os.path.isfile(os.path.join(dirname, "build", "build.image_url")):
+	   return 'S'
     return 'E'
 
 def find_dir_by_request_id(datadir,request_id):
-    dirs = glob.glob(os.path.join(datadir,"*_"+request_id))
-    return None if len(dirs)!=1 else dirs[0]
+    dirs = glob.glob(os.path.join(datadir, "*_" + request_id))
+    return None if len(dirs) != 1 else dirs[0]
 
 def collect_image_info(request_id):
     image_info={}
     endpoint = frontend.app.config.get("ENDPOINT")
     wspath = frontend.app.config.get("WSPATH")
     url = endpoint + wspath + "/"
-    image_info['url'] = url+str(request_id)+"/result/image"
+    image_info['url'] = url + str(request_id) + "/result/image"
     return image_info
 
 def collect_log_info(request_id):
     endpoint = frontend.app.config.get("ENDPOINT")
     wspath = frontend.app.config.get("WSPATH")
     url = endpoint + wspath + "/"
-    log_info=url+str(request_id)+"/result/log"
+    log_info = url + str(request_id) + "/result/log"
     return log_info
 
 class ImageBuilder(object):
@@ -135,7 +135,10 @@ class ImageBuilder(object):
             request_id = str(uuid.uuid4())
             deploy_request_content(self.datadir, request_id, contentdict)
             deploy_request_json(self.datadir, request_id, content)
-            set_request_dir_state(self.datadir, request_id, request_dir_states[0], request_dir_states[1])
+            set_request_dir_state(datadir=self.datadir,
+                                  request_id=request_id,
+                                  oldstate=request_dir_states[0],
+                                  newstate=request_dir_states[1])
             return True, "", request_id
         except Exception, e:
             if request_id is not "":
@@ -161,7 +164,7 @@ class ImageBuilder(object):
                 return False, "Unknown request ID!"
             state = get_state_by_dirname(dirname)
             if state not in ['I','R']:
-                return False, "Cancel operation not allowed in current state ("+request_dir_states_str[state] +")!"
+                return False, "Cancel operation not allowed in current state (" + request_dir_states_str[state] + ")!"
             fd = open(os.path.join(dirname,"build","cancel"), "wb")
             fd.write("Cancel request by frontend")
             fd.close()
