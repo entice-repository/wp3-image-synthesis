@@ -263,7 +263,8 @@ public abstract class VirtualMachine {
 		} catch (VMManagementException e) {
 			StringWriter sw = new StringWriter();
 			e.printStackTrace(new PrintWriter(sw));
-			Shrinker.myLogger.finest("Exception during VM creation: " + sw.toString());
+			Shrinker.myLogger.finest("Exzeption during VM creation: " + sw.toString());
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VMManagementExzeption at managing VM:" + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			try {
 				Thread.sleep(datacollectorDelay);
 			} catch (InterruptedException e1) {
@@ -280,7 +281,7 @@ public abstract class VirtualMachine {
 			} while ((curr = curr.getCause()) != null);
 		} catch (Exception e) {
 			e.printStackTrace();
-			Shrinker.myLogger.severe("Unknown exception occured, terminating vm before full init: " + e.getMessage());
+			Shrinker.myLogger.severe("Unknown exzeption occured, terminating vm before full init: " + e.getMessage());
 			try {
 				Thread.sleep(datacollectorDelay);
 			} catch (InterruptedException e1) {

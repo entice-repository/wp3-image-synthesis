@@ -1139,6 +1139,7 @@ public class Optimizer {
 		String optimizedImageFileName = OPTIMIZED_IMAGE_FILE;
 		
 		// convert back optimized image to the input format
+		/*
 		if (parameters.get(IMAGE_FORMAT) != null && !"".equals(parameters.get(IMAGE_FORMAT)) && !"qcow2".equals(parameters.get(IMAGE_FORMAT))) {
 			sb.append("    echo 'Converting optimized image' > phase"); sb.append("\n");
 			String useCompression = "vmdk".equals(parameters.get(IMAGE_FORMAT)) ? "-c " : ""; 
@@ -1147,8 +1148,9 @@ public class Optimizer {
 			sb.append("echo 'Cannot convert optimized image to "+  parameters.get(IMAGE_FORMAT) + "' > failure");
 			sb.append(" ; exit 1 ; }"); sb.append("\n");
 			optimizedImageFileName = OPTIMIZED_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT); 
-			sb.append("    # rm " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
+			sb.append("    rm " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
 		}
+		*/
 		
 		// upload optimized image to S3
 		sb.append("    echo 'Uploading optimized image' > phase"); sb.append("\n");

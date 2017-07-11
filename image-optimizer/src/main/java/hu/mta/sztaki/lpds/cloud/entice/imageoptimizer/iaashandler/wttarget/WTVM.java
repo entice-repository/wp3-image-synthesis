@@ -108,10 +108,11 @@ public class WTVM extends VirtualMachine {
 		try {
 			runVM();
 		} catch (Exception x) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Failed to create VM: " + x.getMessage() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			log.severe("Cannot create VM: " + x.getMessage());
 			status = TERMINATED;
 			reqCounter.decrementAndGet(); // note: in the case of null instanceId, this.terminateInstance() is not called from VirtualMacine.terminate, therefore we must decrement here
-			throw new VMManagementException("Cannot create server", x);
+			throw new VMManagementException("Cannot create VM", x);
 		}
 		
 		Shrinker.myLogger.info("VM started (" + getImageId() + ", " + endpoint + "): "+ getInstanceId());
@@ -182,6 +183,7 @@ public class WTVM extends VirtualMachine {
 
 	@Override public void terminateInstance() throws VMManagementException {
 		Shrinker.myLogger.info("Terminating VM: " + getInstanceId());
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Terminating VM: " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		int requests = reqCounter.decrementAndGet();
 		if (requests < 0) {
 			Shrinker.myLogger.severe("Too much VM termination requests");
@@ -201,7 +203,7 @@ public class WTVM extends VirtualMachine {
 	}
 	
 	@Override public void rebootInstance() throws VMManagementException {
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Rebooting VM " + vmId + " in WT... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Rebooting VM: " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		try {
 			Shrinker.myLogger.info("Reboot server: " + vmId);
 			rebootVM();
