@@ -42,9 +42,14 @@ Sample input
         "module": "packer",
         "version": "1.0",
         "input": {
-            "zipdata": ... <content of packer data .zip>
-            OR
-            "zipurl": ... <url containing packer data .zip>
+            "zipdata": ..., // content of packer data .zip base64 encoded
+            // OR
+            "zipurl": ... // url containing packer data .zip
+        },
+        varfile { // optional
+            data : ..., // varfile base64_encoded
+            // OR
+            url: ... // url containing the varfile
         }
     },
     "test": {
@@ -52,9 +57,9 @@ Sample input
         "version": "1.0",
         "input": {
             "command" : "run_test.sh",
-            "zipdata": ... <content of packer test .zip>
-            OR
-            "zipurl": ... <url containing packer test .zip>
+            "zipdata": ..., // content of packer test .zip
+            // OR
+            "zipurl": ... // url containing packer test .zip
         }
     }
 }

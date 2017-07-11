@@ -6,6 +6,7 @@ import wget
 import glob
 import shutil
 import urllib2
+import contextlib
 
 request_dir_states = [ 'P', 'I', 'R', 'F' ]
 request_dir_states_str = {  'P':'prepare',
@@ -24,29 +25,65 @@ def read_content(filename):
         content = f.read()
     return content
 
+
+def download_file(url, target_file):
+    '''
+    Downloads file from given URL and saves it into target_file.
+
+    Target_file may contain a filename or a full path with filename.
+    '''
+    try:
+        #urlopen = urllib2.urlopen(url)
+        outfilename = os.path.join(target_file)
+        with contextlib.closing(urllib2.urlopen(url)) as urlopen:
+            with open(outfilename,'wb') as output:
+                output.write(urlopen.read())
+    except urllib2.HTTPError, e:
+        log.debug("ERROR: cannot download data from url \"" + url +
+            "\" for file" + target_file + " .")
+        raise Exception("Cannot download from " + url)
+    except urllib2.URLError, e:
+        log.debug("ERROR: invalid url specified \"" + url +
+            "\" for file" + target_file + " .")
+        raise Exception("Invalid url specified: \""+url+"\"")
+    return
+
+
 def deploy_data(request_dir, content, target):
-    #Create subdir
+    '''
+    This function deploys the requested parts found in either the 'build' or 'test'
+    part of the request (it only gets either the 'build' or 'test' part. See
+    deploy_request_content().
+
+    Sample complete request can be found in README.md.
+    '''
+    # Create subdir
     target_dir = os.path.join(request_dir, target)
     os.makedirs(target_dir)
-    #Create subdir
+    # Create subdir
     module = content.get(target, dict()).get('module', None)
     if module:
         fd = open(os.path.join(target_dir, "module"), "wb")
         fd.write(str(module))
         fd.close()
-    #Create version
+    # Create version
     version = content.get(target, dict()).get('version',None)
     if module:
         fd = open(os.path.join(target_dir, "version"), "wb")
         fd.write(str(version))
         fd.close()
-    #Save json file content
+    # Save input content
     data = content.get(target, dict()).get('input', dict()).get('zipdata', None)
     if data:
-        fd = open(os.path.join(target_dir,target+".zip"), "wb")
-        fd.write(json.dumps(data,indent=4))
+        fd = open(os.path.join(target_dir, target+".zip"), "wb")
+        fd.write(json.dumps(data, indent=4))
         fd.close()
     else:
+        url = content.get(target,dict()).get('input', dict()).get('zipurl', None)
+        outfilename = os.path.join(target_dir, target+".zip")
+        if url:
+            download_file(url, outfilename)
+        '''
         try:
             url = content.get(target,dict()).get('input',dict()).get('zipurl',None)
             if url:
@@ -62,6 +99,26 @@ def deploy_data(request_dir, content, target):
             log.debug("ERROR: invalid url specified \""+url+
                 "\" for request"+request_dir+" .")
             raise Exception("Invalid url specified: \""+url+"\"")
+        '''
+    # Save varfile content (optional, json format assumed)
+    ##varfile_filename = content.get(target, dict()).get('varfile', dict()).get('filename', None)
+    ##if not varfile_filename:
+    ##    raise Exception("varfile specified, but missing filename.")
+    # '__varfile__' contains the data of the varfile. If this file is present a varfile is assumed
+    # for the command line.
+    varfile_filename = "__varfile__"
+    varfile_data = content.get(target, dict()).get('varfile', dict()).get('data', None)
+    if varfile_data:
+        fd = open(os.path.join(target_dir, varfile_filename), "wb")
+        fd.write(json.dumps(varfile_data, indent=4))
+        fd.close()
+    else:
+        # data key not found in varfile, let's look for url
+        varfile_url = content.get(target, dict()).get('varfile', dict()).get('url', None)
+        outfilename = os.path.join(target_dir, varfile_filename)
+        if not varfile_url:
+            raise Exception("Neither data nor url is specified for varfile")
+        download_file(varfile_url, outfilename)
     return
 
 def deploy_request_content(datadir, request_id, content):
