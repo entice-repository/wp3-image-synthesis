@@ -30,7 +30,6 @@ def save_content(filename,content):
     fd = open(filename, "w")
     fd.write(content)
     fd.close()
-    return
 
 def read_content(filename):
     with file(filename) as f:
@@ -80,7 +79,6 @@ def handle_init_requests(fullreqdir):
         fullreqdir = change_reqdir_state(fullreqdir,"R")
         prepare_build(fullreqdir)
         start_build_process(fullreqdir)
-    return
 
 def handle_running_requests(fullreqdir):
     datadir,reqdir,reqid,state = extract_request_details(fullreqdir)
@@ -101,7 +99,6 @@ def handle_running_requests(fullreqdir):
         return
     log.info("REQUEST \""+str(reqid)+"\" finished building.")
     fullreqdir = change_reqdir_state(fullreqdir,"F")
-    return
 
 def prepare_build(fullreqdir):
     builddir = os.path.join(fullreqdir,"build")
@@ -113,7 +110,6 @@ def prepare_build(fullreqdir):
     zip_ref = zipfile.ZipFile(zipfilepath,'r')
     zip_ref.extractall(sandboxdir)
     zip_ref.close()
-    return
 
 def start_build_process(fullreqdir):
     builddir = os.path.join(fullreqdir,"build")
@@ -127,7 +123,6 @@ def start_build_process(fullreqdir):
     process = subprocess.Popen(command, cwd=sandboxdir, shell=True)
     log.debug("PID: %s",str(process.pid))
     save_content(os.path.join(builddir,FILE_BUILD_PID),str(process.pid))
-    return
 
 
 

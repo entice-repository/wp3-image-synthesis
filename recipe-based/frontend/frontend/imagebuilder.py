@@ -46,7 +46,6 @@ def download_file(url, target_file):
         log.debug("ERROR: invalid url specified \"" + url +
             "\" for file" + target_file + " .")
         raise Exception("Invalid url specified: \""+url+"\"")
-    return
 
 
 def deploy_data(request_dir, content, target):
@@ -119,7 +118,6 @@ def deploy_data(request_dir, content, target):
         if not varfile_url:
             raise Exception("Neither data nor url is specified for varfile")
         download_file(varfile_url, outfilename)
-    return
 
 def deploy_request_content(datadir, request_id, content):
     #Create request dir
@@ -127,19 +125,16 @@ def deploy_request_content(datadir, request_id, content):
     os.makedirs(request_dir)
     deploy_data(request_dir, content, 'build')
     deploy_data(request_dir, content, 'test')
-    return
 
 def deploy_request_json(datadir,request_id,content):
     request_dir = os.path.join(datadir,request_dir_states[0]+"_"+request_id)
     with open(os.path.join(request_dir,"request.json"),'wb') as output:
         output.write(str(content))
-    return
 
 def set_request_dir_state(datadir,request_id,oldstate,newstate):
     olddir = os.path.join(datadir,oldstate+"_"+request_id)
     newdir = os.path.join(datadir,newstate+"_"+request_id)
     os.rename(olddir,newdir)
-    return
 
 def get_state_by_dirname(dirname):
     basedirname = os.path.basename(dirname)
@@ -183,7 +178,6 @@ class ImageBuilder(object):
         log = self.log = frontend.app.logger
         self.datadir = frontend.app.config.get("DATADIR")
         if not os.path.exists(self.datadir): os.makedirs(self.datadir)
-        return
 
     def new(self,content):
         try:
