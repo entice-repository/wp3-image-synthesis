@@ -11,8 +11,9 @@ class Build(Resource):
         result = {'status': 'ok' if outcome else 'failed',
                   'message': '' if outcome else message,
                   'result': '' if not outcome else
-                        dict({'request_id': request_id})}
+                  dict({'request_id': request_id})}
         return result, 200
+
 
 class Request(Resource):
 
@@ -21,16 +22,17 @@ class Request(Resource):
         result = {'status': 'ok' if outcome else 'failed',
                   'message': '' if outcome else message,
                   'result': '' if not outcome else
-                        dict({'request_id': request_id,
-                            'request_status': reqstate,
-                            'outcome:': reqoutcome})}
+                  dict({'request_id': request_id,
+                        'request_status': reqstate,
+                        'outcome:': reqoutcome})}
         return result, 200
 
     def delete(self, request_id):
         outcome, message = ImageBuilder().cancel(request_id)
         result = {'status': 'ok' if outcome else 'failed',
-                  'message': '' if outcome else message }
+                  'message': '' if outcome else message}
         return result, 200
+
 
 class Result(Resource):
 
@@ -38,7 +40,7 @@ class Result(Resource):
         outcome, message, ret = ImageBuilder().result(request_id)
         result = {'status': 'ok' if outcome else "failed",
                   'message': '' if outcome else message,
-                  'result': '' if not outcome else ret }
+                  'result': '' if not outcome else ret}
         return result, 200
         '''
         result = {
@@ -82,4 +84,3 @@ class Log(Resource):
             return result, 200
         else:
             return send_from_directory(logdir, logfile, as_attachment=True)
-

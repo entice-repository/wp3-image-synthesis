@@ -3,6 +3,7 @@ import sys
 import logging
 import logging.handlers
 
+
 class AgroLogHandler:
     """ Log handler class based on Python's logging module."""
 
