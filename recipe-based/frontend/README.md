@@ -16,6 +16,11 @@ Always upgrade pip to the latest version:
 pip install --upgrade pip
 ```
 
+If pip hangs with `caching b/c date exists and max-age > 0` use the following:
+```
+pip ... --no-cache-dir ...
+```
+
 ### OS X ###
 
 Install openssl via homebrew:
