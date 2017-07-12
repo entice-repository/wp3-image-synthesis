@@ -11,6 +11,11 @@ Make sure you have installed the following devel libraries:
 sudo apt-get install python-dev libffi-dev libssl-dev
 ```
 
+Always upgrade pip to the latest version:
+```
+pip install --upgrade pip
+```
+
 ### OS X ###
 
 Install openssl via homebrew:
@@ -33,8 +38,8 @@ Running tests
 Install pytest and execute `python -m pytest tests/` in frontend and backend directories.
 
 
-Sample input
-------------
+Input JSON format
+-----------------
 
 ```
 {
@@ -46,7 +51,9 @@ Sample input
             // OR
             "zipurl": ... // url containing packer data .zip
         },
-        varfile { // optional
+        // Optional variables file. If specified it is automatically used and packer will
+        // see it as a file named '__varfile__'.
+        varfile {
             data : ..., // varfile base64_encoded
             // OR
             url: ... // url containing the varfile
@@ -65,7 +72,13 @@ Sample input
 }
 ```
 
+Sample submission
+-----------------
+
+See testing directory for samples.
+
+
 TODO
 ----
 
-* Testing is not implemented.
+* Test module is not fully implemented.
