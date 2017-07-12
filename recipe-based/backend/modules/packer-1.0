@@ -6,7 +6,8 @@ import sys
 import os
 
 TARGET_JSON = 'build-updated.json'
-VAR_FILE = '__varfile__' # TODO: this is also defined in imagebuilder.py of the frontend
+# TODO: this is also defined in imagebuilder.py of the frontend
+VAR_FILE = '__varfile__'
 
 with open('build.json') as data_file:
     data = json.load(data_file)
@@ -28,9 +29,10 @@ with open(TARGET_JSON, 'w') as outfile:
 # Check for variables file named __varfile__ and use it if present.
 varfile_command = ""
 if os.path.isfile(VAR_FILE):
-	varfile_command = "-var-file={}".format(VAR_FILE)
+    varfile_command = "-var-file={}".format(VAR_FILE)
 
-command = "export PACKER_LOG=1; packer build {} {}".format(varfile_command, TARGET_JSON)
+command = "export PACKER_LOG=1; packer build {} {}".format(
+    varfile_command, TARGET_JSON)
 retval = subprocess.call(command, shell=True)
 
 if retval is not 0:
@@ -41,4 +43,3 @@ if not os.path.isfile("../cancel"):
         image_url_file.write(output_directory + '/' + output_vmname)
 
 sys.exit(0)
-

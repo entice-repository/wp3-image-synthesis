@@ -5,10 +5,10 @@ import logging
 
 
 if __name__ == "__main__":
-    logging.basicConfig(\
+    logging.basicConfig(
         level=config.LOGLEVEL,
         format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info('Logger initialised')
-    logging.debug('Config: %r',config)
-    
-    run_backend(config,logging)
+    logging.debug('Config: %r', config)
+
+    run_backend(config, logging)
