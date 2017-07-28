@@ -1,0 +1,8 @@
+---
+  # Main entry: runs setup and deploy task
+
+- include: common.yml
+
+- include: supervisor.yml
+
+- include: virtualenv.yml

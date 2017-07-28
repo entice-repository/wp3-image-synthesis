@@ -1,0 +1,10 @@
+---
+- name: Install application dependencies into virtualenv
+  pip:
+    requirements={{ python_app_requirements }}
+    virtualenv={{ python_app_directory }}/current/env
+    state=present
+
+- name: Ensure application is restartet
+  service: name=supervisor state=restarted
+
