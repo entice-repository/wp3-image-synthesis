@@ -79,11 +79,6 @@ class TestConfiguration(BaseConfiguration):
     SCANWAITINTERVAL = 5
     MAX_RUNNING_JOBS = 2
 
-
-class TestConfiguration(BaseConfiguration):
-    TESTING = True
-
-
 class LiveConfiguration(BaseConfiguration):
     """
     Live configuration.
