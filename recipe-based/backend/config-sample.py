@@ -89,7 +89,7 @@ class LiveConfiguration(BaseConfiguration):
     file. Most of the time setting values in BaseConfiguration instead of here should be
     fine.
     """
-    sys.stderr.write("Loading config from JSON file.\n")
+    print("Loading config from JSON file.\n", file=sys.stderr)
     try:
         config_file = "/etc/entice/imagesynthesis-frontend.json"
         with open(config_file, 'r') as content_file:
@@ -101,6 +101,6 @@ class LiveConfiguration(BaseConfiguration):
         # SECURITY_PASSWORD_SALT = config_json["imagesynthesis-frontend"].get("password_salt")
         # SECRET_KEY = config_json["imagesynthesis-frontend"].get("secret_key")
     except Exception as e:
-        print ('WARNING: Could not read configuration from LIVE config file: {}\n'.format(e),
+        print('WARNING: Could not read configuration from LIVE config file: {}\n'.format(e),
                file=sys.stderr)
         pass  # DIRRRRRTY HACK!
