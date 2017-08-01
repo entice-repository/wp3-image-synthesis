@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import json
@@ -84,7 +85,7 @@ class LiveConfiguration(BaseConfiguration):
         SECRET_KEY = config_json["imagesynthesis-frontend"].get("secret_key")
         ENDPOINT = config_json["imagesynthesis-frontend"].get("endpoint")
 
-    except Exception, e:
-        sys.stderr.write(
-            "WARNING: Could not read configuration from LIVE config file:" + str(e) + "\n")
+    except Exception as e:
+        print ('WARNING: Could not read configuration from LIVE config file: {}\n'.format(e),
+               file=sys.stderr)
         pass  # DIRRRRRTY HACK!

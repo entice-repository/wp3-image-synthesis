@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import json
@@ -99,8 +100,7 @@ class LiveConfiguration(BaseConfiguration):
         # SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
         # SECURITY_PASSWORD_SALT = config_json["imagesynthesis-frontend"].get("password_salt")
         # SECRET_KEY = config_json["imagesynthesis-frontend"].get("secret_key")
-
-    except Exception, e:
-        sys.stderr.write(
-            "WARNING: Could not read configuration from LIVE config file:" + str(e) + "\n")
+    except Exception as e:
+        print ('WARNING: Could not read configuration from LIVE config file: {}\n'.format(e),
+               file=sys.stderr)
         pass  # DIRRRRRTY HACK!
