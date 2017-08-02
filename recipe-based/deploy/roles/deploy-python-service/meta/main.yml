@@ -1,7 +1,7 @@
 ---
 dependencies:
-  - src: carlosbuenosvinos.ansistrano-deploy
-  - src: carlosbuenosvinos.ansistrano-rollback
+  - carlosbuenosvinos.ansistrano-deploy
+  - carlosbuenosvinos.ansistrano-rollback
 galaxy_info:
   author:              Attila Csaba Marosi
   company:             MTA SZTAKI
