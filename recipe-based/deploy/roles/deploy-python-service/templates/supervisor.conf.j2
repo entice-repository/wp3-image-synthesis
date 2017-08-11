@@ -4,6 +4,7 @@ user = {{ python_app_user }}
 startretries=3
 autostart=true
 autorestart=true
+stopasgroup=true
 stopwaitsecs = 60
 stdout_logfile = {{ python_app_log_directory }}/{{ python_app_name }}.log
 stderr_logfile = {{ python_app_log_directory }}/{{ python_app_name }}.error.log
