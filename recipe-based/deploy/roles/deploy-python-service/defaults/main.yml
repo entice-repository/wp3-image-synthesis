@@ -27,3 +27,5 @@ python_app_packages:
   - python-virtualenv
   - libpq-dev
   - build-essential
+
+python_app_extra_packages: []
