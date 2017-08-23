@@ -14,6 +14,12 @@ update fields according to current deployment place:
 - localEc2Endpoint: default EC2 endpoint of the cloud to be used (e.g., http://cfe2.lpds.sztaki.hu:4567)
 - optimizerImageId: image id of the previously deployed "optimizer orchestrator" image (e.g., ami-00001553)
 
+It is also possible to update image-optimizer-service.properties in the built war later:
+mkdir -R WEB-INF/classes/
+cp wp3-image-synthesis/image-optimizer-service/src/main/resources/image-optimizer-service.properties WEB-INF/classes/
+vi WEB-INF/classes/image-optimizer-service.properties
+jar uf wp3-image-synthesis/image-optimizer-service/target/image-optimizer-service.war WEB-INF/classes/image-optimizer-service.properties
+
 3. Download docker and docker-compose...
 ========================================
 

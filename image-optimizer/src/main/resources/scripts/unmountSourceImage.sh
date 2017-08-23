@@ -35,7 +35,7 @@ fi
 qemu-nbd -d $DEVICE &> /dev/null || { echo "ERROR: Could not detach device $DEVICE" ; exit 243 ; }
 
 # unload mbd kernel module 
-rmmod nbd &> /dev/null # || { echo "ERROR: Cannot unload NBD kernel module. See: lsmod." ; }
+# rmmod nbd &> /dev/null # || { echo "ERROR: Cannot unload NBD kernel module. See: lsmod." ; }
 
 if [ "$#" -lt 4 ]; then
 

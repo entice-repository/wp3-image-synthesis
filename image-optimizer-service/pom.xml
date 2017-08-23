@@ -15,8 +15,21 @@
 		<timestamp>${maven.build.timestamp}</timestamp>
 		<maven.build.timestamp.format>dd/MM/yyyy-HH:mm</maven.build.timestamp.format>
 	</properties>
+
+	<repositories>
+		<repository>
+			<id>in-project</id>
+			<name>In Project Repo</name>
+			<url>file://${project.basedir}/libs</url>
+		</repository>
+	</repositories>	
 	
 	<dependencies>
+		<dependency>
+			<groupId>extl</groupId>
+			<artifactId>jadeclient</artifactId>
+			<version>1.0</version>
+		</dependency>
 	
 		<!-- Generic SLF4J dependency -->
 		<dependency> 
@@ -59,7 +72,11 @@
 			<artifactId>jersey-core</artifactId>
 			<version>1.19</version>
 		</dependency>
-		
+		<dependency>
+			<groupId>com.sun.jersey.contribs</groupId>
+    		<artifactId>jersey-multipart</artifactId>
+			<version>1.19</version>
+		</dependency>
 		<!-- Servlets -->
 		<dependency>
 		    <groupId>javax.servlet</groupId>

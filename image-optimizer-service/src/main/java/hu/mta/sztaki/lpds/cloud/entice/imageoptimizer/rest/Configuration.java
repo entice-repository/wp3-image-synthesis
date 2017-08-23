@@ -2,7 +2,16 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.rest;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.Properties;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,17 +30,54 @@ public class Configuration {
 	public static String optimizerInstanceType;
 	public static String workerInstanceType;
 	
+	public static String cloudInterface;
 	public static String knowledgeBaseURL;
 	
 	public static String rankerToUse;
 	public static String grouperToUse;
 	public static String maxUsableCPUs;
 	public static String parallelVMNum;
-	public static String vmFactory;
+//	public static String vmFactory;
 	public static String scriptPrefix;
 	
 	public static String optimizerRootLogin = "root"; // login name for optimizer VM instances
 	public static String workerVMRootLogin = "root"; // default login name for worker VM instances (image under optimization) 
+	
+	public static String clusterUUID;
+	public static String networkUUID; 
+	public static String diskProductOfferUUID;
+	public static String vdcUUID;
+	public static String serverProductOfferUUID;
+	
+	public static String sshKeyPath;
+	public static boolean hostnameVerification = true;
+
+	private static void disableHostnameVerification() {
+		try {
+			System.setProperty("jsse.enableSNIExtension", "false");
+			// create a trust manager that does not validate certificate chains
+			TrustManager[] trustAllCerts = new TrustManager[] { 
+			  new X509TrustManager() {
+			    public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+			    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+			    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+			}};
+			// ignore differences between given hostname and certificate hostname
+			HostnameVerifier hv = new HostnameVerifier() {
+			  public boolean verify(String hostname, SSLSession session) { return true; }
+			};
+			// install the all-trusting trust manager
+			try {
+			  SSLContext sc = SSLContext.getInstance("SSL");
+			  sc.init(null, trustAllCerts, new SecureRandom());
+			  HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+			  HttpsURLConnection.setDefaultHostnameVerifier(hv);
+			} catch (Exception e) {}
+			log.warn("Hostname verification disabled");
+		} catch (Throwable x) {
+			log.error("Error at turning off hostname verification " + x.getMessage());
+		}
+	}
 	
 	static {
 		Properties prop = new Properties();
@@ -50,6 +96,13 @@ public class Configuration {
 				optimizerInstanceType = prop.getProperty("optimizerInstanceType") != null ? prop.getProperty("optimizerInstanceType") : "m1.medium";
 				workerInstanceType = prop.getProperty("workerInstanceType") != null ? prop.getProperty("workerInstanceType") : "m1.small";
 				
+				cloudInterface = prop.getProperty("cloudInterface") != null ? prop.getProperty("cloudInterface") : "ec2";
+
+				if (prop.getProperty("hostnameVerification") != null && prop.getProperty("hostnameVerification").startsWith("disable")) {
+					hostnameVerification = false;
+					disableHostnameVerification();
+				}
+				
 				knowledgeBaseURL = prop.getProperty("knowledgeBaseURL");
 				
 				// misc optimizer options
@@ -57,13 +110,33 @@ public class Configuration {
 				grouperToUse = prop.getProperty("grouperToUse") != null ? prop.getProperty("grouperToUse") : "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.grouping.DirectoryGroupManager";
 				maxUsableCPUs = prop.getProperty("maxUsableCPUs") != null ? prop.getProperty("maxUsableCPUs") : "8";
 				parallelVMNum = prop.getProperty("parallelVMNum") != null ? prop.getProperty("parallelVMNum") : "8";
-				vmFactory = prop.getProperty("vmFactory") != null ? prop.getProperty("vmFactory") : "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget.EC2";
+//				vmFactory = prop.getProperty("vmFactory") != null ? prop.getProperty("vmFactory") : "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget.EC2";
 				scriptPrefix = prop.getProperty("scriptPrefix") != null ? prop.getProperty("scriptPrefix") : "/root/";
 				
 				optimizerRootLogin = prop.getProperty("optimizerRootLogin") != null ? prop.getProperty("optimizerRootLogin") : "root";
 				
+				// fco
+				clusterUUID = prop.getProperty("clusterUUID");
+				networkUUID = prop.getProperty("networkUUID"); 
+				diskProductOfferUUID = prop.getProperty("diskProductOfferUUID");
+				vdcUUID = prop.getProperty("vdcUUID");
+				serverProductOfferUUID = prop.getProperty("serverProductOfferUUID");
+
+				sshKeyPath = prop.getProperty("sshKeyPath");
+				
 				log.info(PROPERTIES_FILE_NAME + " loaded");
 			} catch (IOException e) { log.error("Cannot read properties file: " + PROPERTIES_FILE_NAME, e); }
+			
+			// if not set, try to locate SSH key
+			if (sshKeyPath == null) {
+				try {
+					sshKeyPath = Thread.currentThread().getContextClassLoader().getResource(Optimizer.OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE).toString();
+					if (sshKeyPath != null) { 
+						if (sshKeyPath.startsWith("file:\\")) sshKeyPath = sshKeyPath.substring("file:\\".length());
+						else if (sshKeyPath.startsWith("file:/")) sshKeyPath = sshKeyPath.substring("file:".length());
+					} else log.error("Private SSH key not found for optimizer VM: " + Optimizer.OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE + "");
+				} catch (Throwable x) {}
+			}
 		} 
 	}
 }

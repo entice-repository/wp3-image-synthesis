@@ -1,7 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget;
 
-import java.util.TreeMap;
-import java.util.Vector;
+import java.util.Map;
+import java.util.List;
 
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VirtualMachine;
@@ -24,7 +24,7 @@ public class EC2 extends VMFactory {
 	}
 
 	@Override
-	protected VirtualMachine createNewVM(String vaId, TreeMap<String, Vector<String>> contextandcustomizeVA) {
+	protected VirtualMachine createNewVM(String vaId, Map<String, List<String>> contextandcustomizeVA) {
 		return new EC2VirtualMachine(vaId, contextandcustomizeVA, true);
 	}
 	

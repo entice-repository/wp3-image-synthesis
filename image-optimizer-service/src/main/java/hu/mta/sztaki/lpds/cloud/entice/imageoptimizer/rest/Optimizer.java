@@ -7,18 +7,22 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.VM;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.database.DBManager;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.database.Task;
-import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ec2.VM;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ec2.EC2VM;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.fco.FCOVM;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.OutputStreamWrapper;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.ResourceUtils;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.utils.SshSession;
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.wt.WTVM;
 
 import javax.persistence.EntityManager;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -45,7 +49,7 @@ public class Optimizer {
 	private void logRequest(final String method, final HttpHeaders httpHeaders, final HttpServletRequest request) {
 		log.info("" + method /* + ", from: " + request.getRemoteAddr() */);
 	}
-
+	
 	private static ConcurrentHashMap <String, Task> taskCache = new ConcurrentHashMap<String, Task>(); // contains tasks of running/stopping state
 	private static ConcurrentHashMap <String, VM> optimizerVMCache = new ConcurrentHashMap<String, VM>();
 	
@@ -64,17 +68,21 @@ public class Optimizer {
 	public static final String ID = "id"; // REQUIRED by optimized-image upload
 	public static final String IMAGE_URL = "imageURL"; // REQUIRED
 	public static final String IMAGE_ID = "imageId"; // REQUIRED
+	public static final String OVF_URL = "ovfURL"; // OPTIONAL (required in VMware)
 	public static final String IMAGE_KEY_PAIR = "imageKeyPair"; // OPTIONAL (will use image wired public key if absent)
 	public static final String IMAGE_PRIVATE_KEY = "imagePrivateKey"; // REQUIRED
 	public static final String IMAGE_USER_NAME = "imageUserName"; // OPTIONAL (default: root, properties file)
-	public static final String IMAGE_CONTEXTUALIZATION = "imageContextualization"; // OPTIONAL TODO
-	public static final String IMAGE_CONTEXTUALIZATION_URL = "imageContextualizationURL"; // OPTIONAL TODO
+	public static final String IMAGE_CONTEXTUALIZATION = "imageContextualization"; // OPTIONAL 
+	public static final String IMAGE_CONTEXTUALIZATION_URL = "imageContextualizationURL"; // OPTIONAL 
 	public static final String IMAGE_ROOT_FILE_SYSTEM_PARTITION = "fsPartition"; // OPTIONAL (default: 1st partition, no LVM), partno || volgroup logvolume
+	public static final String IMAGE_ROOT_FILE_SYSTEM_TYPE = "fsType"; // OPTIONAL (default: ext2-ext4)
+	public static final String IMAGE_FORMAT = "imageFormat"; // OPTIONAL (default: qcow2) vmdk, vdi, vhd, vhdx, qcow1, qed, raw
 	
 	public static final String VALIDATOR_SCRIPT = "validatorScript"; // REQUIRED one of VALIDATOR_*
 	public static final String VALIDATOR_SCRIPT_URL = "validatorScriptURL"; // REQUIRED one of VALIDATOR_*
-	public static final String VALIDATOR_SERVER_URL = "validatorServerURL"; // REQUIRED one of VALIDATOR_* TODO
+	public static final String VALIDATOR_SERVER_URL = "validatorServerURL"; // REQUIRED one of VALIDATOR_* 
 	public static final String CLOUD_ENDPOINT_URL = "cloudEndpointURL"; // OPTIONAL (default: sztaki cloud, properties file)
+	public static final String CLOUD_INTERFACE = "cloudInterface"; // OPTIONAL (default: properties file || ec2)
 	public static final String CLOUD_ACCESS_KEY = "cloudAccessKey"; // REQUIRED
 	public static final String CLOUD_SECRET_KEY = "cloudSecretKey"; // REQUIRED
 	public static final String CLOUD_OPTIMIZER_VM_INSTANCE_TYPE = "cloudOptimizerVMInstanceType"; // OPTIONAL (default: m1.medium, properties file)
@@ -87,6 +95,7 @@ public class Optimizer {
 	public static final String S3_SECRET_KEY = "s3SecretKey"; // OPTIONAL
 	public static final String S3_PATH = "s3Path"; // OPTIONAL (bucket/filename)
 	public static final String S3_REGION = "s3Region"; // OPTIONAL (Amazon requires)
+	public static final String S3_SIGNATURE_VERSION = "s3SignatureVersion"; // OPTIONAL (Amazon requires)
 	
 	public static final String MAX_ITERATIONS_NUM = "maxIterationsNum"; // OPTIONAL (algorithm stops at reaching the plateau)
 	public static final String MAX_NUMBER_OF_VMS = "maxNumberOfVMs"; // OPTIONAL
@@ -130,8 +139,7 @@ public class Optimizer {
 	public static final String RESPONSE_OPTIMIZED_IMAGE_URL = "optimizedImageURL";
 	public static final String RESPONSE_CHART = "chart";
 	
-	@POST
-	@Consumes(MediaType.APPLICATION_JSON)
+	@POST @Consumes(MediaType.APPLICATION_JSON)
 	public Response optimize(
 			@Context HttpHeaders headers,
 			@Context HttpServletRequest request,
@@ -173,7 +181,7 @@ public class Optimizer {
         try { cloudInit = ResourceUtils.getResorceAsString(OPTIMIZER_CLOUD_INIT_RESOURCE); }
         catch (Exception x) { return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Missing resource: " + OPTIMIZER_CLOUD_INIT_RESOURCE).build(); }
 
-        if ("".equals(requestBody.optString(ID))) log.error("No parameter " + ID + " provided. Optimized image will not be uploaded.");
+        if ("".equals(requestBody.optString(ID))) log.warn("No parameter " + ID + " provided for knowledge base. Optimized image will not be uploaded.");
         if (Configuration.knowledgeBaseURL == null) log.warn("knowledgeBaseURL not defined in properties file: " + Configuration.PROPERTIES_FILE_NAME + ". Optimized image will not be uploaded.");
         parameters.put(ID, requestBody.optString(ID)); // REQUIRED
         
@@ -182,6 +190,17 @@ public class Optimizer {
         
         if ("".equals(requestBody.optString(IMAGE_URL))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_URL + "").build();
         parameters.put(IMAGE_URL, requestBody.getString(IMAGE_URL)); // REQUIRED
+
+        String imageFormat = requestBody.optString(IMAGE_FORMAT); 
+        if (!"".equals(imageFormat)) {
+        	if (!"vmdk".equals(imageFormat) &&
+       			!"qcow".equals(imageFormat) &&
+       			!"qcow2".equals(imageFormat) &&
+       			!"raw".equals(imageFormat))
+				log.error("Unsupported image fomat: " + imageFormat); 
+			else 
+				parameters.put(IMAGE_FORMAT, imageFormat); 
+        }
         
         if ("".equals(requestBody.optString(VALIDATOR_SCRIPT)) && "".equals(requestBody.optString(VALIDATOR_SCRIPT_URL)) && "".equals(requestBody.optString(VALIDATOR_SERVER_URL)))
         	return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + VALIDATOR_SCRIPT + " or " + VALIDATOR_SCRIPT_URL + "").build();
@@ -189,31 +208,42 @@ public class Optimizer {
         parameters.put(VALIDATOR_SCRIPT_URL, requestBody.optString(VALIDATOR_SCRIPT_URL)); // REQUIRED one of them
         parameters.put(VALIDATOR_SERVER_URL, requestBody.optString(VALIDATOR_SERVER_URL)); // REQUIRED one of them
         
-       	parameters.put(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, !"".equals(requestBody.optString(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE)) ? requestBody.getString(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE) : Configuration.optimizerInstanceType); // OPTIONAL
-       	parameters.put(CLOUD_WORKER_VM_INSTANCE_TYPE, !"".equals(requestBody.optString(CLOUD_WORKER_VM_INSTANCE_TYPE)) ? requestBody.getString(CLOUD_WORKER_VM_INSTANCE_TYPE) : Configuration.workerInstanceType); // OPTIONAL
-        parameters.put(NUMBER_OF_PARALLEL_WORKER_VMS, !"".equals(requestBody.optString(NUMBER_OF_PARALLEL_WORKER_VMS)) ? requestBody.optString(NUMBER_OF_PARALLEL_WORKER_VMS) : Configuration.maxUsableCPUs); // OPTIONAL
+        String cloudInterface = requestBody.optString(CLOUD_INTERFACE, Configuration.cloudInterface);
+        parameters.put(CLOUD_INTERFACE, cloudInterface); 
+
+        String ovfURL = requestBody.optString(OVF_URL);
+        if (WTVM.CLOUD_INTERFACE.equals(cloudInterface) && "".equals(ovfURL)) 
+        	return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + OVF_URL).build();
+        parameters.put(OVF_URL, ovfURL);
+        
+        parameters.put(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, requestBody.optString(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE, Configuration.optimizerInstanceType)); // OPTIONAL
+       	parameters.put(CLOUD_WORKER_VM_INSTANCE_TYPE, requestBody.optString(CLOUD_WORKER_VM_INSTANCE_TYPE, Configuration.workerInstanceType)); // OPTIONAL
+        parameters.put(NUMBER_OF_PARALLEL_WORKER_VMS, requestBody.optString(NUMBER_OF_PARALLEL_WORKER_VMS, Configuration.maxUsableCPUs)); // OPTIONAL
+        try { int x = Integer.parseInt(parameters.get(NUMBER_OF_PARALLEL_WORKER_VMS)); if (x < 2) return Response.status(Status.BAD_REQUEST).entity("Parameter " + NUMBER_OF_PARALLEL_WORKER_VMS + " must be greater than or equal to 2.").build(); } catch (NumberFormatException x) { log.warn("Parameter " + NUMBER_OF_PARALLEL_WORKER_VMS + " is of invalid syntax."); }
         
         if ("".equals(requestBody.optString(IMAGE_PRIVATE_KEY))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_PRIVATE_KEY).build();
         parameters.put(IMAGE_KEY_PAIR, requestBody.optString(IMAGE_KEY_PAIR)); // OPTIONAL (wired public key)
         parameters.put(IMAGE_PRIVATE_KEY, requestBody.optString(IMAGE_PRIVATE_KEY)); // REQUIRED
-        parameters.put(IMAGE_USER_NAME, !"".equals(requestBody.optString(IMAGE_USER_NAME)) ? requestBody.optString(IMAGE_USER_NAME) : Configuration.workerVMRootLogin); // OPTIONAL
+        parameters.put(IMAGE_USER_NAME, requestBody.optString(IMAGE_USER_NAME, Configuration.workerVMRootLogin)); // OPTIONAL
         
         parameters.put(IMAGE_CONTEXTUALIZATION, requestBody.optString(IMAGE_CONTEXTUALIZATION)); // OPTIONAL
         parameters.put(IMAGE_CONTEXTUALIZATION_URL, requestBody.optString(IMAGE_CONTEXTUALIZATION_URL)); // OPTIONAL
         parameters.put(IMAGE_ROOT_FILE_SYSTEM_PARTITION, requestBody.optString(IMAGE_ROOT_FILE_SYSTEM_PARTITION)); // OPTIONAL
+        parameters.put(IMAGE_ROOT_FILE_SYSTEM_TYPE, requestBody.optString(IMAGE_ROOT_FILE_SYSTEM_TYPE)); // OPTIONAL 
         
         parameters.put(S3_ENDPOINT_URL, requestBody.optString(S3_ENDPOINT_URL)); // REQUIRED
         parameters.put(S3_ACCESS_KEY, requestBody.optString(S3_ACCESS_KEY)); // REQUIRED
         parameters.put(S3_SECRET_KEY, requestBody.optString(S3_SECRET_KEY)); // REQUIRED
         parameters.put(S3_PATH, requestBody.optString(S3_PATH)); // REQUIRED
         parameters.put(S3_REGION, requestBody.optString(S3_REGION));
-
+        parameters.put(S3_SIGNATURE_VERSION, requestBody.optString(S3_SIGNATURE_VERSION));
+        
         // check potential s3 parameters and required credentials
         if (	(!"".equals(requestBody.optString(IMAGE_URL)) && requestBody.optString(IMAGE_URL).startsWith("s3://")) ||
         		(!"".equals(requestBody.optString(VALIDATOR_SCRIPT_URL)) && requestBody.optString(VALIDATOR_SCRIPT_URL).startsWith("s3://")) ||
         		(!"".equals(requestBody.optString(S3_PATH))) ) {
     		if (!"".equals(parameters.get(S3_ENDPOINT_URL)) && !"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY))) {}
-    		else return Response.status(Status.BAD_REQUEST).entity("S3 access is required (" + IMAGE_URL + ", " + VALIDATOR_SCRIPT_URL + ", " + S3_PATH + ") but no credentials are given: " + S3_ENDPOINT_URL + ", " + S3_ACCESS_KEY + ", " + S3_SECRET_KEY + "' > failure ").build(); 
+    		else return Response.status(Status.BAD_REQUEST).entity("S3 access is required by either " + IMAGE_URL + " or " + VALIDATOR_SCRIPT_URL + " or " + S3_PATH + ", but no credentials are provided: " + S3_ENDPOINT_URL + " and " + S3_ACCESS_KEY + " and " + S3_SECRET_KEY + ".").build(); 
         }
         
         parameters.put(MAX_ITERATIONS_NUM, requestBody.optString(MAX_ITERATIONS_NUM)); // OPTIONAL
@@ -246,12 +276,28 @@ public class Optimizer {
        			
        	// create optimizer VM (not yet started)
         VM optimizerVM = null; 
-        try { optimizerVM = new VM(endpoint, accessKey, secretKey, parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE), optimizerImageId, null); } 
-        catch (Exception x) { return Response.status(Status.BAD_REQUEST).entity("Cannot start optimizer VM: " + x.getMessage()).build(); }
+        try { 
+        	if (EC2VM.CLOUD_INTERFACE.equals(cloudInterface)) {
+        		optimizerVM = new EC2VM(endpoint, accessKey, secretKey, parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE), optimizerImageId, null); 
+        	} else if (FCOVM.CLOUD_INTERFACE.equals(cloudInterface)) {
+        		// read parameters from request
+        		String userEmailAddressSlashCustomerUUID = parameters.get(CLOUD_ACCESS_KEY);
+        		String password = parameters.get(CLOUD_SECRET_KEY);
+        		optimizerVM = new FCOVM.Builder(endpoint, userEmailAddressSlashCustomerUUID, password, optimizerImageId)
+        				.withInstanceType(parameters.get(CLOUD_OPTIMIZER_VM_INSTANCE_TYPE))
+        				.withDiskSize(16) // GB
+        				.build();  
+        	} else if (WTVM.CLOUD_INTERFACE.equals(cloudInterface)) {
+        		String username = parameters.get(CLOUD_ACCESS_KEY);
+        		String password = parameters.get(CLOUD_SECRET_KEY);
+        		optimizerVM = new WTVM.Builder(endpoint, username, password)
+        				.build(); 
+        	} else return Response.status(Status.BAD_REQUEST).entity("Invalid cloud interface: " + cloudInterface).build(); 
+        } catch (Exception x) { return Response.status(Status.BAD_REQUEST).entity("Cannot create optimizer VM: " + x.getMessage()).build(); }
 
-		// set known task propertis
+		// set known task properties
 		task.setStatus(OptimizerStatus.RUNNING.name()); // task: running
-		
+		task.setCloudInterface(cloudInterface);
         task.setEndpoint(endpoint);
         task.setAccessKey(accessKey);
         task.setSecretKey(secretKey);
@@ -267,18 +313,23 @@ public class Optimizer {
 		try { task.setMaxRunningTime(parameters.get(MAX_RUNNING_TIME)); }
 		catch (NumberFormatException x) {return Response.status(Status.BAD_REQUEST).entity("NumberFormatException " + MAX_RUNNING_TIME + ": " + x.getMessage()).build(); }
 		task.setOptimizedImageURL(parameters.get(S3_ENDPOINT_URL) + "/" + parameters.get(S3_PATH));
-
 		
         parameters.put(AVAILABILITY_ZONE, requestBody.optString(AVAILABILITY_ZONE)); // OPTIONAL
 
-		log.debug("Parameters: " + parameters);
+//		log.debug("Parameters: " + parameters);
 //		log.debug("Cloud-init: " + cloudInit);
 		
         // start optimizer VM  ====================================
         log.info("Starting optimizer VM...");
         try {
-        	String cloudInitBase64 = ResourceUtils.base64Encode(cloudInit);
-        	optimizerVM.run(null, cloudInitBase64, parameters.get(AVAILABILITY_ZONE));
+        	Map<String, String> pars = new HashMap<String, String>();
+        	pars.put(VM.USER_DATA_BASE64, ResourceUtils.base64Encode(cloudInit)); 
+        	pars.put(VM.USER_DATA, cloudInit); 
+        	pars.put(EC2VM.AVAILABILITY_ZONE, parameters.get(AVAILABILITY_ZONE));
+        	pars.put(VM.LOGIN, Configuration.optimizerRootLogin);
+        	
+        	pars.put(VM.SSH_KEY_PATH, Configuration.sshKeyPath);
+        	optimizerVM.run(pars);
         	task.setInstanceId(optimizerVM.getInstanceId());
         	task.setVmStatus(VM.PENDING);
         } catch (Exception x) {
@@ -334,33 +385,30 @@ public class Optimizer {
 		return task;
 	}
 	
-	/*
-	private Task retrieveTaskByTag(String tag) {
-			log.debug("Getting task with tag " + tag + " from database...");
-			EntityManager entityManager = DBManager.getInstance().getEntityManager();
-			if (entityManager != null) {
-				try {
-					entityManager.getTransaction().begin();
-					Criteria criteria = session.createCriteria(Task.class);
-					Task task = criteria.add(Restrictions.eq("tag", tag)).uniqueResult();
-					if (task == null) log.debug("Task with tag not found in database: " + tag);
-					entityManager.getTransaction().commit();
-					entityManager.close();
-					return task;
-				} catch (Throwable x) { log.error("Database connection problem. Check JPA settings!", x); }
-			} else log.error("No database!");
-		}
-		return null;
-	}
-	*/
-	
 	private VM retrieveVM(Task task) { // note: no describe
 		VM vm = optimizerVMCache.get(task.getId());
 		if (vm == null) { // recreate VM object to connect to the instance
 			if (task.getInstanceId() == null) log.error("No instanceId in task, cannot recover optimizer VM"); // it should not happen as this case was filtered befor
 			else {
-				try { vm = new VM(task.getEndpoint(), task.getAccessKey(), task.getSecretKey(), task.getInstanceId()); } 
-				catch (Exception x) {}
+				try { 
+					if (task.getCloudInterface() == null || EC2VM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
+						vm = new EC2VM(task.getEndpoint(), task.getAccessKey(), task.getSecretKey(), task.getInstanceId()); 
+					} else if (FCOVM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
+		        		// read parameters from database
+		        		String userEmailAddressSlashCustomerUUID = task.getAccessKey();
+		        		String password = task.getSecretKey();
+		        		// Configuration.optimizerImageId is used anyway? 
+		        		vm = new FCOVM.Builder(task.getEndpoint(), userEmailAddressSlashCustomerUUID, password, Configuration.optimizerImageId)
+		        				.withServerUUID(task.getInstanceId())
+		        				.build(); 
+					} else if (WTVM.CLOUD_INTERFACE.equals(task.getCloudInterface())) {
+		        		String username = task.getAccessKey();
+		        		String password = task.getSecretKey();
+		        		vm = new WTVM.Builder(task.getEndpoint(), username, password)
+		        				.build(); 
+					} else log.error("Invalid cloud interface in database: " + task.getCloudInterface());
+	        		vm.describeInstance();
+				} catch (Exception x) { log.error("Cannot recover VM: " + x.getMessage()); }
 			}
 			if (vm != null) {
 				if (task.getStatus().equalsIgnoreCase(OptimizerStatus.DONE.name()) ||
@@ -403,6 +451,7 @@ public class Optimizer {
 					entity.setFailure(task.getFailure());
 					entity.setOptimizedImageURL(task.getOptimizedImageURL());
 					entity.setChart(task.getChart());
+					entity.setCloudInterface(task.getCloudInterface());
 				} else log.warn("Task id not found in database: " + task.getId());
 				entityManager.getTransaction().commit();
 				entityManager.close();
@@ -435,17 +484,17 @@ public class Optimizer {
 		json.put(RESPONSE_FAILURE, task.getFailure());
 		json.put(RESPONSE_OPTIMIZED_IMAGE_URL, task.getOptimizedImageURL());
 		json.put(RESPONSE_CHART, new JSONArray(new JSONTokener(task.getChart())));
+		json.put(CLOUD_INTERFACE, task.getCloudInterface());
 		json.put("id", task.getId());
 		return json;
 	}
 
-	@GET
-	@Path("{id}")
-	@Produces(MediaType.APPLICATION_JSON)
+	@GET @Path("{id}") @Produces(MediaType.APPLICATION_JSON)
 	public Response status(
 			@PathParam("id") String id,
 			@Context HttpHeaders headers,
-			@Context HttpServletRequest request) {
+			@Context HttpServletRequest request,
+			@HeaderParam("KeepVM") String keepVM) {
 		
 		Task task = retrieveTask(id);
 		if (task == null) return Response.status(Status.BAD_REQUEST).entity("Invalid task id: " + id).build();
@@ -509,9 +558,9 @@ public class Optimizer {
 			|| optimizerVM.getStatus().equalsIgnoreCase(VM.STOPPED) 
 			|| optimizerVM.getStatus().equalsIgnoreCase(VM.STOPPING)) {
 			task.setStatus(OptimizerStatus.FAILED.name());
-			task.setFailure("Optimizer VM " + task.getInstanceId() + " is down: " + optimizerVM.getStatus() + ". (Terminated externally.)");
+			task.setFailure("Optimizer Orchestrator VM " + task.getInstanceId() + " is down: " + optimizerVM.getStatus() + ". (Terminated externally or unsuccessful launch.)");
 			task.setSecretKey(""); // clear passwords from database
-			task.setEnded(System.currentTimeMillis()); // FIXME it is query time, not task completion time
+			task.setEnded(System.currentTimeMillis()); // it is query time, not task completion time
 			persistTask(task);
 			taskCache.remove(task.getId()); // remove Task from task cache (assuming the user will not query it again)
 			optimizerVMCache.remove(task.getId()); // remove VM from VM cache
@@ -530,14 +579,9 @@ public class Optimizer {
 		SshSession ssh = null;
 		boolean changed = false;
 		try {
-			String sshKeyPath = Thread.currentThread().getContextClassLoader().getResource(OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE).toString();
-			if (sshKeyPath != null) { 
-				if (sshKeyPath.startsWith("file:\\")) sshKeyPath = sshKeyPath.substring("file:\\".length());
-				else if (sshKeyPath.startsWith("file:/")) sshKeyPath = sshKeyPath.substring("file:".length());
-			} else throw new Exception("Resource not found: " + OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE);
 			
-			log.debug("Opening SSH connection to " + optimizerVM.getInstanceId() + " " + Configuration.optimizerRootLogin + "@" + optimizerVM.getIP() + " " + sshKeyPath);
-			ssh = new SshSession(optimizerVM.getIP(), Configuration.optimizerRootLogin, sshKeyPath);
+			log.debug("Opening SSH connection to " + optimizerVM.getInstanceId() + " " + Configuration.optimizerRootLogin + "@" + optimizerVM.getIP() + " " + Configuration.sshKeyPath);
+			ssh = new SshSession(optimizerVM.getIP(), Configuration.optimizerRootLogin, Configuration.sshKeyPath);
 			
 			OutputStreamWrapper stdout = new OutputStreamWrapper();
 			OutputStreamWrapper stderr = new OutputStreamWrapper();
@@ -570,6 +614,7 @@ public class Optimizer {
 				// optimizerPhase: content of file "phase"
 				// shrinkerPhase: last line of Shrinker.log containing pattern ###phase
 				log.debug("Checking file 'failure'...");
+				stdout.clear(); stderr.clear();
 				exitCode = ssh.executeCommand("cat failure", stdout, stderr);
 				if (exitCode == 0) { 
 					 if (stdout.size() > 0) {
@@ -672,7 +717,7 @@ public class Optimizer {
 					task.getStatus().equalsIgnoreCase(OptimizerStatus.FAILED.name()) ||
 					task.getStatus().equalsIgnoreCase(OptimizerStatus.ABORTED.name())) {
 						log.debug("Task completed with status: " + task.getStatus());
-						task.setEnded(System.currentTimeMillis()); // FIXME it is query time, not task completion time
+						task.setEnded(System.currentTimeMillis()); // it is query time, not task completion time
 						changed = true;
 				}
 			
@@ -780,10 +825,17 @@ public class Optimizer {
 		// if task DONE/FAILED, kill VM, cleanup
 		if (task.getStatus().equalsIgnoreCase(OptimizerStatus.DONE.name()) ||
 			task.getStatus().equalsIgnoreCase(OptimizerStatus.FAILED.name())) {
-			log.debug("Shutting down optimizer VM: " + optimizerVM.getInstanceId() + "...");
-			try { optimizerVM.terminate(); } // can wait up to 30 seconds
-			catch (Exception x) {} 
-			task.setVmStatus(optimizerVM.getStatus()); // NOTE: VM state may remain in shutting down but will terminate later
+			
+			if (!"true".equals(keepVM)) {
+				log.debug("Shutting down optimizer VM: " + optimizerVM.getInstanceId() + "...");
+				try { optimizerVM.terminate(); } // can wait up to 30 seconds
+				catch (Exception x) {} 
+				task.setVmStatus(optimizerVM.getStatus()); // NOTE: VM state may remain in shutting down but will terminate later
+			} else {
+				task.setVmStatus(VM.TERMINATED);
+				log.warn("VM " + optimizerVM.getInstanceId() + " is in done/failed status but not terminated due to KeepVM header parameter. The VM must be terminated manually!");
+			}
+			
 			log.debug("Removing task and VM from cache...");
 			taskCache.remove(task.getId()); // remove Task from task cache (assuming the user will not query it again)
 			optimizerVMCache.remove(task.getId()); // remove VM from VM cache
@@ -933,6 +985,14 @@ public class Optimizer {
 	}
 	
 	private String generateCloudInitWriteFiles(Map<String,String> parameters) {
+		String vmFactory;
+		// set vmFactory according to cloudInterface
+		String cloudInterface = parameters.get(CLOUD_INTERFACE); // must not be null
+       	if (FCOVM.CLOUD_INTERFACE.equals(cloudInterface)) vmFactory = "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.fcotarget.SOAP";
+       	else if (WTVM.CLOUD_INTERFACE.equals(cloudInterface)) vmFactory = "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.wttarget.REST";
+       	else vmFactory = "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.amazontarget.EC2";
+		String vmFactoryClass = vmFactory.substring(vmFactory.lastIndexOf(".") + 1); // e.g., "EC2";
+		
 		StringBuilder sb = new StringBuilder();
 		sb.append("- path: /root/optimize.sh"); sb.append("\n");
 		sb.append("  permissions: \"0700\""); sb.append("\n");
@@ -943,25 +1003,33 @@ public class Optimizer {
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.grouping.GrouperToUse=" + Configuration.grouperToUse + " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxUsableCPUs=" + parameters.get(NUMBER_OF_PARALLEL_WORKER_VMS) /*Configuration.maxUsableCPUs */+ " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.validator.ParallelVMNum=" + parameters.get(NUMBER_OF_PARALLEL_WORKER_VMS) /*Configuration.parallelVMNum*/ + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory=" + Configuration.vmFactory + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.accessKey=" + parameters.get(CLOUD_ACCESS_KEY) + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.secretKey=" + parameters.get(CLOUD_SECRET_KEY) + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.endpoint=" + parameters.get(CLOUD_ENDPOINT_URL) + " \\"); sb.append("\n"); 
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.instanceType=" + parameters.get(CLOUD_WORKER_VM_INSTANCE_TYPE) + " \\"); sb.append("\n");
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory=" + vmFactory + " \\"); sb.append("\n"); 
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".accessKey=" + parameters.get(CLOUD_ACCESS_KEY) + " \\"); sb.append("\n"); 
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".secretKey=" + parameters.get(CLOUD_SECRET_KEY) + " \\"); sb.append("\n"); 
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".endpoint=" + parameters.get(CLOUD_ENDPOINT_URL) + " \\"); sb.append("\n"); 
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".instanceType=" + parameters.get(CLOUD_WORKER_VM_INSTANCE_TYPE) + " \\"); sb.append("\n");
 		if (!"".equals(parameters.get(IMAGE_KEY_PAIR))) {
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.keypair=" + parameters.get(IMAGE_KEY_PAIR) + " \\"); sb.append("\n"); 
 		}
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.util.scriptprefix=" + Configuration.scriptPrefix + " \\"); sb.append("\n"); 
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.util.sshkey=/root/.ssh/id_rsa"); sb.append(" \\" + "\n");
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.sourceimagefilename=" + SOURCE_IMAGE_FILE); sb.append(" \\" + "\n");
-		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory.EC2.loginName=" + parameters.get(IMAGE_USER_NAME) + " \\"); sb.append("\n");
+		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".loginName=" + parameters.get(IMAGE_USER_NAME) + " \\"); sb.append("\n");
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.targetimagefilename=" + OPTIMIZED_IMAGE_FILE); sb.append(" \\" + "\n");
+		if (!"".equals(parameters.get(OVF_URL))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ovfURL=" + parameters.get(OVF_URL)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(MAX_ITERATIONS_NUM))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxIterationsNum=" + parameters.get(MAX_ITERATIONS_NUM)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(MAX_NUMBER_OF_VMS))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxNumberOfVMs=" + parameters.get(MAX_NUMBER_OF_VMS)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(AIMED_REDUCTION_RATIO))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.aimedReductionRatio=" + parameters.get(AIMED_REDUCTION_RATIO)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(AIMED_SIZE))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.aimedSize=" + parameters.get(AIMED_SIZE)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(MAX_RUNNING_TIME))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxRunningTime=" + parameters.get(MAX_RUNNING_TIME)); sb.append(" \\" + "\n"); }
 		sb.append("    -Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.NoOpLog"); sb.append("\""); sb.append("\n");
+		
+		// FIXME in the case of WT set signature version
+		if (!"".equals(parameters.get(S3_SIGNATURE_VERSION))) {
+			sb.append("    ");
+			sb.append("aws configure set default.s3.signature_version " + parameters.get(S3_SIGNATURE_VERSION)); // s3v4
+			sb.append("\n");
+		}
 		
 		// if HTTP(s)
 		if (parameters.get(IMAGE_URL).startsWith("http://") || parameters.get(IMAGE_URL).startsWith("https://")) {
@@ -988,6 +1056,16 @@ public class Optimizer {
 		} else {
 			sb.append("    echo 'Not supported protocol in source image URL:  " + parameters.get(IMAGE_URL) + "' > failure "); sb.append("\n");
 			sb.append("    exit 1"); sb.append("\n");
+		}
+		
+		// convert image format to qcow2
+		if (parameters.get(IMAGE_FORMAT) != null && !"".equals(parameters.get(IMAGE_FORMAT)) && !"qcow2".equals(parameters.get(IMAGE_FORMAT))) {
+			sb.append("    mv " + SOURCE_IMAGE_FILE + " " + SOURCE_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT)); sb.append("\n");
+			sb.append("    qemu-img convert -f " + parameters.get(IMAGE_FORMAT) + " -O qcow2 " + SOURCE_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT) + " " + SOURCE_IMAGE_FILE + "");
+			sb.append(" || { ");
+			sb.append("echo 'Cannot convert source image to qcow2" + "' > failure");
+			sb.append(" ; exit 1 ; }"); sb.append("\n");
+			sb.append("    rm " + SOURCE_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT)); sb.append("\n");
 		}
 		
 		// download validator script
@@ -1021,6 +1099,11 @@ public class Optimizer {
 			}
 		}
 		
+		// export FS type parameters (absent on default ext2-ext4)
+		if (!"".equals(parameters.get(IMAGE_ROOT_FILE_SYSTEM_TYPE))) {
+			sb.append("    export FS_TYPE=" + parameters.get(IMAGE_ROOT_FILE_SYSTEM_TYPE)); sb.append("\n");
+		}
+
 		// mount source image
 		sb.append("    echo 'Mounting source image' > phase"); sb.append("\n");
 		sb.append("    ");
@@ -1032,7 +1115,7 @@ public class Optimizer {
 		// start optimizer (optimize + create optimized image)
 		sb.append("    echo 'Running shrinker' > phase"); sb.append("\n");
 		sb.append("    ");
-		sb.append("java $JAVA_OPTS -cp \"./lib/*\" hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker " + SOURCE_FILE_SYSTEM_DIR + " " + parameters.get(IMAGE_ID) + " " + VALIDATOR_SCRIPT_FILE + " &> " + SHRINKER_STDOUT);
+		sb.append("java $JAVA_OPTS -cp \"./lib/*:.\" hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker " + SOURCE_FILE_SYSTEM_DIR + " " + parameters.get(IMAGE_ID) + " " + VALIDATOR_SCRIPT_FILE + " &> " + SHRINKER_STDOUT);
 		sb.append(" || { ");
 		sb.append("echo Optimizer Java exit code: $? > failure");
 		sb.append(" ; exit 1 ; }"); sb.append("\n");
@@ -1047,35 +1130,45 @@ public class Optimizer {
 			
 		// make optimized image
 		sb.append("    echo 'Creating optimized image' > phase"); sb.append("\n");
-//		sb.append("    ");
-//		if ("".equals(parameters.get(S3_PATH))) sb.append("#"); // if no upload path, skip creating optimized image
-//		sb.append(Configuration.scriptPrefix + "scripts/makeWPImage.sh " + SOURCE_IMAGE_FILE + " /root/rmme " + OPTIMIZED_IMAGE_FILE + " " + parameters.get(FREE_DISK_SPACE) + " > makeWPImage.out");
-//		sb.append(" || { ");
-//		sb.append("echo 'Cannot make optimized image file " + OPTIMIZED_IMAGE_FILE + " from source image " + SOURCE_IMAGE_FILE + "' > failure");
-//		sb.append(" ; exit 1 ; }"); sb.append("\n");
 		sb.append("    ");
 		sb.append(Configuration.scriptPrefix + "scripts/createOptimizedImage.sh " + SOURCE_IMAGE_FILE + " " + SOURCE_FILE_SYSTEM_DIR + " " + parameters.get(IMAGE_ROOT_FILE_SYSTEM_PARTITION) + " &> createOptimizedImage.out");
 		sb.append(" || { ");
 		sb.append("echo 'Cannot create optimized image file " + OPTIMIZED_IMAGE_FILE + " from source image " + SOURCE_IMAGE_FILE + "' > failure");
 		sb.append(" ; exit 1 ; }"); sb.append("\n");
 		
+		String optimizedImageFileName = OPTIMIZED_IMAGE_FILE;
+		
+		// convert back optimized image to the input format
+		/*
+		if (parameters.get(IMAGE_FORMAT) != null && !"".equals(parameters.get(IMAGE_FORMAT)) && !"qcow2".equals(parameters.get(IMAGE_FORMAT))) {
+			sb.append("    echo 'Converting optimized image' > phase"); sb.append("\n");
+			String useCompression = "vmdk".equals(parameters.get(IMAGE_FORMAT)) ? "-c " : ""; 
+			sb.append("    qemu-img convert -O " + parameters.get(IMAGE_FORMAT) + " -f qcow2 " + useCompression +  OPTIMIZED_IMAGE_FILE + " " + OPTIMIZED_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT));
+			sb.append(" || { ");
+			sb.append("echo 'Cannot convert optimized image to "+  parameters.get(IMAGE_FORMAT) + "' > failure");
+			sb.append(" ; exit 1 ; }"); sb.append("\n");
+			optimizedImageFileName = OPTIMIZED_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT); 
+			sb.append("    rm " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
+		}
+		*/
+		
 		// upload optimized image to S3
 		sb.append("    echo 'Uploading optimized image' > phase"); sb.append("\n");
 		sb.append("    ");
 		if (!"".equals(parameters.get(S3_ENDPOINT_URL)) && !"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY)) && !"".equals(parameters.get(S3_PATH))) {}
 		else sb.append("# "); // comment if no s3Path
-		sb.append("aws --endpoint-url " + parameters.get(S3_ENDPOINT_URL) + " --no-verify-ssl s3 cp " + OPTIMIZED_IMAGE_FILE + " s3://" + parameters.get(S3_PATH) + " --quiet 2> upload.out");
+		sb.append("aws --endpoint-url " + parameters.get(S3_ENDPOINT_URL) + " --no-verify-ssl s3 cp " + optimizedImageFileName + " s3://" + parameters.get(S3_PATH) + " --quiet 2> upload.out");
 		sb.append(" || { ");
-		sb.append("echo 'Cannot upload optimized image file " + OPTIMIZED_IMAGE_FILE + " to S3 server " + parameters.get(S3_ENDPOINT_URL) + " with access key: " + parameters.get(S3_ACCESS_KEY) + ", secret key: " + parameters.get(S3_SECRET_KEY).substring(0, 3) + "...' > failure");
+		sb.append("echo 'Cannot upload optimized image file " + optimizedImageFileName + " to S3 server " + parameters.get(S3_ENDPOINT_URL) + " with access key: " + parameters.get(S3_ACCESS_KEY) + ", secret key: " + (parameters.get(S3_SECRET_KEY) != null ? parameters.get(S3_SECRET_KEY).substring(0, 3) : parameters.get(S3_SECRET_KEY)) + "...' > failure");
 		sb.append(" ; exit 1 ; }"); sb.append("\n");
 	
 		// econe-upload --access-key ahajnal@sztaki.hu --secret-key 60a... --url http://cfe2.lpds.sztaki.hu:4567 /mnt/optimized-image.qcow2
 		sb.append("    ");
-		sb.append("# econe-upload --access-key " + parameters.get(CLOUD_ACCESS_KEY) + " --secret-key " + parameters.get(CLOUD_SECRET_KEY) + " --url " + parameters.get(CLOUD_ENDPOINT_URL) + " " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
+		sb.append("# econe-upload --access-key " + parameters.get(CLOUD_ACCESS_KEY) + " --secret-key " + parameters.get(CLOUD_SECRET_KEY) + " --url " + parameters.get(CLOUD_ENDPOINT_URL) + " " + optimizedImageFileName); sb.append("\n");
 
 		sb.append("    ");
 		if ("".equals(parameters.get(ID)) || Configuration.knowledgeBaseURL == null) sb.append("# ");
-		sb.append("curl -X POST -k -L --retry 5 --retry-delay 10 --upload-file @" + OPTIMIZED_IMAGE_FILE + " " + Configuration.knowledgeBaseURL + "/" + parameters.get(ID) + ""); sb.append("\n");
+		sb.append("curl -X POST -k -L --retry 5 --retry-delay 10 --upload-file @" + optimizedImageFileName + " " + Configuration.knowledgeBaseURL + "/" + parameters.get(ID) + ""); sb.append("\n");
 
 		// make optimized image
 		sb.append("    echo 'Done' > phase"); sb.append("\n");
@@ -1115,6 +1208,8 @@ public class Optimizer {
 		if (!"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY))) {
 		sb.append("\n");
 		sb.append("- path: /root/.aws/config"); sb.append("\n");
+		sb.append("  permissions: \"0600\""); sb.append("\n");
+		sb.append("  owner: \"root\""); sb.append("\n");
 		sb.append("  content: |"); sb.append("\n");
 		sb.append("    [default]"); sb.append("\n");
 		sb.append("    aws_access_key_id = " + parameters.get(S3_ACCESS_KEY)); sb.append("\n");
@@ -1127,6 +1222,9 @@ public class Optimizer {
 	
 	private String generateCloudInitRuncmd(String taskId) {
 		StringBuilder sb = new StringBuilder();
+		// check if runcmd runs in two copies
+		sb.append("- test -f /root/.optimizer.lck && exit 0"); sb.append("\n");
+		sb.append("- touch /root/.optimizer.lck"); sb.append("\n");
 
 		// update and build sztaki-java-cli-utils and image-optimizer
 		sb.append("# - cd /root/wp3-imagesynthesis/sztaki-java-cli-utils/"); sb.append("\n");
@@ -1172,6 +1270,17 @@ public class Optimizer {
 				}
 			}
 		}
+	}
+	
+	public static void taskCacheShutdown() {
+		for (String id: taskCache.keySet()) {
+			Task task = taskCache.get(id);
+			if (task != null) synchronized(task) {
+				VM vm = optimizerVMCache.remove(id);
+				if (vm != null) vm.discard();
+			}
+		}
+		taskCache.clear();
 	}
 	
 	public static void main(String [] args) throws Exception {

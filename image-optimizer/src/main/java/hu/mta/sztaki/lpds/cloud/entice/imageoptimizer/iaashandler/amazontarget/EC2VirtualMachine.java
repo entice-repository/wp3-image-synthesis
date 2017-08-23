@@ -81,12 +81,12 @@ public class EC2VirtualMachine extends VirtualMachine {
 	 * @param testConformance
 	 *            true to do
 	 */
-	public EC2VirtualMachine(String vaid, Map<String, Vector<String>> parameters, boolean testConformance) {
+	public EC2VirtualMachine(String vaid, Map<String, List<String>> parameters, boolean testConformance) {
 		super(vaid, parameters, testConformance);
 	}
 
 	@Override
-	protected void parseVMCreatorParameters(Map<String, Vector<String>> parameters) {
+	protected void parseVMCreatorParameters(Map<String, List<String>> parameters) {
 		super.datacollectorDelay = 2000; // 2 seconds delay between polls
 		disableUnparseableDateWarning();
 		if (parameters == null)

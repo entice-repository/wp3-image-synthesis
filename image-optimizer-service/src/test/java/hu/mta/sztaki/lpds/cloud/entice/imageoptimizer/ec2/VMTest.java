@@ -2,16 +2,18 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ec2;
 
 import static org.junit.Assert.*;
 
+import java.util.Hashtable;
+
 import org.junit.Before;
 import org.junit.Test;
 
 public class VMTest {
 
-	VM vm = null;
+	EC2VM vm = null;
 	
 	@Before
 	public void setUp() throws Exception {
-		vm = new VM("http://localhost:4567", "accessKey", "secretKey", "m1.small", "imageid", "keypair");
+		vm = new EC2VM("http://localhost:4567", "accessKey", "secretKey", "m1.small", "imageid", "keypair");
 	}
 
 	@Test
@@ -32,12 +34,12 @@ public class VMTest {
 
 	@Test
 	public void testGetStatus() {
-		assertEquals(VM.UNKNOWN, vm.getStatus());
+		assertEquals(EC2VM.UNKNOWN, vm.getStatus());
 	}
 
 	@Test(expected=Exception.class)
 	public void testRun() throws Exception {
-		vm.run();
+		vm.run(new Hashtable<String,String>());
 	}
 
 	@Test(expected=Exception.class)

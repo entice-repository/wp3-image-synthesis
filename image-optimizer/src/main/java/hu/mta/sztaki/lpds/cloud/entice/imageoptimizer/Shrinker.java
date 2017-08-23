@@ -80,6 +80,11 @@ public class Shrinker extends Thread {
 			return running;
 		}
 
+		public void stop() {
+			running = false;
+		}
+
+		
 		@Override
 		public String toString() {
 			return "ShrinkingContext(id: " + hashCode() + " OrigVA: " + origVaid + " va: " + vaid + " test: "
@@ -137,7 +142,7 @@ public class Shrinker extends Thread {
 		sc.mountPoint = mountPoint;
 		sc.vaid = vaid;
 		// The file to report the progress of the optimisation
-		sc.groupStatesFile = new File(vaid.hashCode() + ".groupStates");
+		sc.groupStatesFile = new File(Math.abs(vaid.hashCode()) + ".groupStates");
 		sc.testScript = vaTestScript;
 		myLogger.info("Shrinking session started using context: " + sc);
 		new File(removeScript).delete();
@@ -169,7 +174,7 @@ public class Shrinker extends Thread {
 
 		// We pool some extra VMs for effectiveness
 		String sshSetup = System.getProperty(Shrinker.noSSHSetup);
-		myLogger.info("SSH is " + (sshSetup == null ? "" : "not") + " used for shrinking");
+		myLogger.info("SSH is " + (sshSetup == null ? "" : "not ") + "used for shrinking");
 		/*VMInstanceManager vmim = */ 
 		new VMInstanceManager(getThreadGroup(), 
 				sshSetup == null ? 
@@ -223,6 +228,16 @@ public class Shrinker extends Thread {
 				dgm.getGroup(sc.getMountPoint().toString() + "/sbin").setTestState(Group.GroupState.CORE_GROUP);
 			} catch (NullPointerException x) {
 			} // no such path
+
+			try {
+				dgm.getGroup(sc.getMountPoint().toString() + "/usr/lib").setTestState(Group.GroupState.CORE_GROUP);
+			} catch (NullPointerException x) {
+			} // no such path
+			try {
+				dgm.getGroup(sc.getMountPoint().toString() + "/var/lib").setTestState(Group.GroupState.CORE_GROUP);
+			} catch (NullPointerException x) {
+			} // no such path
+
 		}
 		try {
 			dgm.loadGroupStates();
@@ -418,10 +433,12 @@ public class Shrinker extends Thread {
 			shrinkerThread[0].start();
 			shrinkerThread[0].join();
 			Shrinker.getContext(tg, null).running = false;
+			Shrinker.myLogger.info("Shrinker ended with no exzeption. Context.running=false.");
 		} else {
 			Exception e = ex.get(0);
 			System.out.println(e.getMessage());
 			e.printStackTrace();
+			Shrinker.myLogger.severe("Shrinker ended with exzeption.");
 		}
 	}
 }

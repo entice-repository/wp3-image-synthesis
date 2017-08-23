@@ -15,12 +15,13 @@
 </style>
 <body>
 <h2>ENTICE Image Optimizer Service</h2>
-<h3>version: <%=Configuration.version%>, codename: 'github'</h3>
+<h3>version: <%=Configuration.version%>, codename: 'wt'</h3>
 
 <h4>Configuration:</h4>
 <table>
 	<tr><th>Property name</th><th>Value</th></tr>
 	<tr><td>localEc2Endpoint</td><td><%=Configuration.localEc2Endpoint%></td></tr>
+	<tr><td>cloudInterface</td><td><%=Configuration.cloudInterface%></td></tr>
 	<tr><td>optimizerImageId</td><td><%=Configuration.optimizerImageId%></td></tr>
 	<tr><td>optimizerInstanceType</td><td><%=Configuration.optimizerInstanceType%></td></tr>
 	<tr><td>workerInstanceType</td><td><%=Configuration.workerInstanceType%></td></tr>
@@ -28,7 +29,6 @@
 	<tr><td>grouperToUse</td><td><%=Configuration.grouperToUse%></td></tr>
 	<tr><td>maxUsableCPUs</td><td><%=Configuration.maxUsableCPUs%></td></tr>
 	<tr><td>parallelVMNum</td><td><%=Configuration.parallelVMNum%></td></tr>
-	<tr><td>vmFactory</td><td><%=Configuration.vmFactory%></td></tr>
 	<tr><td>scriptPrefix</td><td><%=Configuration.scriptPrefix%></td></tr>
 	<tr><td>optimizerRootLogin</td><td><%=Configuration.optimizerRootLogin%></td></tr>
 </table>

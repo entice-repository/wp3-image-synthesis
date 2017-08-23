@@ -16,6 +16,8 @@
 
 package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -193,6 +195,7 @@ public class VMInstanceManager extends Thread {
 				}
 			}
 		}
+		Shrinker.myLogger.severe("Returning null VM");
 		return null;
 	}
 
@@ -221,7 +224,9 @@ public class VMInstanceManager extends Thread {
 	public VirtualMachine getAndAcquireNextAvailableVM() {
 		String threadName = Thread.currentThread().getName();
 		Shrinker.myLogger.info("VM request (get and acquire) " + threadName);
+		int maxtestcount = 60*20; // 20 mins
 		while (sc.isRunning() && isAlive()) {
+			
 			synchronized (vms) {
 				Collections.shuffle(vms);
 				for (InstanceAllocationData iad : vms) {
@@ -235,7 +240,13 @@ public class VMInstanceManager extends Thread {
 			try {
 				sleep(new java.util.Random().nextInt(1000));
 			} catch (InterruptedException e) {}
+			maxtestcount--;
+			if (maxtestcount <= 0) {
+				Shrinker.myLogger.severe("Cannot acquire VM  for " + maxtestcount + "s. Returning null");
+				return null;
+			}
 		}
+		Shrinker.myLogger.info("VMInstanceManager getAndAcquireNextAvailableVM after context down " + threadName);
 		return null;
 	}
 
@@ -243,6 +254,7 @@ public class VMInstanceManager extends Thread {
 	@Override
 	public void run() {
 		long beats = 0, lastreport = 0;
+		
 		class VMCreatorThread extends Thread {
 			private boolean terminated = false;
 
@@ -280,6 +292,7 @@ public class VMInstanceManager extends Thread {
 				Shrinker.myLogger.info("STOP:" + getName());
 			}
 		}
+		
 		Vector<VMCreatorThread> vmcs = new Vector<VMCreatorThread>();
 		try {
 			Shrinker.myLogger.info("VMInstancemanager thread started");
@@ -287,13 +300,14 @@ public class VMInstanceManager extends Thread {
 				@Override
 				public void run() {
 					Shrinker.myLogger.info("Shutdown hook handler launched");
+					Shrinker.myLogger.info("Context.running=" + sc.isRunning());
+					sc.stop();
 					long time = System.currentTimeMillis();
-					// Wait 30 seconds before giving up waiting on VMI to terminate
-					while (!terminated && System.currentTimeMillis() - time < 30000)
+					// Wait 60 seconds before giving up waiting on VMI to terminate
+					while (!terminated && System.currentTimeMillis() - time < 60000)
 						yield();
-					if(!terminated) {
-						Shrinker.myLogger.warning("Exiting without complete termination of managed VMs!");
-					}
+					if(!terminated) Shrinker.myLogger.warning("Exiting without complete termination of managed VMs!");
+					else Shrinker.myLogger.info("Managed VMs terminated!");
 				}
 			});
 			for (int i = 0; i < maxvm; i++) {
@@ -369,7 +383,12 @@ public class VMInstanceManager extends Thread {
 			for (InstanceAllocationData iad : vms) {
 				Shrinker.myLogger.info("VM " + iad.vm.getInstanceId() + " status: " + iad.vm.getState());
 				if (!iad.vm.isInFinalState()) {
-					iad.vm.terminate();
+					try {
+						iad.vm.terminate();
+					} catch (VMManagementException x) {
+						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Cannot terminate VM: " + iad.vm.getInstanceId() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+						Shrinker.myLogger.info("Exception: cannot terminate VM: " + iad.vm.getInstanceId() + ""); 
+					}
 				}
 //				if (iad.vm.isInFinalState()) Shrinker.myLogger.warning("VM is in final state, still terminating...");
 //				iad.vm.terminate();
@@ -379,7 +398,7 @@ public class VMInstanceManager extends Thread {
 			terminated = true;
 			
 			Shrinker.myLogger.info("###phase: done");
-		} catch (VMManagementException e) {
+		} catch (Exception e) {
 			System.err.println(e.getMessage());
 			e.printStackTrace();
 			System.exit(1);
