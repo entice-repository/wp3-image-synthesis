@@ -66,6 +66,7 @@ public class Optimizer {
 	
 	// post request fields
 	public static final String ID = "id"; // REQUIRED by optimized-image upload
+	public static final String KNOWLEDGE_BASE_URL = "knowledgeBaseURL"; // OPTIONAL by optimized-image upload
 	public static final String IMAGE_URL = "imageURL"; // REQUIRED
 	public static final String IMAGE_ID = "imageId"; // REQUIRED
 	public static final String OVF_URL = "ovfURL"; // OPTIONAL (required in VMware)
@@ -132,7 +133,6 @@ public class Optimizer {
 
 	public static final String RESPONSE_ORIGINAL_USED_SPACE = "originalUsedSpace";
 	public static final String RESPONSE_OPTIMIZED_USED_SPACE = "optimizedUsedSpace";
-
 	
 	public static final String RESPONSE_FAILURE = "failure";
 	
@@ -184,6 +184,7 @@ public class Optimizer {
         if ("".equals(requestBody.optString(ID))) log.warn("No parameter " + ID + " provided for knowledge base. Optimized image will not be uploaded.");
         if (Configuration.knowledgeBaseURL == null) log.warn("knowledgeBaseURL not defined in properties file: " + Configuration.PROPERTIES_FILE_NAME + ". Optimized image will not be uploaded.");
         parameters.put(ID, requestBody.optString(ID)); // REQUIRED
+        parameters.put(KNOWLEDGE_BASE_URL, requestBody.optString(KNOWLEDGE_BASE_URL)); // OPTIONAL
         
         if ("".equals(requestBody.optString(IMAGE_ID))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_ID + "").build();
         parameters.put(IMAGE_ID, requestBody.getString(IMAGE_ID)); // REQUIRED
@@ -312,9 +313,20 @@ public class Optimizer {
 		catch (NumberFormatException x) {return Response.status(Status.BAD_REQUEST).entity("NumberFormatException " + AIMED_SIZE + ": " + x.getMessage()).build(); }
 		try { task.setMaxRunningTime(parameters.get(MAX_RUNNING_TIME)); }
 		catch (NumberFormatException x) {return Response.status(Status.BAD_REQUEST).entity("NumberFormatException " + MAX_RUNNING_TIME + ": " + x.getMessage()).build(); }
-		task.setOptimizedImageURL(parameters.get(S3_ENDPOINT_URL) + "/" + parameters.get(S3_PATH));
-		
-        parameters.put(AVAILABILITY_ZONE, requestBody.optString(AVAILABILITY_ZONE)); // OPTIONAL
+
+		// Cannot upload optimized image (neither KB URL nor S3 URL are specified)
+		task.setOptimizedImageURL("");
+		if (!"".equals(parameters.get(S3_ENDPOINT_URL)) && !"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY)) && !"".equals(parameters.get(S3_PATH))) {
+			task.setOptimizedImageURL(parameters.get(S3_ENDPOINT_URL) + "/" + parameters.get(S3_PATH));
+		}
+		// KB upload takes precedence in optimizedImageURL
+		if (!"".equals(parameters.get(ID)) && (Configuration.knowledgeBaseURL != null || !"".equals(parameters.get(KNOWLEDGE_BASE_URL)))) {
+			// KNOWLEDGE_BASE_URL takes precedence
+			String kbURL = "".equals(parameters.get(KNOWLEDGE_BASE_URL)) ? Configuration.knowledgeBaseURL : parameters.get(KNOWLEDGE_BASE_URL);
+			task.setOptimizedImageURL(kbURL + (kbURL.endsWith("/") ? "" : "/") + parameters.get(ID));
+		}
+
+		parameters.put(AVAILABILITY_ZONE, requestBody.optString(AVAILABILITY_ZONE)); // OPTIONAL
 
 //		log.debug("Parameters: " + parameters);
 //		log.debug("Cloud-init: " + cloudInit);
@@ -1166,9 +1178,12 @@ public class Optimizer {
 		sb.append("    ");
 		sb.append("# econe-upload --access-key " + parameters.get(CLOUD_ACCESS_KEY) + " --secret-key " + parameters.get(CLOUD_SECRET_KEY) + " --url " + parameters.get(CLOUD_ENDPOINT_URL) + " " + optimizedImageFileName); sb.append("\n");
 
-		sb.append("    ");
-		if ("".equals(parameters.get(ID)) || Configuration.knowledgeBaseURL == null) sb.append("# ");
-		sb.append("curl -X POST -k -L --retry 5 --retry-delay 10 --upload-file @" + optimizedImageFileName + " " + Configuration.knowledgeBaseURL + "/" + parameters.get(ID) + ""); sb.append("\n");
+		// return optimizedImageUrl accordingly
+		if (!"".equals(parameters.get(ID)) && (Configuration.knowledgeBaseURL != null || !"".equals(parameters.get(KNOWLEDGE_BASE_URL)))) {
+			String kbURL = "".equals(parameters.get(KNOWLEDGE_BASE_URL)) ? Configuration.knowledgeBaseURL : parameters.get(KNOWLEDGE_BASE_URL);
+			sb.append("    ");
+			sb.append("curl -X POST -k -L --retry 5 --retry-delay 10 --upload-file @" + optimizedImageFileName + " " + kbURL + (kbURL.endsWith("/") ? "" : "/") + parameters.get(ID) + ""); sb.append("\n");
+		}
 
 		// make optimized image
 		sb.append("    echo 'Done' > phase"); sb.append("\n");
