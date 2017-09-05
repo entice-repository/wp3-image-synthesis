@@ -27,7 +27,7 @@
 
 	<Resource name="jdbc/myconnection" auth="Container" type="javax.sql.DataSource"
               maxActive="100" maxIdle="30" maxWait="10000"
-              username="optimizer" password="entice" driverClassName="com.mysql.jdbc.Driver"
+              username="entice" password="entice" driverClassName="com.mysql.jdbc.Driver"
               validationQuery="SELECT 1" testOnBorrow="true"
-              url="jdbc:mysql://db:3306/optimizer?autoReconnect=true"/>
+              url="jdbc:mysql://database:3306/optimizer?autoReconnect=true"/>
 </Context>

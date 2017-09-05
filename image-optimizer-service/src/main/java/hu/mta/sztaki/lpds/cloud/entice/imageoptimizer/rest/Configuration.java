@@ -89,14 +89,30 @@ public class Configuration {
 				try { in.close(); } catch (IOException e) {}
 
 				version = prop.getProperty("version") != null ? prop.getProperty("version") : "0.1";
-				if (prop.getProperty("localEc2Endpoint") == null) log.warn("No default EC2 endpoint defined");
-				localEc2Endpoint = prop.getProperty("localEc2Endpoint") != null ? prop.getProperty("localEc2Endpoint") : "http://cfe2.lpds.sztaki.hu:4567";
-				if (prop.getProperty("localEc2Endpoint") == null) log.warn("No optimizer image id defined");
-				optimizerImageId = prop.getProperty("optimizerImageId") != null ? prop.getProperty("optimizerImageId") : "ami-00001553";
+				
+				localEc2Endpoint = prop.getProperty("localEc2Endpoint");
+				localEc2Endpoint = getSystemProperty("EC2_ENDPOINT", localEc2Endpoint);
+				if (localEc2Endpoint == null) {
+					log.warn("No EC2 endpoint defined, using default");
+					localEc2Endpoint = "http://cfe2.lpds.sztaki.hu:4567";
+				}
+				
+				optimizerImageId = prop.getProperty("optimizerImageId");
+				optimizerImageId = getSystemProperty("OPTIMIZER_IMAGE_ID", optimizerImageId);
+				if (optimizerImageId == null) {
+					log.warn("No optimizer image id defined, using default");
+					optimizerImageId = "ami-00001553";
+				}
+
+				cloudInterface = prop.getProperty("cloudInterface");
+				cloudInterface = getSystemProperty("CLOUD_INTERFACE", cloudInterface);
+				if (cloudInterface == null) {
+					log.warn("No cloud interface defined, using default");
+					cloudInterface = "ec2";
+				}
+				
 				optimizerInstanceType = prop.getProperty("optimizerInstanceType") != null ? prop.getProperty("optimizerInstanceType") : "m1.medium";
 				workerInstanceType = prop.getProperty("workerInstanceType") != null ? prop.getProperty("workerInstanceType") : "m1.small";
-				
-				cloudInterface = prop.getProperty("cloudInterface") != null ? prop.getProperty("cloudInterface") : "ec2";
 
 				if (prop.getProperty("hostnameVerification") != null && prop.getProperty("hostnameVerification").startsWith("disable")) {
 					hostnameVerification = false;
@@ -138,5 +154,9 @@ public class Configuration {
 				} catch (Throwable x) {}
 			}
 		} 
+	}
+	private static String getSystemProperty(String propertyName, String defaultValue) {
+		return System.getProperty(propertyName) != null ? System.getProperty(propertyName) : 
+			(System.getenv(propertyName) != null ? System.getenv(propertyName) : defaultValue); 
 	}
 }
