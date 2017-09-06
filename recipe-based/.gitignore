@@ -2,3 +2,6 @@
 __pycache__
 *.pyc
 config.py
+.vagrant
+deploy/roles/carlosbuenosvinos.*
+.idea

@@ -14,6 +14,7 @@ class Build(Resource):
                   dict({'request_id': request_id})}
         return result, 200
 
+
 class Request(Resource):
 
     def get(self, request_id):
@@ -21,27 +22,27 @@ class Request(Resource):
         result = {'status': 'ok' if outcome else 'failed',
                   'message': '' if outcome else message,
                   'result': '' if not outcome else
-                  dict({'request_id': request_id, 
+                  dict({'request_id': request_id,
                         'request_status': reqstate,
                         'outcome:': reqoutcome})}
         return result, 200
 
     def delete(self, request_id):
         outcome, message = ImageBuilder().cancel(request_id)
-        result = {
-                 'status': 'ok' if outcome else 'failed',
-                 'message': '' if outcome else message }
+        result = {'status': 'ok' if outcome else 'failed',
+                  'message': '' if outcome else message}
         return result, 200
+
 
 class Result(Resource):
 
     def get(self, request_id):
         outcome, message, ret = ImageBuilder().result(request_id)
-        result = {
-                 'status': 'ok' if outcome else "failed",
-                 'message': '' if outcome else message,
-                 'result': '' if not outcome else ret }
+        result = {'status': 'ok' if outcome else "failed",
+                  'message': '' if outcome else message,
+                  'result': '' if not outcome else ret}
         return result, 200
+        '''
         result = {
                  'status': 'OK',
                  'message': '',
@@ -52,12 +53,12 @@ class Result(Resource):
                         'id' : "ami-001234"}},
                     'log_url': "http://somewhere.com/log" }
         return result, 200
+        '''
 
     def delete(self, request_id):
         outcome, message = ImageBuilder().delete(request_id)
-        result = {
-                 'status': 'ok' if outcome else "failed",
-                 'message': '' if outcome else message}
+        result = {'status': 'ok' if outcome else "failed",
+                  'message': '' if outcome else message}
         return result, 200
 
 
@@ -66,9 +67,8 @@ class Image(Resource):
     def get(self, request_id):
         imgdir, imgfile = ImageBuilder().getImagePath(request_id)
         if not imgdir or not imgfile:
-            result = {
-                 'status': 'failed',
-                 'message': 'Requested image does not exist!'}
+            result = {'status': 'failed',
+                      'message': 'Requested image does not exist!'}
             return result, 200
         else:
             return send_from_directory(imgdir, imgfile, as_attachment=True)
@@ -79,10 +79,8 @@ class Log(Resource):
     def get(self, request_id):
         logdir, logfile = ImageBuilder().getLogPath(request_id)
         if not logdir or not logfile:
-            result = {
-                 'status': 'failed',
-                 'message': 'Requested log does not exist!'}
+            result = {'status': 'failed',
+                      'message': 'Requested log does not exist!'}
             return result, 200
         else:
-	    return send_from_directory(logdir, logfile, as_attachment=True)
-        
+            return send_from_directory(logdir, logfile, as_attachment=True)

@@ -38,14 +38,15 @@ TEEFILE=`mktemp -t remoteifconfig.XXXXXXXX`
 [ "$REALIP" = "NOIPCHECK" ] || { ssh -Cp $PORT $SSHOPTS $LOGIN@$IP /sbin/ifconfig 2>&1 | tee $TEEFILE | grep $REALIP || { cat $TEEFILE ; rm $TEEFILE ; exit 253 ; } ; }
 rm $TEEFILE
 
-RETRIES=0
-while ! rsync --log-file=/dev/null -qLpz -e "ssh -qp $PORT $SSHOPTS" $SCRIPT $LOGIN@$IP:/root/$SCRIPTLOC 2>&1 >> /dev/null
-do
-	sleep 5
-	RETRIES=$((RETRIES+1))
-	[ $RETRIES -gt 5 ] && exit 254
-done
-#scp -qCP $PORT $SSHOPTS $SCRIPT root@$IP:$SCRIPTLOC || exit 254
+#rsync
+#RETRIES=0
+#while ! rsync --log-file=/dev/null -qLpz -e "ssh -qp $PORT $SSHOPTS" $SCRIPT $LOGIN@$IP:/root/$SCRIPTLOC 2>&1 >> /dev/null
+#do
+#	sleep 5
+#	RETRIES=$((RETRIES+1))
+#	[ $RETRIES -gt 5 ] && exit 254
+#done
+scp -qCP $PORT $SSHOPTS $SCRIPT $LOGIN@$IP:$SCRIPTLOC || exit 254
 
 EXECPARAM="/root/$SCRIPTLOC $@"
 [ $OUTPUTREQUIRED = "no" ] && EXECPARAM="$EXECPARAM 2>&1 >> /dev/null"

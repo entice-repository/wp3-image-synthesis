@@ -1,0 +1,13 @@
+---
+  # Install supervisor
+
+- name: Install supervisor
+  apt: pkg={{ item }} state=installed
+  with_items:
+  - supervisor
+  notify: restart supervisor
+
+- name: Ensure supervisor config for app
+  template: src=supervisor.conf.j2 dest="/etc/supervisor/conf.d/{{ python_app_name }}.conf"
+  notify: restart supervisor
+

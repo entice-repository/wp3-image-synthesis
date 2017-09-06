@@ -24,6 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.TimeoutException;
@@ -70,6 +71,14 @@ public class SingleValidatorThread extends Thread {
 	private static ValidationState executeRemovalAndTest(VirtualMachine vm, String localRemoveScript,
 			final boolean testRestart, String removablesString) throws VMManagementException, IllegalStateException {
 //		VMSubState vms = vm.setAcquired(); its state already acquired at getAndAcuireNextAvailableVM
+		if (vm == null) {
+			try {
+				throw new Exception("NPE");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			return ValidationState.FAILURE;
+		}
 		VMSubState vms = vm.getSubState();
 		
 		SingleValidatorThread.ValidationState returner = SingleValidatorThread.ValidationState.FAILURE;
@@ -139,11 +148,12 @@ public class SingleValidatorThread extends Thread {
 								try { Thread.sleep(delay * 1000l); beforeRestart += delay; } catch (Exception x) {} // wait after reboot command
 								
 								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] checking uptime after restart on VM: " + vm.getInstanceId() + "");
+								// we should describe VM before trying to test restart
 								VMTests.restartTest(vm.getIP(), vm.getPort(), vm.getLoginName(), beforeRestart);
 								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart detected on VM: " + vm.getInstanceId() + "");
 							}
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] executing validator script against VM: " + vm.getInstanceId() + "");
-							returner = executeTest(vm, vms);
+							returner = executeTest(vm, vms); // release VM on SUCCESS
 							
 						} catch (VMManagementException e) {
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM restart failed: " + vm.getInstanceId() + " for group " + removablesString);
@@ -180,7 +190,7 @@ public class SingleValidatorThread extends Thread {
 		}
 		if (!returner.equals(SingleValidatorThread.ValidationState.SUCCESS)) {
 			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] test FAILED on VM " + vm.getInstanceId() + ": " + returner.name() + " for group " + removablesString);
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] terminating VM...");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] terminating VM " + vm.getInstanceId());
 			vm.terminate();
 		} else {
 			System.out.println("[T" + + (Thread.currentThread().getId() % 100) + "] test SUCCESS on VM: " + vm.getInstanceId()  + " for group " + removablesString);
@@ -197,6 +207,7 @@ public class SingleValidatorThread extends Thread {
 		ValidationState vs = actuallyExecuteTest(vm, vms); 
 		
 		if (ValidationState.SUCCESS.equals(vs)) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] validataion success. Releasing VM: " + vm.getInstanceId());
 			vm.releaseVM();
 		}
 		return vs;
@@ -307,7 +318,7 @@ public class SingleValidatorThread extends Thread {
 						removableList.add(
 								Obsolete.rshPrefix + new File(System.getProperty("user.dir"), Shrinker.removeScript));
 						removableList.add(Obsolete.rshPrefix + validatorScript.getAbsolutePath());
-						TreeMap<String, Vector<String>> tm = new TreeMap<String, Vector<String>>();
+						Map<String, List<String>> tm = new TreeMap<String, List<String>>();
 						tm.put(VirtualMachine.removeScriptParameterid, removableList);
 						vm = VMFactory.instance.requestVM(Shrinker.getContext().getVaid(), tm);
 						switch (vm.getState()) {
@@ -324,10 +335,10 @@ public class SingleValidatorThread extends Thread {
 						vm = removables.size() > 1 ? vim.getNewVMAndAcquire() : vim.getAndAcquireNextAvailableVM(); // FIXME acquire VM at getNew/getNext? vm.setAcquired()
 						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM acquired: " + (vm != null ? vm.getInstanceId() : "?") + " (" + (removables.size() > 1 ? "getNewVM" : "getNextAvailableVM") + ") for group " + removablesString);
 					}
-//					if (vm == null) { // FIXME dead code?
-//						Shrinker.myLogger.severe(getName() + "failed to acquire VM!");
-//						return;
-//					}
+					if (vm == null) {
+						Shrinker.myLogger.severe(getName() + "failed to acquire VM!");
+						return;
+					}
 					Shrinker.myLogger.info(getName() + " acquires " + (vm != null ? vm.toString() : vm));
 					try {
 						vs = noMMVA ? executeTest(vm, null) // no SSH

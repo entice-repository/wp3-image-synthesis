@@ -39,4 +39,9 @@ public class ResourceUtils {
 		} 
 		finally { try { in.close(); } catch (IOException e) {} }
 	}
+	
+	public static String base64Decode(String value) {
+		return value != null ? new String(Base64.decodeBase64(value.getBytes())) : "";
+	}
+
 }

@@ -29,5 +29,5 @@
               maxActive="100" maxIdle="30" maxWait="10000"
               username="entice" password="entice" driverClassName="com.mysql.jdbc.Driver"
               validationQuery="SELECT 1" testOnBorrow="true"
-              url="jdbc:mysql://virtual-image-manager-database:3306/virtualimages?autoReconnect=true"/>
+              url="jdbc:mysql://database:3306/virtualimages?autoReconnect=true"/>
 </Context>

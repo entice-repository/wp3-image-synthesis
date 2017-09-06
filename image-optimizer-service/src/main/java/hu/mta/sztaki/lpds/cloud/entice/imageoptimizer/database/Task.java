@@ -24,6 +24,10 @@ public class Task {
 	private String instanceId;
 	public void setInstanceId(String instanceId) { this.instanceId = instanceId; }
 	public String getInstanceId() { return this.instanceId; }
+
+	private String cloudInterface;
+	public void setCloudInterface(String param) { this.cloudInterface = param; }
+	public String getCloudInterface() { return this.cloudInterface; }
 	
 	private String endpoint;
 	private String accessKey;

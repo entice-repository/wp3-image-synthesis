@@ -52,7 +52,11 @@ public class RemoteExecutor {
 	public ExecHelper.ExecResult remoteExecute(String exechost, String execport, String login, InetAddress realIP, String key,
 			String execme, Writer output, boolean saveout, boolean wait)
 			throws IOException, InterruptedException, ScriptExecutionError {
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] remote execute: " + execme + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		String command =  ExecHelper.transformScriptsLoc(remoteExecutorScript) + " " + (key == null ? keyfile : key) + " "
+				+ exechost + " " + execport + " " + (saveout ? "yes" : "no") + " "
+				+ (realIP != null ? realIP.getHostAddress() : "NOIPCHECK") + " " + execme + " " + (login == null ? "root" : login);
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] remote execute: " + command + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		
 		ExecHelper.ExecResult result = executor.execProg(
 				ExecHelper.transformScriptsLoc(remoteExecutorScript) + " " + (key == null ? keyfile : key) + " "
 						+ exechost + " " + execport + " " + (saveout ? "yes" : "no") + " "

@@ -1,5 +1,6 @@
 import pytest
 
+
 def test_config(flask_app):
     config, client = flask_app
     assert config.WSPATH != ''

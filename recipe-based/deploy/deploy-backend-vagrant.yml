@@ -1,0 +1,39 @@
+---
+#
+# Assumes:
+#   - A working config.py in the shared directory.
+#
+- hosts: vagrant
+  vars:
+    ansistrano_deploy_to: "/opt/entice-imagesynth-backend/"
+    ansistrano_deploy_via: git
+    # Location of the git repository
+    ansistrano_git_repo: "https://github.com/entice-repository/wp3-image-synthesis.git"
+    # What version of the repository to check out. This can be the full 40-character SHA-1 hash, the literal string HEAD, a branch name, or a tag name
+    ansistrano_git_branch: develop
+    # If specified the subtree of the repository to deploy
+    ansistrano_git_repo_tree: "recipe-based/backend/"
+    # If specified this file is copied over and used as the identity key for the git commands, path is relative to the playbook in which it is used
+    #ansistrano_git_identity_key_path: "~atisu/.ssh/github-id_rsa"
+    ansistrano_allow_anonymous_stats: no
+    #ansistrano_before_symlink_shared_tasks_file: "{{ playbook_dir }}/ansistrano-tasks/my-before-symlink-shared-tasks.yml"
+    #ansistrano_after_cleanup_tasks_file: "{{ playbook_dir }}/ansistrano-tasks/my-after-cleanup-tasks.yml"
+    #ansistrano_shared_paths:
+    #  - env
+    ansistrano_shared_files:
+      - config.py
+    python_app_directory: "{{ ansistrano_deploy_to }}"
+    python_app_name: "entice-imagesynth-backend"
+    python_app_main_script: "run-builder-be-dev.py"
+    python_app_extra_packages:
+      - libyaml-0-2
+      - libyaml-dev
+      - qemu-system
+      - qemu-common
+      - qemu-system-x86
+      - qemu-utils
+      - qemu-kvm
+
+  roles:
+    - carlosbuenosvinos.ansistrano-deploy
+    - deploy-python-service

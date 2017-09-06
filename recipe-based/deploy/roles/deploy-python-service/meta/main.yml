@@ -1,0 +1,16 @@
+---
+dependencies: []
+galaxy_info:
+  author:              Attila Csaba Marosi
+  company:             MTA SZTAKI
+  description:         Deploy Python app with Ansistrano and supervisord
+  license:             MIT
+  min_ansible_version: 2.0.0
+  platforms:
+    - name: Ubuntu
+      versions:
+        - xenial
+        - trusty
+  categories:
+    - system
+    - deployment

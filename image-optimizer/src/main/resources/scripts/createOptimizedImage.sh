@@ -47,7 +47,8 @@ modprobe -a nbd &> /dev/null || { echo "ERROR: Cannot load NBD kernel module" ; 
 echo '  'mbd loaded
 
 echo Attaching image $IMAGE_FILE as device $DEVICE ...
-qemu-nbd -c $DEVICE $IMAGE_FILE || { echo "ERROR: Could not attach $DEVICE" ; rmmod nbd &> /dev/null ; exit 243 ; }
+qemu-nbd -c $DEVICE $IMAGE_FILE || { echo "ERROR: Could not attach $DEVICE" ; exit 243 ; }
+sleep 3
 echo '  '$DEVICE attached 
 
 DEVICE_PARTITION=$DEVICE
@@ -67,7 +68,7 @@ fi
 
 # mount (writable) --------------------
 echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(writable\) ...
-mount $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+mount $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; exit 243 ; }
 echo '  '$MOUNT_POINT mounted
 
 # delete removables --------------------
@@ -76,7 +77,7 @@ if [ -f $RMME_FILE ];
 then
   $RMME_FILE $MOUNT_POINT
 else
-  { echo "ERROR: $RMME_FILE not found" ; umount $MOUNT_POINT &> /dev/null ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
+  { echo "ERROR: $RMME_FILE not found" ; umount $MOUNT_POINT &> /dev/null ; qemu-nbd -d $DEVICE &> /dev/null ; exit 243 ; }
 fi
 echo '  'Removables deleted
 
@@ -87,21 +88,37 @@ echo '  '$MOUNT_POINT unmounted
 
 # phase 1: done =============================================
 # phase 2: zerofree, convert =============================================
+if [ -z "$FS_TYPE" ] || [[ $SF_TYPE == ext* ]]; then
+	# mount (read-only) --------------------
+	echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(read-only\) ...
+	mount -o ro $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; exit 243 ; }
+	echo '  '$MOUNT_POINT mounted
+	
+	# zerofree --------------------
+	echo Running zerofree on $DEVICE_PARTITION ...
+	zerofree $DEVICE_PARTITION
+	echo '  'done 
+	
+	# unmount --------------------
+	echo Unmounting $MOUNT_POINT ...
+	umount $MOUNT_POINT &> /dev/null || { echo "ERROR: Could not unmount $MOUNT_POINT" ; exit 243 ; }
+	echo '  '$MOUNT_POINT unmounted
+else
+	# mount (read-only) --------------------
+	echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(read-only\) ...
+	mount $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; exit 243 ; }
+	echo '  '$MOUNT_POINT mounted
 
-# mount (read-only) --------------------
-echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(read-only\) ...
-mount -o ro $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; rmmod nbd &> /dev/null ; exit 243 ; }
-echo '  '$MOUNT_POINT mounted
+	echo Zeroing empty space using dd ...
+	dd if=/dev/zero of=$MOUNT_POINT/empty.dd bs=1048576 || { echo '  'dd done ; }
+	sync
+	rm $MOUNT_POINT/empty.dd
 
-# zerofree --------------------
-echo Running zerofree on $DEVICE_PARTITION ...
-zerofree $DEVICE_PARTITION
-echo '  'done 
-
-# unmount --------------------
-echo Unmounting $MOUNT_POINT ...
-umount $MOUNT_POINT &> /dev/null || { echo "ERROR: Could not unmount $MOUNT_POINT" ; exit 243 ; }
-echo '  '$MOUNT_POINT unmounted
+	# unmount --------------------
+	echo Unmounting $MOUNT_POINT ...
+	umount $MOUNT_POINT &> /dev/null || { echo "ERROR: Could not unmount $MOUNT_POINT" ; exit 243 ; }
+	echo '  '$MOUNT_POINT unmounted
+fi
 
 # unload logical volumes --------------------
 if [ "$#" -gt 3 ]; then
@@ -123,8 +140,8 @@ qemu-nbd -d $DEVICE &> /dev/null || { echo "ERROR: Could not detach device $DEVI
 echo '  '$DEVICE detached
 
 # unload mbd kernel module 
-echo Unloading nbd ...
-rmmod nbd &> /dev/null # || { echo "ERROR: Cannot unload NBD kernel module. See: lsmod." ; }
-echo '  'nbd unloaded
+# echo Unloading nbd ...
+# rmmod nbd &> /dev/null # || { echo "ERROR: Cannot unload NBD kernel module. See: lsmod." ; }
+# echo '  'nbd unloaded
 
 echo Done

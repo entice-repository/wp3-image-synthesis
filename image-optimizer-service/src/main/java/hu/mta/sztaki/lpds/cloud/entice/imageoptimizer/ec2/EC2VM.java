@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
@@ -34,6 +35,7 @@ import com.amazonaws.services.ec2.model.DetachVolumeRequest;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.InstanceStateChange;
 import com.amazonaws.services.ec2.model.Placement;
+import com.amazonaws.services.ec2.model.RebootInstancesRequest;
 import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
@@ -41,10 +43,14 @@ import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
 import com.amazonaws.services.ec2.model.TerminateInstancesResult;
 import com.amazonaws.services.ec2.model.VolumeAttachment;
 
-public class VM {
+import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.VM;
 
-	private static final Logger log = LoggerFactory.getLogger(VM.class);
+public class EC2VM extends VM {
 
+	private static final Logger log = LoggerFactory.getLogger(EC2VM.class);
+
+	public static final String CLOUD_INTERFACE = "ec2";
+	
 	public static final String ACCESS_KEY = "accessKey";
 	public static final String SECRET_KEY = "secretKey";
 	public static final String ENDPOINT = "endpoint";
@@ -55,15 +61,7 @@ public class VM {
 	private final String endpoint;   
 	private final String instanceType; 
 	private final String imageId;
-	
-	public static final String UNKNOWN = "unknown";
-	public static final String PENDING = "pending";
-	public static final String BOOTING = "booting";
-	public static final String RUNNING = "running";
-	public static final String SHUTDOWN = "shutting-down";
-	public static final String STOPPING = "stopping";
-	public static final String STOPPED = "stopped";
-	public static final String TERMINATED = "terminated";
+
 	public static final int REPEAT_TERMINATE = 3; // retry terminate 3 times
 	public static final int REPEAT_TERMINATE_DELAY = 10000; // 10 seconds
 	
@@ -89,7 +87,7 @@ public class VM {
 	public String getIP() {	return privateDnsName; }
 	public String getStatus() { return status; }
 	
-	public VM(String endpoint, String accessKey, String secretKey, String instanceType, String imageId, String keyPairName) throws Exception {
+	public EC2VM(String endpoint, String accessKey, String secretKey, String instanceType, String imageId, String keyPairName) throws Exception {
 		this.endpoint = endpoint;
 		this.accessKey = accessKey;
 		this.secretKey = secretKey;
@@ -103,7 +101,7 @@ public class VM {
 	}
 
 	// just to reconnect to a VM, not for starting it (run throws exception)
-	public VM(String endpoint, String accessKey, String secretKey, String instanceId) throws Exception {
+	public EC2VM(String endpoint, String accessKey, String secretKey, String instanceId) throws Exception {
 		this.endpoint = endpoint;
 		this.accessKey = accessKey;
 		this.secretKey = secretKey;
@@ -118,11 +116,15 @@ public class VM {
 //		describeInstance(); // update IPs
 	}
 	
-	public void run() throws Exception {
-		run(null, null, null);
+	public static final String IMAGE_KEY_PAIR = "keyPairName";
+	public static final String AVAILABILITY_ZONE = "availabilityZone";
+	
+	public void run(Map<String, String> pars) throws Exception {
+		run(pars.get(IMAGE_KEY_PAIR), pars.get(USER_DATA_BASE64), pars.get(AVAILABILITY_ZONE));
+		
 	}
 	
-	public void run(String keyPairName, String userDataBase64, String availabilityZone) throws Exception {
+	private void run(String keyPairName, String userDataBase64, String availabilityZone) throws Exception {
 		if (this.imageId == null) throw new Exception("VM.run exception: no imageId provided");
 		try {
 			if (this.instanceId == null) {
@@ -163,7 +165,7 @@ public class VM {
 						this.status = instance.getState().getName();
 						if (RUNNING.equals(this.status)) {
 							this.publicDnsName = instance.getPublicDnsName();
-							this.privateDnsName = instance.getPrivateDnsName(); // FIXME use getPrivateIP()
+							this.privateDnsName = instance.getPrivateDnsName(); // use getPrivateIP()
 							found = true;
 							break; // assuming one such
 						}
@@ -276,5 +278,17 @@ public class VM {
 //		vm.run(null, ResourceUtils.getResorceBase64Encoded("optimizer.cloud-init"));
 //		vm.run(null, ResourceUtils.getFileBase64Encoded("c:/LPDS/Entice/optimizer-cloud-init.txt"), null);
 //		vm.run(null, null, "ami-00001459");
+	}
+	
+	@Override public void reboot() throws Exception {
+		try {
+			RebootInstancesRequest rebootInstancesRequest = new RebootInstancesRequest();
+			rebootInstancesRequest.withInstanceIds(getInstanceId());
+			this.amazonEC2Client.rebootInstances(rebootInstancesRequest);
+		} catch (AmazonServiceException x) {
+			throw new Exception("reboot service exception", x);
+		} catch (AmazonClientException x) {
+			throw new Exception("reboot client exception", x);
+		}
 	}
 }

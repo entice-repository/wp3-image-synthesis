@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import json
@@ -25,9 +26,11 @@ class BaseConfiguration(object):
     DEBUG = False
     # Testing enabled (disable for production site).
     TESTING = False
-    # Root folder for storing incoming build requests. Must be the same as for the frontend.
+    # Root folder for storing incoming build requests. Must be the same as for
+    # the frontend.
     DATADIR = "/tmp/entice-builder/datadir"
-    # Folder for the builder module (working directory). Must be the same as for the frontend.
+    # Folder for the builder module (working directory). Must be the same as
+    # for the frontend.
     SCRIPTDIR = "/tmp/entice-builder/scriptdir"
     # Security configuration (not used here).
     SECURITY_PASSWORD_HASH = ""
@@ -40,6 +43,7 @@ class BaseConfiguration(object):
     SCANWAITINTERVAL = 5
     # Maximum number of parallel running jobs.
     MAX_RUNNING_JOBS = 4
+
 
 class DebugConfiguration(BaseConfiguration):
     """
@@ -57,6 +61,7 @@ class DebugConfiguration(BaseConfiguration):
     SCANWAITINTERVAL = 5
     MAX_RUNNING_JOBS = 2
 
+
 class TestConfiguration(BaseConfiguration):
     """
     Configuration for testing environment.
@@ -67,16 +72,13 @@ class TestConfiguration(BaseConfiguration):
     SECURITY_PASSWORD_SALT = ""
     SECRET_KEY = ""
     LOGLEVEL = logging.DEBUG
-    DATADIR = "/tmp/entice-builder-backend-testing-"+ \
-        _random_string+ "/datadir"
-    SCRIPTDIR = "/tmp/entice-builder-backend-testing-"+ \
-        _random_string+ "/scriptdir"
+    DATADIR = "/tmp/entice-builder-backend-testing-" + \
+        _random_string + "/datadir"
+    SCRIPTDIR = "/tmp/entice-builder-backend-testing-" + \
+        _random_string + "/scriptdir"
     LOGNAME = "entice-ib-backend"
     SCANWAITINTERVAL = 5
     MAX_RUNNING_JOBS = 2
-
-class TestConfiguration(BaseConfiguration):
-    TESTING = True
 
 class LiveConfiguration(BaseConfiguration):
     """
@@ -87,27 +89,18 @@ class LiveConfiguration(BaseConfiguration):
     file. Most of the time setting values in BaseConfiguration instead of here should be
     fine.
     """
-    sys.stderr.write("Loading config from JSON file.\n")
+    print("Loading config from JSON file.\n", file=sys.stderr)
     try:
         config_file = "/etc/entice/imagesynthesis-frontend.json"
         with open(config_file, 'r') as content_file:
             content = content_file.read()
             config_json = json.loads(content)
-        ## Use the following to read security information in a live environment:
+        # Use the following to read security information in a live environment:
         #
         # SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
         # SECURITY_PASSWORD_SALT = config_json["imagesynthesis-frontend"].get("password_salt")
         # SECRET_KEY = config_json["imagesynthesis-frontend"].get("secret_key")
-
-    except Exception, e:
-        sys.stderr.write("WARNING: Could not read configuration from LIVE config file:" + str(e) + "\n")
-        pass # DIRRRRRTY HACK!
-
-
-
-
-
-
-
-
-
+    except Exception as e:
+        print('WARNING: Could not read configuration from LIVE config file: {}\n'.format(e),
+               file=sys.stderr)
+        pass  # DIRRRRRTY HACK!

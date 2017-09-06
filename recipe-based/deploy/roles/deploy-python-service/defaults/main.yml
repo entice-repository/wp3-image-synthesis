@@ -1,0 +1,31 @@
+python_app_python_version: "2.7"
+python_app_name: "python-app"
+python_app_user: "www-data"
+python_app_main_script: "run.py"
+
+# The directory to keep application source code (Ansistrano current deployment)
+python_app_directory: "/opt/{{ python_app_name }}"
+
+# The directory to keep application logs.
+python_app_log_directory: "/var/log/{{ python_app_name }}"
+
+# The path to application requirements.
+python_app_requirements: "{{ python_app_directory }}/current/requirements.txt"
+
+# The list of environment variables uses to run most of commands.
+python_app_environment:
+  PATH: "{{ python_app_directory }}/bin:{{ ansible_env.PATH }}"
+
+# The list of system packages required to build/run application.
+python_app_packages:
+  - libffi-dev
+  - git
+  - python{{ python_app_python_version }}
+  - build-essential
+  - python-dev
+  - python-pip
+  - python-virtualenv
+  - libpq-dev
+  - build-essential
+
+python_app_extra_packages: []

@@ -46,6 +46,10 @@ public class VirtualImageDecomposer {
 	private final static String INSTALLER_BASE64 = "installerBase64";
 	private final static String INSTALLER_FILE = ".delta-install.sh";
 	
+	private final static String VIRTUAL_IMAGE_COMPOSER_REST_URL = "virtualImageComposerRestUrl";
+	private final static String FRAGMENT_STORAGE_URL = "fragmentStorageUrl";
+	private final static String FRAGMENT_STORAGE_TOKEN = "fragmentStorageToken";
+	
 	private final static String SNAPSHOT_URL = "snapshotUrl";
 	private final static String KNOWLEDGE_BASE_REF = "knowledgeBaseRef";
 	private final static String DEBUG = "debug"; // for devops only
@@ -97,6 +101,17 @@ public class VirtualImageDecomposer {
         if ("".equals(requestBody.optString(KNOWLEDGE_BASE_REF))) log.warn("Missing parameter: " + KNOWLEDGE_BASE_REF); 
         if (requestBody.optJSONArray(INSTALLER_IDS) == null && "".equals(requestBody.optString(SNAPSHOT_URL)) && "".equals(requestBody.optString(INSTALLER_BASE64))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + INSTALLER_IDS + " || " + SNAPSHOT_URL + " || " + INSTALLER_BASE64).build(); 
         
+        
+        String virtualImageComposerUrl = "".equals(requestBody.optString(VIRTUAL_IMAGE_COMPOSER_REST_URL)) ? 
+        		Configuration.virtualImageComposerRestUrl + "/scripts/" :
+        		requestBody.optString(VIRTUAL_IMAGE_COMPOSER_REST_URL) + "/scripts/";
+        String fragmentStorageUrl = !"".equals(requestBody.optString(FRAGMENT_STORAGE_URL)) ? 
+        		Configuration.fragmentStorageUrl : 
+        		requestBody.optString(FRAGMENT_STORAGE_URL);
+        String fragmentStorageToken = !"".equals(requestBody.optString(FRAGMENT_STORAGE_TOKEN)) ? 
+        		Configuration.fragmentStorageToken : 
+        		requestBody.optString(FRAGMENT_STORAGE_TOKEN);
+        
         String partition = "1";
         String volumeGroup = "";
         String logicalVolume = "";
@@ -133,16 +148,16 @@ public class VirtualImageDecomposer {
 			out.println("SOURCE_BASE_IMAGE_URL" + "=\"" + requestBody.optString(SOURCE_BASE_IMAGE_URL) + "\"");
 			out.println("SOURCE_VIRTUAL_IMAGE_ID" + "=\"" + requestBody.optString(SOURCE_VIRTUAL_IMAGE_ID) + "\"");
 			out.println("TARGET_VIRTUAL_IMAGE_ID" + "=\"" + requestBody.optString(TARGET_VIRTUAL_IMAGE_ID) + "\"");
-			out.println("VIRTUAL_IMAGE_COMPOSER_URL" + "=\"" + Configuration.virtualImageComposerRestUrl + "/scripts/" + "\"");
+			out.println("VIRTUAL_IMAGE_COMPOSER_URL" + "=\"" + virtualImageComposerUrl + "\"");
 			out.println("PARTITION" + "=\"" + partition + "\"");
 			out.println("VOLUME_GROUP" + "=\"" + volumeGroup + "\"");
 			out.println("LOGICAL_VOLUME" + "=\"" + logicalVolume + "\"");
 			out.println("SNAPSHOT_URL" + "=\"" + requestBody.optString(SNAPSHOT_URL) + "\"");
 			out.println("INSTALLER_IDS" + "=\"" + jsonArrayToSpaceSeparatedList(requestBody.optJSONArray(INSTALLER_IDS)) + "\"");
 			out.println("INSTALLER_STORAGE_URL" + "=\"" + Configuration.installerStorageUrl + "/\""); // must use / at the end
-			out.println("FRAGMENT_STORAGE_URL" + "=\"" + Configuration.fragmentStorageUrl + "/\""); // must use / at the end
-			out.println("FRAGMENT_STORAGE_TOKEN" + "=\"" + Configuration.fragmentStorageToken + "\""); // must use / at the end
+			out.println("FRAGMENT_STORAGE_URL" + "=\"" + fragmentStorageUrl + "/\""); // must use / at the end
 			out.println("KNOWLEDGE_BASE_REF" + "=\"" + requestBody.optString(KNOWLEDGE_BASE_REF, taskId) + "\"");
+			out.println("FRAGMENT_STORAGE_TOKEN" + "=\"" + fragmentStorageToken + "\"");
 			out.println("FRAGMENT_ID" + "=\"" + requestBody.optString(KNOWLEDGE_BASE_REF, taskId) + "\"");
 			out.println("DEBUG" + "=\"" + (requestBody.optBoolean(DEBUG) ? "true" : "false") + "\"");
 			out.println("S3_ENDPOINT" + "=\"" + Configuration.s3Endpoint + "\"");

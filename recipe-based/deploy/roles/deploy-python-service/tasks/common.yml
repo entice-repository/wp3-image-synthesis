@@ -1,0 +1,33 @@
+---
+  # Install common packages and do basic configuration stuff
+
+- stat:
+    path: "{{ python_app_directory }}/shared/config.py"
+  register: configpy
+
+- fail:
+    msg: "config.py doesn't exist (at {{ python_app_directory }}/shared). Please create one before starting deployment."
+  when: configpy.stat.islnk is not defined
+
+- name: Ensure packages required for the Python application are installed
+  apt: pkg={{ item }} state=present update_cache=yes state=latest
+  with_items: '{{ python_app_packages }}'
+
+- name: Ensure EXTRA packages required for the Python application are installed
+  apt: pkg={{ item }} state=present update_cache=yes state=latest
+  with_items: '{{ python_app_extra_packages }}'
+
+- name: Install the latest pip version
+  pip: name=pip extra_args='-U'
+
+- name: Ensure App user
+  user: name={{ python_app_user }} group={{ python_app_user }} createhome=no
+
+- name: Ensure app directory
+  file: dest={{ python_app_directory }} state=directory
+
+- name: Ensure app log directory
+  file: dest={{ python_app_log_directory }} state=directory
+
+- name: Create run script for application
+  template: src=run_app.sh.j2 dest="{{ python_app_directory }}/current/run-{{ python_app_name }}.sh" mode='0755'

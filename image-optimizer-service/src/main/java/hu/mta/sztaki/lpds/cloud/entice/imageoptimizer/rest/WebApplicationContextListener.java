@@ -30,6 +30,7 @@ public class WebApplicationContextListener implements ServletContextListener {
 	
 	public void contextDestroyed(ServletContextEvent sce) {
 		log.info("Shutting down Image Optimizer Service...");
+		Optimizer.taskCacheShutdown();
 		if (scheduler != null) scheduler.shutdownNow();
 	}
 	

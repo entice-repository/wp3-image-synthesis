@@ -1,0 +1,13 @@
+#!/bin/bash
+
+VENVDIR="{{ python_app_directory }}/current/env/"
+APP_MAIN="{{ python_app_directory }}/current/{{ python_app_main_script }}"
+FLASKDIR="{{ python_app_directory }}/current/"
+
+cd $VENVDIR
+source bin/activate
+
+export PYTHONPATH=$FLASKDIR:$PYTHONPATH
+
+cd "${FLASKDIR}"
+exec ${APP_MAIN}
