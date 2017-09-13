@@ -189,6 +189,10 @@ public class WTVM extends VirtualMachine {
 			Shrinker.myLogger.severe("Too much VM termination requests");
 			Thread.dumpStack();
 		}
+		if (getInstanceId() == null) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM id is null, cannot be terminated " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			return;
+		}
 		for (int i = 0; i < 2; i++) {
 			try {
 				terminateVM();
@@ -236,6 +240,8 @@ public class WTVM extends VirtualMachine {
 			
 			log.info("This is to post: " + jsonContent.toString());
 			
+//			System.out.println("curl -X POST -H \"Content-Type: application/json\" -H \"Accept: application/json\" --user $USERNAME:$PASSWORD -d '" + jsonContent.toString() + "' " + service  + " # " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+			
 			// send POST
 			client = Client.create();
 			WebResource webResource = client.resource(service);
@@ -247,6 +253,7 @@ public class WTVM extends VirtualMachine {
 					.post(ClientResponse.class, jsonContent.toString());
 			
 			if (response.getStatus() != 200) {
+				System.out.println("# @@ API ERROR STATUS: " + response.getStatus()); 
 				log.severe("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
 				throw new Exception("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
 			}
@@ -297,18 +304,23 @@ public class WTVM extends VirtualMachine {
 		try {
 			String service = endpoint + "vms/" + vmId;
 			log.info("Sending GET to '" + service + "'");
+			
+//			System.out.println("curl -X GET --user $USERNAME:$PASSWORD " + service + " # " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+
 			client = Client.create();
 			WebResource webResource = client.resource(service);
 			ClientResponse response = webResource				
 					.header("Authorization", "Basic " + base64Encode(this.username + ":" + password))
 					.get(ClientResponse.class);
 			if (response.getStatus() != 200) {
+				System.out.println("# @@ API ERROR STATUS: " + response.getStatus()); 
+
 				log.severe("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
 				throw new VMManagementException("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class), null);
 			} 
 			// process response
 			String responseString = response.getEntity(String.class);
-			log.info("Processing response (status 200): " + responseString);
+			log.info("Processing response (status 200)");
 			JSONObject responseJSON = null;
 	    	try { responseJSON = new JSONObject(new JSONTokener(responseString)); }
 	    	catch (JSONException e) { 
@@ -408,6 +420,9 @@ public class WTVM extends VirtualMachine {
 		try {
 			String service = endpoint + "vms/" + vmId + "/reboot";
 			log.fine("Sending PUT to '" + service + "'");
+
+//			System.out.println("curl -X PUT --user $USERNAME:$PASSWORD " + service + " # " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+
 			client = Client.create();
 			WebResource webResource = client.resource(service);
 			// send PUT
@@ -415,6 +430,8 @@ public class WTVM extends VirtualMachine {
 					.header("Authorization", "Basic " + base64Encode(this.username + ":" + password))
 					.put(ClientResponse.class);
 			if (response.getStatus() != 200) {
+				System.out.println("# @@ API ERROR STATUS: " + response.getStatus()); 
+
 				log.severe("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
 				throw new Exception("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
 			}
@@ -443,6 +460,9 @@ public class WTVM extends VirtualMachine {
 		try {
 			String service = endpoint + "vms/" + vmId;
 			log.fine("Sending DELETE to '" + service + "'");
+			
+//			System.out.println("curl -X DELETE --user $USERNAME:$PASSWORD " + service + " # " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+
 			client = Client.create();
 			WebResource webResource = client.resource(service);
 			// send POST
@@ -450,6 +470,8 @@ public class WTVM extends VirtualMachine {
 					.header("Authorization", "Basic " + base64Encode(this.username + ":" + password))
 					.delete(ClientResponse.class);
 			if (response.getStatus() != 200) {
+				System.out.println("# @@ API ERROR STATUS: " + response.getStatus()); 
+
 				log.severe("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
 				throw new VMManagementException("WT API " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class), null);
 			}
@@ -460,7 +482,7 @@ public class WTVM extends VirtualMachine {
 		} finally {
 			if (client != null) client.destroy();
 		}
-		discard();
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM deleted: " + getInstanceId() + " " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		discard();
 	}
 }

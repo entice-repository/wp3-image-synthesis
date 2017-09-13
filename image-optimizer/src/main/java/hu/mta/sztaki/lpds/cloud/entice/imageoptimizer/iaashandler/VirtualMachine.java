@@ -192,7 +192,7 @@ public abstract class VirtualMachine {
 					Shrinker.myLogger.info("testBasicVM.sh failed on instance " + getInstanceId() + ", killing...");
 					setState(VMState.REINIT);
 					terminate();
-					Shrinker.myLogger.info("VM " + getInstanceId() + " terminated");
+					Shrinker.myLogger.info("VM terminated");
 				} else {
 					setState(VMState.INIT);
 				}
@@ -222,19 +222,19 @@ public abstract class VirtualMachine {
 					if (testConformance) {
 						setState(VMState.IAASCHECK);
 						try {
-							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh on " + getInstanceId() + ": " + ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip + " " + loginName + " " + RemoteExecutor.keyfile + "(@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 							long now = System.currentTimeMillis();
-							ret = new ExecHelper().execProg(ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip
-									+ " 22 " + privateip + " " + RemoteExecutor.keyfile + " " + loginName, true, null, false)
-									.getRetcode();
+							String cmd = ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip
+									+ " 22 " + privateip + " " + RemoteExecutor.keyfile + " " + loginName;
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh on " + getInstanceId() + ": " + cmd + "(@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+							ret = new ExecHelper().execProg(cmd, true, null, false).getRetcode();
 							long ellapsed = (System.currentTimeMillis() - now) / 1000l;
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh took " + ellapsed + "s. Exit code: " + ret + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 						} catch (IOException e) {
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh FAILED " + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
-							Shrinker.myLogger.warning("Initialization check failed because of IOException: " + e.getMessage());
+							Shrinker.myLogger.warning("Initialization check failed because of IOExzeption: " + e.getMessage());
 							ret = 1;
 						} catch (InterruptedException e) {
-							Shrinker.myLogger.warning("Initialization check interrupted because of InterruptedException: " + e.getMessage());
+							Shrinker.myLogger.warning("Initialization check interrupted because of InterruptedExzeption: " + e.getMessage());
 							ret = 1;
 						}
 						

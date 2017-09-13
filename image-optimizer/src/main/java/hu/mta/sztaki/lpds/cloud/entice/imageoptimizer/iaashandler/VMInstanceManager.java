@@ -242,7 +242,7 @@ public class VMInstanceManager extends Thread {
 			} catch (InterruptedException e) {}
 			maxtestcount--;
 			if (maxtestcount <= 0) {
-				Shrinker.myLogger.severe("Cannot acquire VM  for " + maxtestcount + "s. Returning null");
+				Shrinker.myLogger.severe("Cannot acquire VM for " + maxtestcount + " second. Returning null");
 				return null;
 			}
 		}

@@ -19,6 +19,8 @@ package hu.mta.sztaki.lpds.cloud.entice.imageoptimizer;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.Vector;
@@ -228,7 +230,6 @@ public class Shrinker extends Thread {
 				dgm.getGroup(sc.getMountPoint().toString() + "/sbin").setTestState(Group.GroupState.CORE_GROUP);
 			} catch (NullPointerException x) {
 			} // no such path
-
 			try {
 				dgm.getGroup(sc.getMountPoint().toString() + "/usr/lib").setTestState(Group.GroupState.CORE_GROUP);
 			} catch (NullPointerException x) {
@@ -237,7 +238,22 @@ public class Shrinker extends Thread {
 				dgm.getGroup(sc.getMountPoint().toString() + "/var/lib").setTestState(Group.GroupState.CORE_GROUP);
 			} catch (NullPointerException x) {
 			} // no such path
-
+            try {
+                dgm.getGroup(sc.getMountPoint().toString() + "/usr/share").setTestState(Group.GroupState.CORE_GROUP);
+            } catch (NullPointerException x) {
+            } // no such path
+            try {
+                dgm.getGroup(sc.getMountPoint().toString() + "/usr/lib64").setTestState(Group.GroupState.CORE_GROUP);
+	        } catch (NullPointerException x) {
+	        } // no such path
+	        try {
+	            dgm.getGroup(sc.getMountPoint().toString() + "/usr/libexec").setTestState(Group.GroupState.CORE_GROUP);
+	        } catch (NullPointerException x) {
+	        } // no such path
+	        try {
+	            dgm.getGroup(sc.getMountPoint().toString() + "/var/lib/modules").setTestState(Group.GroupState.CORE_GROUP);
+	        } catch (NullPointerException x) {
+	        } // no such path
 		}
 		try {
 			dgm.loadGroupStates();
@@ -397,6 +413,7 @@ public class Shrinker extends Thread {
 					.warning("Optimized VA cannot be created, progressing with the unoptimized version. Reason: "
 							+ e.getMessage());
 		}
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker ended " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
 	}
 
 	public static void main(final String[] args) throws Exception {
