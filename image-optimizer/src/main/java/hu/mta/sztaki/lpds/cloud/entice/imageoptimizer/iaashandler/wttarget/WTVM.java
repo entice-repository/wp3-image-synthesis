@@ -104,11 +104,11 @@ public class WTVM extends VirtualMachine {
 			System.exit(1);
 		}
 		// run VM
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Creating VM... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Starting a new VM... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		try {
 			runVM();
 		} catch (Exception x) {
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Failed to create VM: " + x.getMessage() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ERROR: Failed to start VM: " + x.getMessage() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			log.severe("Cannot create VM: " + x.getMessage());
 			status = TERMINATED;
 			reqCounter.decrementAndGet(); // note: in the case of null instanceId, this.terminateInstance() is not called from VirtualMacine.terminate, therefore we must decrement here
@@ -146,7 +146,7 @@ public class WTVM extends VirtualMachine {
 	private void describeServer() throws VMManagementException {
 		
 		long currTime = System.currentTimeMillis();
-		if (currTime - lastrefresh <= super.datacollectorDelay) {
+		if (currTime - lastrefresh <= 10000) { // don't poll more frequently than 10s
 			Shrinker.myLogger.fine("Describe server ommited, last call was " + (currTime - lastrefresh) + "ms ago.");
 			return;
 		}
@@ -159,14 +159,19 @@ public class WTVM extends VirtualMachine {
 			super.setPrivateIP(null);
 		}
 		
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing VM " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describing VM " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		Shrinker.myLogger.fine("Describe server: " + vmId);
 
 //		if (vmId == null) lookupVMId();
-		if (vmId == null) return;
+		if (vmId == null) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] WARN: null VM id");
+			return;
+		}
 
 		describeVM();
-		
+
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describe VM " + getInstanceId() + ": status=" + status + ", IP=" + privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+
 		if (RUNNING.equals(status)) {
 			super.setIP(privateDnsName);
 			super.setPrivateIP(privateDnsName);
@@ -177,21 +182,20 @@ public class WTVM extends VirtualMachine {
 			log.info("VM " + getInstanceId() + " VMREADY");
 			super.setState(VMREADY);
 		}
-
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Describe done. Id: " + getInstanceId() + ", status: " + status + ", IP: " + privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	@Override public void terminateInstance() throws VMManagementException {
 		Shrinker.myLogger.info("Terminating VM: " + getInstanceId());
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Terminating VM: " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		if (getInstanceId() == null) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM id is null, cannot be terminated " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			Thread.dumpStack();
+			return;
+		}
 		int requests = reqCounter.decrementAndGet();
 		if (requests < 0) {
 			Shrinker.myLogger.severe("Too much VM termination requests");
 			Thread.dumpStack();
-		}
-		if (getInstanceId() == null) {
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM id is null, cannot be terminated " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
-			return;
 		}
 		for (int i = 0; i < 2; i++) {
 			try {

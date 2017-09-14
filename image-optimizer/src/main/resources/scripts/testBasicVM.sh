@@ -26,7 +26,7 @@ SSHOPTS="-o ForwardX11=no -o ServerAliveInterval=5 -o ServerAliveCountMax=5 -o B
 for retries in $(seq 90)
 do
 	echo NC $retries
-	if nc -z $IP $PORT
+	if nc -w 5 -z $IP $PORT
 	then
 		echo SSH $retries
 #		note: do not grep $INTIP in ifconfig, because private IP may be a hostname (OpenStack)

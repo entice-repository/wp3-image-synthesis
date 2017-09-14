@@ -273,6 +273,9 @@ public class Shrinker extends Thread {
 		while (  (nextGroups = dgm.getGroups()).size() > 0  // nextGroups: copy of the list of groups not in final state 
 				 && ((double) dgm.getRemainingSize() / (double) (dgm.getTotalSize())) > 0.01
 				 && !stoppingCriterion) {
+			
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ### Iteration started: " + iterationCounter + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+
 			ParallelValidatorThread matureThread = new ParallelValidatorThread(nextGroups);
 			matureThread.start();
 			try {
@@ -372,11 +375,18 @@ public class Shrinker extends Thread {
 			}
 		}
 		Shrinker.myLogger.info("Shutting down...");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shutting down... " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+
 		sc.running = false;
 		Shrinker.myLogger.info("###phase: shutting down worker VMs");
 		VMFactory.instance.terminateFactory();
+		
+		// wait 1 min to terminate VMs
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Waiting 1 min for VM shut down... " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+		try { Thread.sleep(60000); } catch (Exception e) {}
 		// createIntermediateVM("FINAL"); NOTE: it invokes final image creation,
 		// now it is invoked from outside
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker thread ended " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
 	}
 
 	private void createIntermediateVM(String itID) {
@@ -413,7 +423,6 @@ public class Shrinker extends Thread {
 					.warning("Optimized VA cannot be created, progressing with the unoptimized version. Reason: "
 							+ e.getMessage());
 		}
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker ended " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
 	}
 
 	public static void main(final String[] args) throws Exception {
@@ -457,5 +466,6 @@ public class Shrinker extends Thread {
 			e.printStackTrace();
 			Shrinker.myLogger.severe("Shrinker ended with exzeption.");
 		}
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker main ended. Bye! " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
 	}
 }

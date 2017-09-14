@@ -154,6 +154,7 @@ public class ParallelValidatorThread extends Thread {
 			
 			unprocessedRemovables = removables;
 			ArrayList<SingleValidatorThread> validators = new ArrayList<SingleValidatorThread>();
+			// start single validator threads for each Group in removables list 
 			for (Group removable : removables) {
 				validators.add(new SingleValidatorThread(getThreadGroup(), Collections.singletonList(removable)));
 			}
@@ -212,7 +213,6 @@ public class ParallelValidatorThread extends Thread {
 					// try {
 					// svt.join();
 					// } catch (InterruptedException e) {
-					// // TODO Auto-generated catch block
 					// e.printStackTrace();
 					// }
 					// if (!svt.getValidationState().equals(

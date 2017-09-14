@@ -174,7 +174,7 @@ public class WTVM extends VM {
 			} 
 			// process response
 			String responseString = response.getEntity(String.class);
-			log.debug("Processing response (status 200): " + responseString);
+			log.debug("Processing response (status 200)");
 			JSONObject responseJSON = null;
 	    	try { responseJSON = new JSONObject(new JSONTokener(responseString)); }
 	    	catch (JSONException e) { 

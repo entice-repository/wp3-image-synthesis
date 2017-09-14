@@ -224,7 +224,9 @@ public class VMInstanceManager extends Thread {
 	public VirtualMachine getAndAcquireNextAvailableVM() {
 		String threadName = Thread.currentThread().getName();
 		Shrinker.myLogger.info("VM request (get and acquire) " + threadName);
-		int maxtestcount = 60*20; // 20 mins
+		final long sleep = 10000l; // 10 sec
+		int maxtestcount = 20 * 6; // 20 * 6 * 10s = 20 mins
+		int testCount = maxtestcount;
 		while (sc.isRunning() && isAlive()) {
 			
 			synchronized (vms) {
@@ -238,15 +240,16 @@ public class VMInstanceManager extends Thread {
 				}
 			}
 			try {
-				sleep(new java.util.Random().nextInt(1000));
+				Thread.sleep(sleep); // sleep 10 sec
 			} catch (InterruptedException e) {}
-			maxtestcount--;
-			if (maxtestcount <= 0) {
+			if (testCount-- <= 0) {
 				Shrinker.myLogger.severe("Cannot acquire VM for " + maxtestcount + " second. Returning null");
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Cannot acquired VM for " + (maxtestcount * 10 ) + " seconds. Returning null. " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 				return null;
 			}
 		}
 		Shrinker.myLogger.info("VMInstanceManager getAndAcquireNextAvailableVM after context down " + threadName);
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] WARN: Cannot acquired VM after context down, Returning null.  " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		return null;
 	}
 
@@ -381,7 +384,8 @@ public class VMInstanceManager extends Thread {
 			}
 			
 			for (InstanceAllocationData iad : vms) {
-				Shrinker.myLogger.info("VM " + iad.vm.getInstanceId() + " status: " + iad.vm.getState());
+				if (!iad.vm.isInFinalState()) Shrinker.myLogger.info("VM to terminate: " + iad.vm.getInstanceId() + ", status: " + iad.vm.getState());
+				else Shrinker.myLogger.info("VM is in final state (no termination): " + iad.vm.getInstanceId() + ", status: " + iad.vm.getState());
 				if (!iad.vm.isInFinalState()) {
 					try {
 						iad.vm.terminate();
@@ -394,12 +398,13 @@ public class VMInstanceManager extends Thread {
 //				iad.vm.terminate();
 			}
 			vms.removeAllElements();
-			Shrinker.myLogger.info("All VMs terminated.");
+			Shrinker.myLogger.info("VM instance manager ended");
 			terminated = true;
 			
 			Shrinker.myLogger.info("###phase: done");
 		} catch (Exception e) {
 			System.err.println(e.getMessage());
+			System.out.println("Fatal error: " + e.getMessage());
 			e.printStackTrace();
 			System.exit(1);
 		}

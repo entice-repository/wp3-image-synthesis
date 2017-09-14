@@ -54,7 +54,7 @@ Note: you may change the password and restrict access from the host of the web a
 
 Add "database host" to /etc/hosts:
 
-echo "127.0.0.1 virtual-image-manager-database" >> /etc/hosts
+echo "127.0.0.1 database" >> /etc/hosts
 
 Edit wp3-image-synthesis/image-fragmentation-service/setenv.sh,
 update fields according to current deployment place:
@@ -99,7 +99,4 @@ $ cp wp3-image-synthesis/image-fragmentation-service/virtual-image-manager/targe
 =====================
 
 wget http://localhost:8080/virtual-image-manager/
-wget http://localhost:8081/installer-storage/
-
-Scripts in file: image-fragmentation-service-docker-compose.tar.gz/_tests/
 
