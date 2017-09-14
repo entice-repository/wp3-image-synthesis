@@ -214,6 +214,10 @@ public abstract class VirtualMachine {
 						Shrinker.myLogger.severe("The VM did not get to its running state in 20 minutes");
 						throw new VMManagementException("The VM did not get to its running state in 20 minutes", null);
 					}
+					if (!Shrinker.getContext().isRunning()) {
+						Shrinker.myLogger.severe("Context down");
+						throw new VMManagementException("Context down", null);
+					}
 				}
 				while (getState().equals(VMState.INIT)) { // FIXME ? how can it be
 					Thread.sleep(10000l); // wait 10 sec

@@ -375,7 +375,7 @@ public class Shrinker extends Thread {
 			}
 		}
 		Shrinker.myLogger.info("Shutting down...");
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shutting down... " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shutting down... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 
 		sc.running = false;
 		Shrinker.myLogger.info("###phase: shutting down worker VMs");
@@ -386,7 +386,7 @@ public class Shrinker extends Thread {
 		try { Thread.sleep(60000); } catch (Exception e) {}
 		// createIntermediateVM("FINAL"); NOTE: it invokes final image creation,
 		// now it is invoked from outside
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker thread ended " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker thread ended (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	private void createIntermediateVM(String itID) {

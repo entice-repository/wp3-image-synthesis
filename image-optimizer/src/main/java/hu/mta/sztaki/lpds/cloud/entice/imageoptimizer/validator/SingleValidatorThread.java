@@ -105,7 +105,7 @@ public class SingleValidatorThread extends Thread {
 						InetAddress.getByName(vm.getPrivateIP()), null, Shrinker.removeScript, null, true, true)
 						.getRetcode(); 
 				Shrinker.myLogger.info("Glob ret:" + returncode);
-				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] global removal return value (REMGLOB): " + returncode);
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] global removal return value (REMGLOB): " + returncode  + " ... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			} else {
 				Shrinker.myLogger.info("Ignoring global removal");
 			}
@@ -117,7 +117,7 @@ public class SingleValidatorThread extends Thread {
 						InetAddress.getByName(vm.getPrivateIP()), null, localRemoveScript, null, true, true)
 						.getRetcode(); 
 				Shrinker.myLogger.info("Loc ret:" + returncode);
-				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] local removal return value (REMLOC): " + returncode + " for group " + removablesString);
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] local removal return value (REMLOC): " + returncode + " for group " + removablesString  + " ... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 				
 				if (returncode != 255) {
 					if ((returncode != 127) && (returncode != 254) && (returncode != 248)) {
@@ -140,7 +140,7 @@ public class SingleValidatorThread extends Thread {
 							Shrinker.myLogger.info("Uptime before restart:" + beforeRestart);
 						}
 						try {
-							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] rebooting VM: " + vm.getInstanceId() + "");
+//							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] rebooting VM: " + vm.getInstanceId() + "");
 							vm.rebootInstance();
 							if (testRestart) {
 								int delay = 30;
@@ -150,9 +150,9 @@ public class SingleValidatorThread extends Thread {
 								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] checking uptime after restart on VM: " + vm.getInstanceId() + "");
 								// we should describe VM before trying to test restart
 								VMTests.restartTest(vm.getIP(), vm.getPort(), vm.getLoginName(), beforeRestart);
-								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart detected on VM: " + vm.getInstanceId() + "");
+//								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart detected on VM: " + vm.getInstanceId() + "");
 							}
-							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] executing validator script against VM: " + vm.getInstanceId() + "");
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] executing validator script on VM " + vm.getInstanceId()   + " ... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 							returner = executeTest(vm, vms); // release VM on SUCCESS
 							
 						} catch (VMManagementException e) {
@@ -189,8 +189,8 @@ public class SingleValidatorThread extends Thread {
 			throw new VMManagementException(e.getMessage(), e);
 		}
 		if (!returner.equals(SingleValidatorThread.ValidationState.SUCCESS)) {
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] test FAILED on VM " + vm.getInstanceId() + ": " + returner.name() + " for group " + removablesString);
-			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] terminating VM " + vm.getInstanceId());
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] test FAILED on VM " + vm.getInstanceId() + ": " + returner.name() + " for group " + removablesString + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+//			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] terminating VM " + vm.getInstanceId());
 			vm.terminate();
 		} else {
 			System.out.println("[T" + + (Thread.currentThread().getId() % 100) + "] test SUCCESS on VM: " + vm.getInstanceId()  + " for group " + removablesString);
