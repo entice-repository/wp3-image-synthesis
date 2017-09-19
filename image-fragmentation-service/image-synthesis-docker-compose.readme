@@ -1,0 +1,72 @@
+Prerequisites
+=============
+# java, maven, git
+apt-get install -y default-jdk git-all maven curl
+# docker engine
+apt-get update
+sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" | sudo tee /etc/apt/sources.list.d/docker.list
+apt-get install apt-transport-https
+apt-get update
+apt-cache policy docker-engine
+apt-get install linux-image-extra-$(uname -r) linux-image-extra-virtual
+apt-get install docker-engine
+service docker status
+# docker-compose
+curl -L "https://github.com/docker/compose/releases/download/1.8.1/docker-compose-$(uname -s)-$(uname -m)" > /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+1. Build war files
+===================
+git clone https://github.com/entice-repository/wp3-image-synthesis.git
+(git checkout develop)
+mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-fragmentation-service/pom.xml
+mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-optimizer-service/pom.xml
+
+2. Unpack docker-compose archive
+================================
+tar -xvf wp3-image-synthesis/image-fragmentation-service/image-synthesis-docker-compose.tar.gz
+
+3. Copy war files
+=================
+cp wp3-image-synthesis/image-fragmentation-service/installer-storage/target/installer-storage.war image-synthesis-docker/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-composer/target/virtual-image-composer.war image-synthesis-docker/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-decomposer/target/virtual-image-decomposer.war image-synthesis-docker/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-launcher/target/virtual-image-launcher.war image-synthesis-docker/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-manager/target/virtual-image-manager.war image-synthesis-docker/tomcat/webapps/
+cp wp3-image-synthesis/image-optimizer-service/image-optimizer-service/target/virtual-image-manager.war image-synthesis-docker/tomcat/webapps/
+
+4. Create Virtual Image Decomposer VM
+=====================================
+On a separate host, install tomcat and necessary tools
+  apt-get install -y tomcat7
+  apt-get install -y curl unzip sudo module-init-tools python-pip python-dev qemu
+If fragments will be stored on S3, install AWS CLI
+  curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
+  unzip awscli-bundle.zip
+  ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+  pip install --upgrade pip
+  pip install awscli
+Create these directories with chown tomcat7:tomcat7:
+  mkdir /mnt/decomposer
+  chown tomcat7:tomcat7 /mnt/decomposer  
+Make tomcat7 sudoer:
+  sudo adduser tomcat7 sudo
+  echo 'tomcat7 ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers  
+Deploy: virtual-image-decomposer.war
+
+5. Configure services
+=====================
+vi image-synthesis-docker/env-docker-compose
+...set: PUBLIC_VIRTUAL_IMAGE_COMPOSER_REST_URL, VIRTUAL_IMAGE_DECOMPOSER_REST_URL (see step 4), FRAGMENT_STORAGE_URL (S3 or KB url?)
+
+6. Start
+========
+docker-compose build
+dcoker-compose up
+
+7. Test
+========
+wget http://localhost:8080/virtual-image-manager/
+wget http://localhost:8080/image-optimizer-service/
+
