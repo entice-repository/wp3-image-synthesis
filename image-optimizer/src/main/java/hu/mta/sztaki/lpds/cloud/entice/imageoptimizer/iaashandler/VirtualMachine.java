@@ -95,7 +95,7 @@ public abstract class VirtualMachine {
 	}
 
 	protected void setState(VMState state) {
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM state: " + state + ", substate: " + (substate == null ? "-" : substate.getSubStateText()) + ", instance: " + getInstanceId() + ". (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM " + getInstanceId() + " state: " + state + ", substate: " + (substate == null ? "-" : substate.getSubStateText()) + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 
 		synchronized (stateLocker) {
 			Shrinker.myLogger.info("VMState change: NEW - " + state + " " + toString());
@@ -180,48 +180,86 @@ public abstract class VirtualMachine {
 
 	// constructor
 	protected VirtualMachine(String vaid, Map<String, List<String>> parameters, boolean testConformance) {
+		long VM_START_TIMEOUT = 20 * 60 * 1000l; // 20s in millis
 		this.imageid = vaid;
 		int ret = 0;
-		if (parameters != null) {
-			parseVMCreatorParameters(parameters);
-		}
+		if (parameters != null) parseVMCreatorParameters(parameters);
+		
 		setState(VMState.PRE);
+		boolean done = false;
+		boolean shutdown = false;
+		boolean timeout = false;
 		try {
+			
+			// while we get VM ready or fail to get one
 			do {
-				if (instanceid != null) {
-					Shrinker.myLogger.info("testBasicVM.sh failed on instance " + getInstanceId() + ", killing...");
+				
+				// kill previous VM if created
+				if (instanceid != null) { // if a VM started earlier by failed to start up normally
+					Shrinker.myLogger.info("Failed to start VM " + getInstanceId() + ". Killing...");
 					setState(VMState.REINIT);
 					terminate();
 					Shrinker.myLogger.info("VM terminated");
 				} else {
 					setState(VMState.INIT);
 				}
-
-				instanceid = runInstance(System.getProperty(keyPairID));
 				
-				long exceptiontime = System.currentTimeMillis() + 20 * 60000; // 20 mins to give up
+				// start a new instance...
+				instanceid = runInstance(System.getProperty(keyPairID));
+				long vmStartTime = System.currentTimeMillis();
+
+				// wait till IP obtained...
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Obtaining IP for VM: " + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 				int datacounter = 0; // Provides the amount of instance data that is currently available
 				while (datacounter < 3) { // sets ip, private ip, port, till 20 mins, setState(VMREADY) if successful
-					// This loop waits till the instance is in the cache
-					try {
-						Thread.sleep(10000l); // wait 10 sec
-						datacounter = 0;
-						datacounter += getIP() == null ? 0 : 1; // calls describe
-						datacounter += getPrivateIP() == null ? 0 : 1; // calls describe
-						datacounter += getPort() == null ? 0 : 1; // calls describe
-					} catch (InterruptedException e) {}
-					if (System.currentTimeMillis() > exceptiontime) {
-						Shrinker.myLogger.severe("The VM did not get to its running state in 20 minutes");
-						throw new VMManagementException("The VM did not get to its running state in 20 minutes", null);
+					if (System.currentTimeMillis() > vmStartTime + VM_START_TIMEOUT) {
+						timeout = true;
+						break;
 					}
 					if (!Shrinker.getContext().isRunning()) {
-						Shrinker.myLogger.severe("Context down");
-						throw new VMManagementException("Context down", null);
+						shutdown = true;
+						break;
 					}
+					datacounter = 0;
+					datacounter += getIP() == null ? 0 : 1; // calls describe
+					datacounter += getPrivateIP() == null ? 0 : 1; // calls describe
+					datacounter += getPort() == null ? 0 : 1; // calls describe
+					try { Thread.sleep(10000l); } // wait 10 sec
+					catch (InterruptedException e) {}
+					
+				} // while got ip (and port) 
+
+				if (shutdown) break;
+				if (timeout) {
+					System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Failed to get IP within timeout for VM:" + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+					setState(VMState.INITFAILED);
+					continue;
 				}
-				while (getState().equals(VMState.INIT)) { // FIXME ? how can it be
-					Thread.sleep(10000l); // wait 10 sec
+				
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Waiting for state running of VM: " + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+				// wait until VM gets READY
+				while (!getState().equals(VMState.VMREADY)) {
+					if (System.currentTimeMillis() > vmStartTime + VM_START_TIMEOUT) {
+						timeout = true;
+						break;
+					}
+					if (!Shrinker.getContext().isRunning()) {
+						shutdown = true;
+						break;
+					}
+
+					getIP();
+					try { Thread.sleep(10000l); } // wait 10 sec
+					catch (InterruptedException e) {}
 				}
+				
+				if (shutdown) break;
+				if (timeout) {
+					System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Failed to get into RUNNING state within timeout for VM:" + this.instanceid + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+					setState(VMState.INITFAILED);
+					continue;
+				}
+				
 				if (getState().equals(VMState.VMREADY)) {
 					if (testConformance) {
 						setState(VMState.IAASCHECK);
@@ -229,7 +267,7 @@ public abstract class VirtualMachine {
 							long now = System.currentTimeMillis();
 							String cmd = ExecHelper.transformScriptsLoc(vmInitCheckScript) + " " + privateip
 									+ " 22 " + privateip + " " + RemoteExecutor.keyfile + " " + loginName;
-							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh on " + getInstanceId() + ": " + cmd + "(@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh VM " + getInstanceId() + ": " + cmd + "(@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 							ret = new ExecHelper().execProg(cmd, true, null, false).getRetcode();
 							long ellapsed = (System.currentTimeMillis() - now) / 1000l;
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] testBasicVM.sh took " + ellapsed + "s. Exit code: " + ret + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
@@ -242,28 +280,47 @@ public abstract class VirtualMachine {
 							ret = 1;
 						}
 						
-						// avoid infinite loop of reinits caused by erronous vmInitCheckScript (e.g. wrong login name) FIXME test
+						// avoid infinite loop of reinits caused by erronous vmInitCheckScript (e.g. wrong login name)
 						if (ret != 0) {
 							int reinitFailures = VMInstanceManager.reinitFailures.incrementAndGet();
 							Shrinker.myLogger.info("VM initialization check failed with exit code: " + ret + " (failures: " + reinitFailures +")");
+							setState(VMState.INITFAILED);
 							if (reinitFailures > VMInstanceManager.REINIT_LIMIT) {
 								Shrinker.myLogger.warning("### Failed VM initialization checks reached limit: " + reinitFailures + " / " + VMInstanceManager.REINIT_LIMIT);
 								System.err.println("Exception: REINIT reached limit: " + VMInstanceManager.REINIT_LIMIT + ". Exiting. Manually shut down VMs.");
 								System.exit(1);							
 							}
+						} else {
+							done = true;
 						}
 					}
-				} else {
-					ret = 1;
+					
+				} 
+			} while (!done && --repeatCounter > 0);
+			
+			if (shutdown) {
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shrinker context down " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+				Shrinker.myLogger.info("Shrinker context down");
+				if (instanceid != null) { 
+					// wait bootup before terminate (VMware VMs cannot be killed before boot)
+					if (getState().equals(VMState.INIT) || getState().equals(VMState.REINIT)) {
+						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Waiting 60s for VM " + getInstanceId() + " to boot before terminate..." +  " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+						try { Thread.sleep(60000l); } catch (InterruptedException e) {}
+					}
+					terminate();
 				}
-				repeatCounter--;
-			} while (ret != 0 && repeatCounter >= 0);
-			if (repeatCounter < 0) {
-				Shrinker.myLogger.info("VM initialization timeout. (repeat counter 0)");
-				terminate();
-			} else {
+				setState(VMState.INITFAILED); 
+			} else if (repeatCounter == 0) {
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Failed to start VM for 5 times" +  " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+				Shrinker.myLogger.info("Failed to start VM for 5 times");
+				if (instanceid != null) { 
+					terminate();
+				}
+				setState(VMState.INITFAILED); 
+			} else if (done) {
 				setState(VMState.FREE);
 			}
+			
 		} catch (VMManagementException e) {
 			StringWriter sw = new StringWriter();
 			e.printStackTrace(new PrintWriter(sw));
@@ -316,6 +373,7 @@ public abstract class VirtualMachine {
 					newState = VMState.REINIT;
 				}
 				terminateInstance();
+				instanceid = null;
 			}
 			if (!getState().equals(newState)) {
 				setState(newState);

@@ -375,10 +375,11 @@ public class Shrinker extends Thread {
 			}
 		}
 		Shrinker.myLogger.info("Shutting down...");
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Shutting down... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ### Shutting down... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 
 		sc.running = false;
 		Shrinker.myLogger.info("###phase: shutting down worker VMs");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Stopping VM factory... " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
 		VMFactory.instance.terminateFactory();
 		
 		// wait 1 min to terminate VMs

@@ -104,7 +104,7 @@ public class WTVM extends VirtualMachine {
 			System.exit(1);
 		}
 		// run VM
-//		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Starting a new VM... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Starting a new VM... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		try {
 			runVM();
 		} catch (Exception x) {
@@ -186,7 +186,7 @@ public class WTVM extends VirtualMachine {
 
 	@Override public void terminateInstance() throws VMManagementException {
 		Shrinker.myLogger.info("Terminating VM: " + getInstanceId());
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Terminating VM: " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Terminating VM " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		if (getInstanceId() == null) {
 			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM id is null, cannot be terminated " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			Thread.dumpStack();
@@ -211,7 +211,7 @@ public class WTVM extends VirtualMachine {
 	}
 	
 	@Override public void rebootInstance() throws VMManagementException {
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Rebooting VM: " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Rebooting VM " + vmId + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		try {
 			Shrinker.myLogger.info("Reboot server: " + vmId);
 			rebootVM();
@@ -220,7 +220,7 @@ public class WTVM extends VirtualMachine {
 			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM " + getInstanceId() + " reboot error: " + x.getMessage());
 			throw new VMManagementException("Cannot reboot instance", x);
 		}
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM rebooted: " + getInstanceId() + " " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM " + getInstanceId() + " rebooted " + this.privateDnsName + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	private static String base64Encode(String value) {
@@ -459,7 +459,11 @@ public class WTVM extends VirtualMachine {
 	
 	private void terminateVM() throws VMManagementException {
 		log.info("Delete VM: " + vmId);
-		if (vmId == null) throw new VMManagementException("Instance id is null", null);
+		if (vmId == null) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM already deleted (id=null). Ignoring terminate. " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			log.info("VM already deleted (id=null). Ignoring request.");
+			return;
+		}
 		Client client = null;
 		try {
 			String service = endpoint + "vms/" + vmId;

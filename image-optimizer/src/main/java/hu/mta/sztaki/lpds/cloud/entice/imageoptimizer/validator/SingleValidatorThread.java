@@ -270,7 +270,7 @@ public class SingleValidatorThread extends Thread {
 			throw new VMManagementException(e.getMessage(), e);
 		}
 		Shrinker.myLogger.info("Test ret:" + ScriptError.mapError(returncode) + "(" + returncode + ")");
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] validator script return value on VM " + vm.getInstanceId() + ": " + returncode);
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] validator script return value on VM " + vm.getInstanceId() + ": " + returncode  + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		if (returncode == 0) {
 			return ValidationState.SUCCESS;
 		} else if (returncode == 255) {
