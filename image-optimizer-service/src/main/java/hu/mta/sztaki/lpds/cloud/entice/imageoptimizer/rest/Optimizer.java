@@ -153,7 +153,7 @@ public class Optimizer {
     		try { requestBody = new JSONObject(new JSONTokener(body)); }
     		catch (JSONException e) { return Response.status(Status.BAD_REQUEST).entity("Invalid JSON content: " + e.getMessage()).build(); }
         } else { return Response.status(Status.BAD_REQUEST).entity("Missing entity body!").build(); }
-        
+        log.debug("Request JSON: " + requestBody.toString());
         // create optimizer VM ====================================
         log.info("Creating optimizer VM...");
         
@@ -371,7 +371,7 @@ public class Optimizer {
 	private Task retrieveTask(String id) {
 		Task task = taskCache.get(id);
 		if (task == null) { // get from database
-			log.debug("Getting task " + id + " from database...");
+//			log.debug("Getting task " + id + " from database...");
 			EntityManager entityManager = DBManager.getInstance().getEntityManager();
 			if (entityManager != null) {
 				try {
@@ -1167,13 +1167,13 @@ public class Optimizer {
 		// upload optimized image to S3
 		sb.append("    echo 'Uploading optimized image' > phase"); sb.append("\n");
 		sb.append("    ");
-		if (!"".equals(parameters.get(S3_ENDPOINT_URL)) && !"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY)) && !"".equals(parameters.get(S3_PATH))) {}
-		else sb.append("# "); // comment if no s3Path
+		if (!"".equals(parameters.get(S3_ENDPOINT_URL)) && !"".equals(parameters.get(S3_ACCESS_KEY)) && !"".equals(parameters.get(S3_SECRET_KEY)) && !"".equals(parameters.get(S3_PATH))) {
 		sb.append("aws --endpoint-url " + parameters.get(S3_ENDPOINT_URL) + " --no-verify-ssl s3 cp " + optimizedImageFileName + " s3://" + parameters.get(S3_PATH) + " --quiet 2> upload.out");
 		sb.append(" || { ");
-		sb.append("echo 'Cannot upload optimized image file " + optimizedImageFileName + " to S3 server " + parameters.get(S3_ENDPOINT_URL) + " with access key: " + parameters.get(S3_ACCESS_KEY) + ", secret key: " + (parameters.get(S3_SECRET_KEY) != null ? parameters.get(S3_SECRET_KEY).substring(0, 3) : parameters.get(S3_SECRET_KEY)) + "...' > failure");
+		sb.append("echo 'Cannot upload optimized image file " + optimizedImageFileName + " to S3 server " + parameters.get(S3_ENDPOINT_URL) + " with access key: " + parameters.get(S3_ACCESS_KEY) + ", with the given secret key...' > failure");
 		sb.append(" ; exit 1 ; }"); sb.append("\n");
-	
+		}
+		
 		// econe-upload --access-key ahajnal@sztaki.hu --secret-key 60a... --url http://cfe2.lpds.sztaki.hu:4567 /mnt/optimized-image.qcow2
 		sb.append("    ");
 		sb.append("# econe-upload --access-key " + parameters.get(CLOUD_ACCESS_KEY) + " --secret-key " + parameters.get(CLOUD_SECRET_KEY) + " --url " + parameters.get(CLOUD_ENDPOINT_URL) + " " + optimizedImageFileName); sb.append("\n");

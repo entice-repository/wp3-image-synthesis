@@ -143,13 +143,13 @@ public class EC2VM extends VM {
 			}
 		} catch (AmazonServiceException x) {
 			x.printStackTrace();
-			throw new Exception("VM.run exception: " + x.getMessage() + " " + x.getCause(), x);
+			throw new Exception("VM.run exception: " + x.getMessage() + " (cause: " + x.getCause() + ")", x);
 		} catch (AmazonClientException x) {
 			x.printStackTrace();
-			throw new Exception("VM.run exception: " + x.getMessage() + " " + x.getCause(), x);
+			throw new Exception("VM.run exception: " + x.getMessage() + " (cause: " + x.getCause() + ")", x);
 		} catch (Exception x) {
 			x.printStackTrace();
-			throw new Exception("VM.run exception: " + x.getMessage() + " " + x.getCause(), x);
+			throw new Exception("VM.run exception: " + x.getMessage() + " (cause: " + x.getCause() + ")", x);
 		}
 	}
 
