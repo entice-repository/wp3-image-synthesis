@@ -151,7 +151,11 @@ public class SingleValidatorThread extends Thread {
 								// we should describe VM before trying to test restart
 								VMTests.restartTest(vm.getIP(), vm.getPort(), vm.getLoginName(), beforeRestart);
 //								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart detected on VM: " + vm.getInstanceId() + "");
+
+								System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] waiting " + delay + "s for services startup " + vm.getInstanceId() + "");
+								try { Thread.sleep(delay * 1000l); beforeRestart += delay; } catch (Exception x) {} // wait after reboot detected for services to come up
 							}
+
 							System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] executing validator script on VM " + vm.getInstanceId()   + " ... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 							returner = executeTest(vm, vms); // release VM on SUCCESS
 							
