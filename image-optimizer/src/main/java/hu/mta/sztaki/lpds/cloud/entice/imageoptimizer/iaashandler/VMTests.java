@@ -68,7 +68,7 @@ public class VMTests {
 			throws InterruptedException, IOException, VMManagementException {
 		Shrinker.myLogger.info("restartTest");
 		int delay = 10; // delay between poll in seconds
-		long timeout = 4 * 60; // 4 minutes in seconds
+		long timeout = 8 * 60; // 8 minutes in seconds
 		long rebootTime = System.currentTimeMillis();
 		do {  // continue up to 4 minutes
 			try {

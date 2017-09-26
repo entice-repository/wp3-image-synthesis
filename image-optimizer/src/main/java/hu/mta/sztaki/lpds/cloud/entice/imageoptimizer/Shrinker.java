@@ -263,6 +263,8 @@ public class Shrinker extends Thread {
 	        catch (NullPointerException x) {}
 	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-amd64/kernel").setTestState(Group.GroupState.CORE_GROUP); } 
 	        catch (NullPointerException x) {}
+	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-amd64/kernel/drivers").setTestState(Group.GroupState.CORE_GROUP); } 
+	        catch (NullPointerException x) {}
 	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-686-pae").setTestState(Group.GroupState.CORE_GROUP); } 
 	        catch (NullPointerException x) {}
 	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-686-pae/kernel").setTestState(Group.GroupState.CORE_GROUP); } 
@@ -271,9 +273,9 @@ public class Shrinker extends Thread {
 	        catch (NullPointerException x) {}
 	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-486/kernel").setTestState(Group.GroupState.CORE_GROUP); } 
 	        catch (NullPointerException x) {}
-	        
-//	        /usr/lib/i386-linux-gnu
-//	        lib/modules/3.2.0-4-amd64/kernel/drivers
+	        try { dgm.getGroup(sc.getMountPoint().toString() + "/usr/lib/i386-linux-gnu").setTestState(Group.GroupState.CORE_GROUP); } 
+	        catch (NullPointerException x) {}
+
 		}
 		try {
 			dgm.loadGroupStates();
