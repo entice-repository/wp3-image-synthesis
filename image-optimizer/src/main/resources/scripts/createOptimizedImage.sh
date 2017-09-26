@@ -88,7 +88,7 @@ echo '  '$MOUNT_POINT unmounted
 
 # phase 1: done =============================================
 # phase 2: zerofree, convert =============================================
-if [ -z "$FS_TYPE" ] || [[ $SF_TYPE == ext* ]]; then
+if [ -z "$FS_TYPE" ] || [[ $FS_TYPE == ext* ]]; then
 	# mount (read-only) --------------------
 	echo Mounting $DEVICE_PARTITION on $MOUNT_POINT \(read-only\) ...
 	mount -o ro $DEVICE_PARTITION $MOUNT_POINT || { echo "ERROR: Could not mount device $DEVICE_PARTIION on $MOUNT_POINT" ; qemu-nbd -d $DEVICE &> /dev/null ; exit 243 ; }
