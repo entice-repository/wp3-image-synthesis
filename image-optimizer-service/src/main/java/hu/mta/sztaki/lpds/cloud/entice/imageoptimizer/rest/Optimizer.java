@@ -1029,14 +1029,15 @@ public class Optimizer {
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".loginName=" + parameters.get(IMAGE_USER_NAME) + " \\"); sb.append("\n");
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.targetimagefilename=" + OPTIMIZED_IMAGE_FILE); sb.append(" \\" + "\n");
 		if (!"".equals(parameters.get(OVF_URL))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ovfURL=" + parameters.get(OVF_URL)); sb.append(" \\" + "\n"); }
-		if (!"".equals(parameters.get(MAX_ITERATIONS_NUM))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxIterationsNum=" + parameters.get(MAX_ITERATIONS_NUM)); sb.append(" \\" + "\n"); }
-		if (!"".equals(parameters.get(MAX_NUMBER_OF_VMS))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxNumberOfVMs=" + parameters.get(MAX_NUMBER_OF_VMS)); sb.append(" \\" + "\n"); }
-		if (!"".equals(parameters.get(AIMED_REDUCTION_RATIO))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.aimedReductionRatio=" + parameters.get(AIMED_REDUCTION_RATIO)); sb.append(" \\" + "\n"); }
-		if (!"".equals(parameters.get(AIMED_SIZE))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.aimedSize=" + parameters.get(AIMED_SIZE)); sb.append(" \\" + "\n"); }
-		if (!"".equals(parameters.get(MAX_RUNNING_TIME))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxRunningTime=" + parameters.get(MAX_RUNNING_TIME)); sb.append(" \\" + "\n"); }
+		
+		if (!"".equals(parameters.get(MAX_ITERATIONS_NUM)) && !"0".equals(parameters.get(MAX_ITERATIONS_NUM))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxIterationsNum=" + parameters.get(MAX_ITERATIONS_NUM)); sb.append(" \\" + "\n"); }
+		if (!"".equals(parameters.get(MAX_NUMBER_OF_VMS)) && !"0".equals(parameters.get(MAX_NUMBER_OF_VMS))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxNumberOfVMs=" + parameters.get(MAX_NUMBER_OF_VMS)); sb.append(" \\" + "\n"); }
+		if (!"".equals(parameters.get(AIMED_REDUCTION_RATIO)) && !"0.0".equals(parameters.get(AIMED_REDUCTION_RATIO))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.aimedReductionRatio=" + parameters.get(AIMED_REDUCTION_RATIO)); sb.append(" \\" + "\n"); }
+		if (!"".equals(parameters.get(AIMED_SIZE)) && !"0".equals(parameters.get(AIMED_SIZE))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.aimedSize=" + parameters.get(AIMED_SIZE)); sb.append(" \\" + "\n"); }
+		if (!"".equals(parameters.get(MAX_RUNNING_TIME)) && !"0".equals(parameters.get(AIMED_SIZE))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxRunningTime=" + parameters.get(MAX_RUNNING_TIME)); sb.append(" \\" + "\n"); }
 		sb.append("    -Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.NoOpLog"); sb.append("\""); sb.append("\n");
 		
-		// FIXME in the case of WT set signature version
+		// in the case of WT set signature version
 		if (!"".equals(parameters.get(S3_SIGNATURE_VERSION))) {
 			sb.append("    ");
 			sb.append("aws configure set default.s3.signature_version " + parameters.get(S3_SIGNATURE_VERSION)); // s3v4
@@ -1127,6 +1128,8 @@ public class Optimizer {
 		// start optimizer (optimize + create optimized image)
 		sb.append("    echo 'Running shrinker' > phase"); sb.append("\n");
 		sb.append("    ");
+		// FIXME -XX:+HeapDumpOnOutOfMemoryError
+		// -XX:+PrintFlagsFinal
 		sb.append("java $JAVA_OPTS -cp \"./lib/*:.\" hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker " + SOURCE_FILE_SYSTEM_DIR + " " + parameters.get(IMAGE_ID) + " " + VALIDATOR_SCRIPT_FILE + " &> " + SHRINKER_STDOUT);
 		sb.append(" || { ");
 		sb.append("echo Optimizer Java exit code: $? > failure");

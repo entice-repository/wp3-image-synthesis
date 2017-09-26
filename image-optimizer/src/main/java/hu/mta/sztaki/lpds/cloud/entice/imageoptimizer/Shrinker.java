@@ -258,10 +258,22 @@ public class Shrinker extends Thread {
 	            dgm.getGroup(sc.getMountPoint().toString() + "/usr/local").setTestState(Group.GroupState.CORE_GROUP);
 	        } catch (NullPointerException x) {
 	        } // no such path
-	        try {
-	            dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-amd64").setTestState(Group.GroupState.CORE_GROUP);
-	        } catch (NullPointerException x) {
-	        } // no such path
+	        
+	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-amd64").setTestState(Group.GroupState.CORE_GROUP); } 
+	        catch (NullPointerException x) {}
+	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-amd64/kernel").setTestState(Group.GroupState.CORE_GROUP); } 
+	        catch (NullPointerException x) {}
+	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-686-pae").setTestState(Group.GroupState.CORE_GROUP); } 
+	        catch (NullPointerException x) {}
+	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-686-pae/kernel").setTestState(Group.GroupState.CORE_GROUP); } 
+	        catch (NullPointerException x) {}
+	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-486").setTestState(Group.GroupState.CORE_GROUP); } 
+	        catch (NullPointerException x) {}
+	        try { dgm.getGroup(sc.getMountPoint().toString() + "/lib/modules/3.2.0-4-486/kernel").setTestState(Group.GroupState.CORE_GROUP); } 
+	        catch (NullPointerException x) {}
+	        
+//	        /usr/lib/i386-linux-gnu
+//	        lib/modules/3.2.0-4-amd64/kernel/drivers
 		}
 		try {
 			dgm.loadGroupStates();
@@ -313,7 +325,7 @@ public class Shrinker extends Thread {
 				} catch (NumberFormatException x) {
 					Shrinker.myLogger.info("ERROR: Invalid maxIterationsNum: " + property);
 				}
-				if (iterationCounter + 1 > value) {
+				if (value != 0 && iterationCounter + 1 > value) {
 					stoppingCriterion = true;
 					Shrinker.myLogger.info("STOPPING: maxIterationsNum reached");
 				}
@@ -326,7 +338,7 @@ public class Shrinker extends Thread {
 				} catch (NumberFormatException x) {
 					Shrinker.myLogger.info("ERROR: Invalid maxNumberOfVMs: " + property);
 				}
-				if (VirtualMachine.vmsStarted.get() >= value) {
+				if (value != 0 && VirtualMachine.vmsStarted.get() >= value) {
 					stoppingCriterion = true;
 					Shrinker.myLogger.info("STOPPING: maxNumberOfVMs reached: " + VirtualMachine.vmsStarted.get());
 				}
@@ -339,7 +351,7 @@ public class Shrinker extends Thread {
 				} catch (NumberFormatException x) {
 					Shrinker.myLogger.info("ERROR: Invalid aimedReductionRatio: " + property);
 				}
-				if ((double) dgm.getRemainingSize() / (double) (dgm.getTotalSize()) <= value) { // means:
+				if (value != 0.0f && (double) dgm.getRemainingSize() / (double) (dgm.getTotalSize()) <= value) { // means:
 																								// totalsize
 																								// now/totalsize
 																								// before
@@ -357,7 +369,7 @@ public class Shrinker extends Thread {
 				} catch (NumberFormatException x) {
 					Shrinker.myLogger.info("ERROR: Invalid aimedSize: " + property);
 				}
-				if (dgm.getTotalSize() <= value) {
+				if (value != 0l &&  dgm.getTotalSize() <= value) {
 					stoppingCriterion = true;
 					Shrinker.myLogger.info("STOPPING: aimedSize reached");
 				}
@@ -371,7 +383,7 @@ public class Shrinker extends Thread {
 				} catch (NumberFormatException x) {
 					Shrinker.myLogger.info("ERROR: Invalid maxRunningTime: " + property);
 				}
-				if ((System.currentTimeMillis() - startTime) >= value * 1000l) {
+				if (value != 0l && (System.currentTimeMillis() - startTime) >= value * 1000l) {
 					stoppingCriterion = true;
 					Shrinker.myLogger.info("STOPPING: maxRunningTime reached");
 				}
