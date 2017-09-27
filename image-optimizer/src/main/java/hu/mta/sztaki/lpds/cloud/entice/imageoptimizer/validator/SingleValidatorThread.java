@@ -336,8 +336,8 @@ public class SingleValidatorThread extends Thread {
 							break;
 						}
 					} else { // SSH
-						vm = removables.size() > 1 ? vim.getNewVMAndAcquire() : vim.getAndAcquireNextAvailableVM(); // FIXME acquire VM at getNew/getNext? vm.setAcquired()
-						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Acquired VM " + (vm != null ? vm.getInstanceId() : "null") + " (" + (removables.size() > 1 ? "getNewVM" : "getAndAcquireNextAvailableVM") + ") for group " + removablesString + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+						vm = removables.size() > 1 ? vim.getAndAcquireZeroAllicationsVM() : vim.getAndAcquireNextAvailableVM(); 
+						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Acquired VM " + (vm != null ? vm.getInstanceId() : "null") + " (" + (removables.size() > 1 ? "getAndAcquireZeroAllicationsVM" : "getAndAcquireNextAvailableVM") + ") for group " + removablesString + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 					}
 					if (vm == null) {
 						Shrinker.myLogger.severe(getName() + "failed to acquire VM!");

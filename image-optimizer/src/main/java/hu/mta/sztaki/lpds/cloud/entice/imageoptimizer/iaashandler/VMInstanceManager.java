@@ -90,6 +90,7 @@ public class VMInstanceManager extends Thread {
 		super.finalize();
 	}
 
+	/*
 	@SuppressWarnings("unused")
 	private VirtualMachine getNewVM() throws VMManagementException {
 		String threadName = Thread.currentThread().getName();
@@ -143,10 +144,12 @@ public class VMInstanceManager extends Thread {
 		}
 		return null;
 	}
-
+	 */
+	// get FREE VM with 0 allocations
+	/*
 	public VirtualMachine getNewVMAndAcquire() throws VMManagementException {
 		String threadName = Thread.currentThread().getName();
-		Shrinker.myLogger.info("New VM request " + threadName);
+		Shrinker.myLogger.info("New VM request (with 0 allocations) " + threadName);
 		while (sc.isRunning() && isAlive()) {
 			synchronized (vms) {
 				boolean createvm = false;
@@ -161,6 +164,7 @@ public class VMInstanceManager extends Thread {
 						}
 					}
 				}
+				// if there is free VM but with allocations > 0 
 				if (createvm) {
 					InstanceAllocationData maxiad = new InstanceAllocationData(null);
 					for (InstanceAllocationData iad : vms) {
@@ -175,6 +179,7 @@ public class VMInstanceManager extends Thread {
 					}
 				}
 			}
+			
 			int maxtestcount = 1000;
 			newvmwaiterloop: while (sc.isRunning() && isAlive()) {
 				synchronized (vms) {
@@ -195,31 +200,59 @@ public class VMInstanceManager extends Thread {
 				}
 			}
 		}
+		// FIXME
 		Shrinker.myLogger.severe("Returning null VM");
 		return null;
-	}
+	} */
 
-	@SuppressWarnings("unused")
-	private VirtualMachine getNextAvailableVM() {
+	public VirtualMachine getAndAcquireZeroAllicationsVM() {
 		String threadName = Thread.currentThread().getName();
-		Shrinker.myLogger.info("VM request " + threadName);
+		Shrinker.myLogger.info("VM request (with 0 allocations) " + threadName);
+		final long sleep = 10000l; // 10 sec
+		int maxtestcount = 20 * 6; // 20 * 6 * 10s = 20 mins
+		int testCount = maxtestcount;
+		boolean vmKilled = false;
 		while (sc.isRunning() && isAlive()) {
+			
 			synchronized (vms) {
 				Collections.shuffle(vms);
+				InstanceAllocationData vmToKill = null;
 				for (InstanceAllocationData iad : vms) {
 					if (iad.vm.getState().equals(VirtualMachine.VMState.FREE)) {
-						iad.newAllocation();
-						return iad.vm;
+						if (iad.getAllocations() == 0) {
+							iad.newAllocation();
+							iad.vm.setAcquired(); // acquire immediately
+							return iad.vm;
+						} else {
+							vmToKill = iad;
+						}
+					}
+				}
+				
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Couldn't find zero-allocation FREE VM. Counter: " + testCount + " " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+				if (!vmKilled && vmToKill != null) {
+					System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM " + vmToKill.vm.getInstanceId() + " is FREE with allocations: " + vmToKill.getAllocations() + ". Killing. (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+					try { vmKilled = true; vmToKill.vm.terminate(); }
+					catch (VMManagementException x) {
+						Shrinker.myLogger.severe("Exzeption at killing zero-allocation FREE VM: " + vmToKill.vm.getInstanceId());
+						System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Exzeption at killing zero-allocation FREE VM " + vmToKill.vm.getInstanceId() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 					}
 				}
 			}
 			try {
-				sleep(10);
-			} catch (InterruptedException e) {
+				Thread.sleep(sleep); // sleep 10 sec
+			} catch (InterruptedException e) {}
+			if (testCount-- <= 0) {
+				Shrinker.myLogger.severe("Cannot acquire zero-allocation FREE VM for " + (maxtestcount * 10) + " seconds. Returning null");
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Cannot acquire zero-allocation FREE VM for " + (maxtestcount * 10 ) + " seconds. Returning null. " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+				return null;
 			}
 		}
+		Shrinker.myLogger.info("VMInstanceManager getAndAcquireZeroAllicationsVM after context down " + threadName);
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] WARN: Cannot acquire zero-allocation VM after context down, Returning null.  " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		return null;
 	}
+
 	
 	public VirtualMachine getAndAcquireNextAvailableVM() {
 		String threadName = Thread.currentThread().getName();
@@ -243,16 +276,39 @@ public class VMInstanceManager extends Thread {
 				Thread.sleep(sleep); // sleep 10 sec
 			} catch (InterruptedException e) {}
 			if (testCount-- <= 0) {
-				Shrinker.myLogger.severe("Cannot acquire VM for " + maxtestcount + " second. Returning null");
-				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Cannot acquired VM for " + (maxtestcount * 10 ) + " seconds. Returning null. " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+				Shrinker.myLogger.severe("Cannot acquire VM for " + (maxtestcount * 10) + " seconds. Returning null");
+				System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Cannot acquire VM for " + (maxtestcount * 10 ) + " seconds. Returning null. " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 				return null;
 			}
 		}
 		Shrinker.myLogger.info("VMInstanceManager getAndAcquireNextAvailableVM after context down " + threadName);
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] WARN: Cannot acquired VM after context down, Returning null.  " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] WARN: Cannot acquire VM after context down, Returning null.  " + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 		return null;
 	}
 
+
+	/*
+	@SuppressWarnings("unused")
+	private VirtualMachine getNextAvailableVM() {
+		String threadName = Thread.currentThread().getName();
+		Shrinker.myLogger.info("VM request " + threadName);
+		while (sc.isRunning() && isAlive()) {
+			synchronized (vms) {
+				Collections.shuffle(vms);
+				for (InstanceAllocationData iad : vms) {
+					if (iad.vm.getState().equals(VirtualMachine.VMState.FREE)) {
+						iad.newAllocation();
+						return iad.vm;
+					}
+				}
+			}
+			try {
+				sleep(10);
+			} catch (InterruptedException e) {
+			}
+		}
+		return null;
+	} */
 	
 	@Override
 	public void run() {

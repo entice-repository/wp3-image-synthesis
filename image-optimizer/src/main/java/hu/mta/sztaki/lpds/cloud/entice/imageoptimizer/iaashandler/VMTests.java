@@ -40,7 +40,7 @@ public class VMTests {
 			Shrinker.myLogger.info("Checkuptime called on " + host);
 			StringWriter sw = new StringWriter();
 			if (RemoteExecutor.REMEXECERRORS
-					.contains(ScriptError.mapError(new RemoteExecutor(new ExecHelper()).remoteExecWithRetry(3, host,
+					.contains(ScriptError.mapError(new RemoteExecutor(new ExecHelper()).remoteExecWithRetry(1, host,
 							port, login, (InetAddress) null, (String) null, ExecHelper.transformScriptsLoc(vmUptimeCheck), sw, true)))) {
 				throw new TimeoutException("remoteExecFailed");
 			}
@@ -99,6 +99,7 @@ public class VMTests {
 			beforeRestart += delay;
 		} while (System.currentTimeMillis() - rebootTime < timeout * 1000l);
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] restart was unsuccessful: no uptime returned for " + timeout + "s or no decrease detected");
+		// FIXME
 		throw new VMManagementException("Restart was unsuccessful for " + host, null);
 	}
 }
