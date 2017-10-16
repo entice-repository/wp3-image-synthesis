@@ -67,6 +67,8 @@ public class Optimizer {
 	// post request fields
 	public static final String ID = "id"; // REQUIRED by optimized-image upload
 	public static final String KNOWLEDGE_BASE_URL = "knowledgeBaseURL"; // OPTIONAL by optimized-image upload
+	public static final String OPTIMIZED_IMAGE_UPLOAD_COMMAND = "uploadCommand";
+	
 	public static final String IMAGE_URL = "imageURL"; // REQUIRED
 	public static final String IMAGE_ID = "imageId"; // REQUIRED
 	public static final String OVF_URL = "ovfURL"; // OPTIONAL (required in VMware)
@@ -185,6 +187,7 @@ public class Optimizer {
         if (Configuration.knowledgeBaseURL == null) log.warn("knowledgeBaseURL not defined in properties file: " + Configuration.PROPERTIES_FILE_NAME + ". Optimized image will not be uploaded.");
         parameters.put(ID, requestBody.optString(ID)); // REQUIRED
         parameters.put(KNOWLEDGE_BASE_URL, requestBody.optString(KNOWLEDGE_BASE_URL)); // OPTIONAL
+        parameters.put(OPTIMIZED_IMAGE_UPLOAD_COMMAND, requestBody.optString(OPTIMIZED_IMAGE_UPLOAD_COMMAND)); // OPTIONAL
         
         if ("".equals(requestBody.optString(IMAGE_ID))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_ID + "").build();
         parameters.put(IMAGE_ID, requestBody.getString(IMAGE_ID)); // REQUIRED
@@ -1188,6 +1191,15 @@ public class Optimizer {
 			sb.append("curl -X POST -k -L --retry 5 --retry-delay 10 --upload-file @" + optimizedImageFileName + " " + kbURL + (kbURL.endsWith("/") ? "" : "/") + parameters.get(ID) + ""); sb.append("\n");
 		}
 
+		if (!"".equals(parameters.get(OPTIMIZED_IMAGE_UPLOAD_COMMAND))) {
+			sb.append("    ");
+//			 "curl -F \"file_upload=@%s\"  http://" + AppContextListener.prop.getProperty("deploy.url") + "/JerseyREST/rest/gui/optimised_vmi_upload"
+			String command = parameters.get(OPTIMIZED_IMAGE_UPLOAD_COMMAND);
+			if (command.contains("%s")) command = command.replaceAll("%s", optimizedImageFileName);
+			sb.append(command); sb.append("\n");
+			log.debug("Optimized image upload command: " + command);
+		}
+		
 		// make optimized image
 		sb.append("    echo 'Done' > phase"); sb.append("\n");
 
@@ -1302,5 +1314,13 @@ public class Optimizer {
 	}
 	
 	public static void main(String [] args) throws Exception {
+		String command = "curl -F \"file_upload=@%s\"  http://AppContextListener.prop.getProperty(\"deploy.url\")/JerseyREST/rest/gui/optimised_vmi_upload";
+		System.out.println(command);
+		if (command.contains("%s")) {
+			System.out.println("contains");
+			command = command.replaceAll("%s", "/mnt/optimized-image.qcow2");
+			System.out.println(command);
+		}
+
 	}
 }
