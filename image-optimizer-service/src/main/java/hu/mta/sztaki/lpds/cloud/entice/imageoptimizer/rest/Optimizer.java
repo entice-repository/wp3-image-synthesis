@@ -1314,13 +1314,5 @@ public class Optimizer {
 	}
 	
 	public static void main(String [] args) throws Exception {
-		String command = "curl -F \"file_upload=@%s\"  http://AppContextListener.prop.getProperty(\"deploy.url\")/JerseyREST/rest/gui/optimised_vmi_upload";
-		System.out.println(command);
-		if (command.contains("%s")) {
-			System.out.println("contains");
-			command = command.replaceAll("%s", "/mnt/optimized-image.qcow2");
-			System.out.println(command);
-		}
-
 	}
 }
