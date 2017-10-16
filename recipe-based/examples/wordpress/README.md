@@ -1,11 +1,11 @@
 # ENTICE WP3 / Image Synthesis -- Wordpress #
 
-Packer.io + Chef based image synthesis.
+This is an example Packer recipe using CentOS 7 and Chef for Wordpress. 
 
-Work-in-progress. 
+## Requirements ##
+- Packer 1.1.0+
 
-
-## Creating the disk image ##
+## Creating the disk image manually with Packer ##
 ```
 ./getcookbooks.sh
 ./build.sh
