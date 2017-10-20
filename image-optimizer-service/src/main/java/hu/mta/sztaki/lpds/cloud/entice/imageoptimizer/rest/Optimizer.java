@@ -1196,8 +1196,11 @@ public class Optimizer {
 //			 "curl -F \"file_upload=@%s\"  http://" + AppContextListener.prop.getProperty("deploy.url") + "/JerseyREST/rest/gui/optimised_vmi_upload"
 			String command = parameters.get(OPTIMIZED_IMAGE_UPLOAD_COMMAND);
 			if (command.contains("%s")) command = command.replaceAll("%s", optimizedImageFileName);
-			sb.append(command); sb.append("\n");
 			log.debug("Optimized image upload command: " + command);
+			sb.append(command); 
+			sb.append(" || { ");
+			sb.append("echo 'Cannot upload optimized image file " + optimizedImageFileName + "' > failure");
+			sb.append(" ; exit 1 ; }"); sb.append("\n");
 		}
 		
 		// make optimized image
