@@ -344,6 +344,8 @@ public class Optimizer {
         	pars.put(VM.LOGIN, Configuration.optimizerRootLogin);
         	
         	pars.put(VM.SSH_KEY_PATH, Configuration.sshKeyPath);
+        	pars.put(EC2VM.IMAGE_KEY_PAIR, parameters.get(IMAGE_KEY_PAIR));
+
         	optimizerVM.run(pars);
         	task.setInstanceId(optimizerVM.getInstanceId());
         	task.setVmStatus(VM.PENDING);
