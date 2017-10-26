@@ -113,6 +113,7 @@ public class EC2VM extends VM {
 		ClientConfiguration clientConfiguration = new ClientConfiguration();
 		amazonEC2Client = new AmazonEC2Client(awsCredentials, clientConfiguration);
 		amazonEC2Client.setEndpoint(this.endpoint);
+		log.debug("amazonEC2Client created: " + this.endpoint + " " + this.accessKey + " " + (this.secretKey != null && this.secretKey.length() > 3 ? this.secretKey.substring(0, 3) : "-"));
 //		describeInstance(); // update IPs
 	}
 	
@@ -128,27 +129,31 @@ public class EC2VM extends VM {
 		if (this.imageId == null) throw new Exception("VM.run exception: no imageId provided");
 		try {
 			if (this.instanceId == null) {
-				log.debug(this.imageId + " " + this.instanceType + " " + keyPairName);
+				log.debug("run: " + this.imageId + " " + this.instanceType + " " + keyPairName + " " + availabilityZone);
 				RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
 				runInstancesRequest.withImageId(this.imageId).withInstanceType(this.instanceType).withMinCount(1).withMaxCount(1);
 				
 				if (availabilityZone != null && !"".equals(availabilityZone)) runInstancesRequest.withPlacement(new Placement(availabilityZone));
 				if (keyPairName != null) runInstancesRequest.withKeyName(keyPairName);
-				if (userDataBase64 != null) runInstancesRequest.withUserData(userDataBase64);
+				if (userDataBase64 != null) {
+					runInstancesRequest.withUserData(userDataBase64);
+					log.debug("userDataBase64: " + userDataBase64);
+				}
 				RunInstancesResult runInstancesResult = this.amazonEC2Client.runInstances(runInstancesRequest);
 				Reservation reservation = runInstancesResult.getReservation();
 				List<Instance> instances = reservation.getInstances();
 				if (instances.size() != 1) throw new Exception("Too few or too many instances started");
 				this.instanceId = instances.get(0).getInstanceId();
+				log.debug("Instance created: " + this.instanceId);
 			}
 		} catch (AmazonServiceException x) {
-			x.printStackTrace();
+			x.printStackTrace(); log.error("AmazonServiceException", x);
 			throw new Exception("VM.run exception: " + x.getMessage() + " (cause: " + x.getCause() + ")", x);
 		} catch (AmazonClientException x) {
-			x.printStackTrace();
+			x.printStackTrace(); log.error("AmazonClientException", x);
 			throw new Exception("VM.run exception: " + x.getMessage() + " (cause: " + x.getCause() + ")", x);
 		} catch (Exception x) {
-			x.printStackTrace();
+			x.printStackTrace(); log.error("Exception", x);
 			throw new Exception("VM.run exception: " + x.getMessage() + " (cause: " + x.getCause() + ")", x);
 		}
 	}
