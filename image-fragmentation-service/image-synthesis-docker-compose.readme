@@ -34,7 +34,7 @@ cp wp3-image-synthesis/image-fragmentation-service/virtual-image-composer/target
 cp wp3-image-synthesis/image-fragmentation-service/virtual-image-decomposer/target/virtual-image-decomposer.war image-synthesis-docker/tomcat/webapps/
 cp wp3-image-synthesis/image-fragmentation-service/virtual-image-launcher/target/virtual-image-launcher.war image-synthesis-docker/tomcat/webapps/
 cp wp3-image-synthesis/image-fragmentation-service/virtual-image-manager/target/virtual-image-manager.war image-synthesis-docker/tomcat/webapps/
-cp wp3-image-synthesis/image-optimizer-service/image-optimizer-service/target/virtual-image-manager.war image-synthesis-docker/tomcat/webapps/
+cp wp3-image-synthesis/image-optimizer-service/image-optimizer-service/target/image-optimizer-service.war image-synthesis-docker/tomcat/webapps/
 
 4. Create Virtual Image Decomposer VM
 =====================================
@@ -63,7 +63,7 @@ vi image-synthesis-docker/env-docker-compose
 6. Start
 ========
 docker-compose build
-dcoker-compose up
+docker-compose up
 
 7. Test
 ========
