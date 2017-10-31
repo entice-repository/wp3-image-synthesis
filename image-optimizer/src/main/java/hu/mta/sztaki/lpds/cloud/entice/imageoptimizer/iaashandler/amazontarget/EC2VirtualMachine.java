@@ -70,6 +70,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 
 	public static final int TERMINATE_TIMEOUT = 10 * 60 * 1000; // 10 mins in millis
 	public static final String TERMINATED_STATE = "terminated";
+	public static final String SHUTTING_DOWN_STATE = "shutting-down";
 	
 	private String ip;
 	
@@ -199,6 +200,13 @@ public class EC2VirtualMachine extends VirtualMachine {
 
 	@Override
 	protected void terminateInstance() throws VMManagementException {
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] Terminating VM " + getInstanceId() + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		if (TERMINATED_STATE.equals(this.state) || SHUTTING_DOWN_STATE.equals(this.state)) {
+			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM already terminated: " + getInstanceId() + " " + this.state + "... (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+			Shrinker.myLogger.info("VM already terminated: " + getInstanceId());
+			return;
+		}
+		
 		try {
 			int requests = reqCounter.decrementAndGet();
 			if (requests < 0) {
@@ -213,13 +221,15 @@ public class EC2VirtualMachine extends VirtualMachine {
 			Shrinker.myLogger.info("Terminate request dispatched for instance " + getInstanceId());
 			
 			List<InstanceStateChange> stateChanges = res.getTerminatingInstances();
-			InstanceStateChange state = null;
-			for (InstanceStateChange stateChange: stateChanges) if (getInstanceId().contains(stateChange.getInstanceId())) state = stateChange; 
-			if (state != null) Shrinker.myLogger.info("State of instance " + getInstanceId() + ": " + state.getPreviousState().getName() + " -> " + state.getCurrentState().getName());
-			else Shrinker.myLogger.info("null state for instance " + getInstanceId());
+			InstanceStateChange ec2State = null;
+			for (InstanceStateChange stateChange: stateChanges) if (getInstanceId().contains(stateChange.getInstanceId())) ec2State = stateChange; 
+			if (ec2State != null) {
+				Shrinker.myLogger.info("State of instance " + getInstanceId() + ": " + ec2State.getPreviousState().getName() + " -> " + ec2State.getCurrentState().getName());
+				this.state = ec2State.getCurrentState().getName();
+			} else Shrinker.myLogger.info("null state for instance " + getInstanceId());
 			
 			// re-send terminate
-			if (state == null || !TERMINATED_STATE.equals(state.getCurrentState().getName())) {
+			if (ec2State == null || (!TERMINATED_STATE.equals(ec2State.getCurrentState().getName()) && !SHUTTING_DOWN_STATE.equals(ec2State.getCurrentState().getName()))) {
 				int timeout = 0;
 				int counter = 1;
 				while (timeout < TERMINATE_TIMEOUT) {
@@ -228,16 +238,18 @@ public class EC2VirtualMachine extends VirtualMachine {
 					try {
 						res = this.amazonEC2Client.terminateInstances(terminateInstancesRequest);
 						stateChanges = res.getTerminatingInstances();
-						for (InstanceStateChange stateChange: stateChanges) if (getInstanceId().contains(stateChange.getInstanceId())) state = stateChange; 
-						if (state != null) Shrinker.myLogger.info("State of instance " + getInstanceId() + ": " + state.getPreviousState().getName() + " -> " + state.getCurrentState().getName());
-						else Shrinker.myLogger.info("null state for instance " + getInstanceId());
+						for (InstanceStateChange stateChange: stateChanges) if (getInstanceId().contains(stateChange.getInstanceId())) ec2State = stateChange; 
+						if (ec2State != null) {
+							Shrinker.myLogger.info("State of instance " + getInstanceId() + ": " + ec2State.getPreviousState().getName() + " -> " + ec2State.getCurrentState().getName());
+							this.state = ec2State.getCurrentState().getName();
+						} else Shrinker.myLogger.info("null state for instance " + getInstanceId());
 					} catch (AmazonServiceException x) { // terminated correctly
 						// it can happen that terminate seemingly didn't succeed for the first time (remains running), 
 						// but then the instance id is gone (correctly) so re-sending terminate will cause exception
 						if ("InvalidInstanceID.NotFound".equals(x.getErrorCode())) break;
 						else throw x;
 					}
-					if (state != null && TERMINATED_STATE.equals(state.getCurrentState().getName())) break;
+					if (ec2State != null && (TERMINATED_STATE.equals(ec2State.getCurrentState().getName()) || SHUTTING_DOWN_STATE.equals(ec2State.getCurrentState().getName()))) break;
 					timeout += 5000; // repeat every 5 second
 					counter++;
 				}
@@ -255,7 +267,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 			Shrinker.myLogger.info("terminateInstance error: " + x.getMessage());
 			throw new VMManagementException("terminateInstance exception", x);
 		}
-		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.ip + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
+		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.ip + " " + this.state + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 	}
 
 	@Override
