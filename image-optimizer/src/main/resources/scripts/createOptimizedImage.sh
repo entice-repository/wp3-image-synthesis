@@ -129,7 +129,7 @@ fi
 
 # convert "optimized" source image to optimized image --------------------
 echo Converting $IMAGE_FILE to $OPTIMIZED_IMAGE_FILE ... 
-qemu-img convert -O qcow2 $IMAGE_FILE $OPTIMIZED_IMAGE_FILE
+qemu-img convert -c -O qcow2 $IMAGE_FILE $OPTIMIZED_IMAGE_FILE
 echo '  '$OPTIMIZED_IMAGE_FILE created
 
 # phase 2: done =============================================
