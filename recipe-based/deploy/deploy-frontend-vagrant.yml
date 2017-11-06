@@ -25,6 +25,7 @@
     python_app_directory: "{{ ansistrano_deploy_to }}"
     python_app_name: "entice-imagesynth-frontend"
     python_app_main_script: "run-builder-fe-dev.py"
+    python_app_user: "www-data"
 
   roles:
     - carlosbuenosvinos.ansistrano-deploy
