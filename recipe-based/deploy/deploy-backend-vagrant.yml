@@ -29,7 +29,6 @@
       - libyaml-0-2
       - libyaml-dev
       - qemu-system
-      - qemu-common
       - qemu-system-x86
       - qemu-utils
       - qemu-kvm
