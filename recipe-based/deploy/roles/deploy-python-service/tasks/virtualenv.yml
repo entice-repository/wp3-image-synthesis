@@ -5,6 +5,6 @@
     virtualenv={{ python_app_directory }}/current/env
     state=present
 
-- name: Ensure application is restartet
+- name: Ensure application is restarted
   service: name=supervisor state=restarted
 
