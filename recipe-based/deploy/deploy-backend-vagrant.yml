@@ -25,11 +25,12 @@
     python_app_directory: "{{ ansistrano_deploy_to }}"
     python_app_name: "entice-imagesynth-backend"
     python_app_main_script: "run-builder-be-dev.py"
+    # make sure the user has access to the KVM module (i.e., on Ubuntu member of the kvm group)
+    python_app_user: "entice"
     python_app_extra_packages:
       - libyaml-0-2
       - libyaml-dev
       - qemu-system
-      - qemu-common
       - qemu-system-x86
       - qemu-utils
       - qemu-kvm
