@@ -105,10 +105,10 @@ public class VirtualImageDecomposer {
         String virtualImageComposerUrl = "".equals(requestBody.optString(VIRTUAL_IMAGE_COMPOSER_REST_URL)) ? 
         		Configuration.virtualImageComposerRestUrl + "/scripts/" :
         		requestBody.optString(VIRTUAL_IMAGE_COMPOSER_REST_URL) + "/scripts/";
-        String fragmentStorageUrl = !"".equals(requestBody.optString(FRAGMENT_STORAGE_URL)) ? 
+        String fragmentStorageUrl = "".equals(requestBody.optString(FRAGMENT_STORAGE_URL)) ? 
         		Configuration.fragmentStorageUrl : 
         		requestBody.optString(FRAGMENT_STORAGE_URL);
-        String fragmentStorageToken = !"".equals(requestBody.optString(FRAGMENT_STORAGE_TOKEN)) ? 
+        String fragmentStorageToken = "".equals(requestBody.optString(FRAGMENT_STORAGE_TOKEN)) ? 
         		Configuration.fragmentStorageToken : 
         		requestBody.optString(FRAGMENT_STORAGE_TOKEN);
         
