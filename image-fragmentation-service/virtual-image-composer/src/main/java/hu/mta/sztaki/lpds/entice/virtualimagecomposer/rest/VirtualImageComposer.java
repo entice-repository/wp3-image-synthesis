@@ -35,7 +35,7 @@ public class VirtualImageComposer {
 	private static final String INIT_SCRIPT_FILE = ".delta-init.sh";
 	private static final String DELTA_PACKAGE_FILE = "delta-package.tar.gz";
 
-	private static final String DELTA_LOG_FILE = "/var/lib/cloud/virtual-image-assembly.log";
+	private static final String DELTA_LOG_FILE = "/var/log/image-assembly.log";
 
 	@GET @Path("{id}") @Produces("application/x-shellscript")
 	public Response getInstallScript(
@@ -81,6 +81,7 @@ public class VirtualImageComposer {
 			return Response.status(Status.BAD_REQUEST).entity("Invalid JSON from Virtual Image Manager").build(); 
 		}
 		log.debug("Got " + fragmentUrlsJson.length() + " fragments");
+		
 		// create response script
 		StringBuilder sb = new StringBuilder();
 		sb.append("#!/bin/sh\n");
@@ -90,8 +91,7 @@ public class VirtualImageComposer {
 			String fragmentUrls = fragmentUrlsJson.getString(i);
 			if (!"".equals(fragmentUrls)) sb.append(getFragmentInstaller(fragmentUrls, cloud, withInit));
 		}
-		sb.append("echo Assembly time: $((`date +\"%s\"` - ${START_TIME}))s >> " + DELTA_LOG_FILE + "\n");
-//		log.debug("Script: \n" + sb.toString());
+		sb.append("echo Overall assembly time: $((`date +\"%s\"` - ${START_TIME}))s >> " + DELTA_LOG_FILE + "\n");
 		return Response.status(Status.OK).entity(sb.toString())
 //						.header("Content-Disposition", "attachment; filename=\"" + id + ".sh" + "\"" )
 						.build();
@@ -105,14 +105,20 @@ public class VirtualImageComposer {
 			cloudPostfix = cloud;
 			if (fragmentUrl == null || !fragmentUrl.endsWith("/")) cloudPostfix = "/" + cloudPostfix;
 		}
-		sb.append("echo \"Merging fragment: " + fragmentUrl + "\" >> " + DELTA_LOG_FILE + "\n");
-		sb.append("wget --tries=3 -q -O " + DELTA_PACKAGE_FILE + " " + fragmentUrl + cloudPostfix + " || echo 'Cannot download fragment: " + fragmentUrl + cloudPostfix + "' >> " + DELTA_LOG_FILE + ""); sb.append("\n");
-		sb.append("tar -xf " + DELTA_PACKAGE_FILE); sb.append("\n");
-		sb.append("rm " + DELTA_PACKAGE_FILE); sb.append("\n");
+		sb.append("echo \"Merging fragment: " + fragmentUrl + cloudPostfix + "\" >> " + DELTA_LOG_FILE + "\n");
+		sb.append("DOWNLOAD_TIME=`date +\"%s%3N\"`\n");
+		sb.append("wget --tries=3 -q -O " + DELTA_PACKAGE_FILE + " " + fragmentUrl + cloudPostfix + " || echo 'Cannot download fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
+		sb.append("echo '  'Fragment download time: $((`date +\"%s%3N\"` - ${DOWNLOAD_TIME}))ms >> " + DELTA_LOG_FILE + "\n");
+		sb.append("FRAGMENT_ASSEMBLY_TIME=`date +\"%s%3N\"`\n");
+		sb.append("tar -xf " + DELTA_PACKAGE_FILE + " || echo 'Cannot unpack fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
+		sb.append("rm -f " + DELTA_PACKAGE_FILE); sb.append("\n");
 		sb.append("[ -f "+ DELETIONS_SCRIPT_FILE + " ] && sh " + DELETIONS_SCRIPT_FILE); sb.append("\n");
 		sb.append("rm -f " + DELETIONS_SCRIPT_FILE); sb.append("\n"); // optional
+		sb.append("echo '  'Fragment assembly time: $((`date +\"%s%3N\"` - ${FRAGMENT_ASSEMBLY_TIME}))ms >> " + DELTA_LOG_FILE + "\n");
+		sb.append("FRAGMENT_INIT_TIME=`date +\"%s%3N\"`\n");
 		if (init) sb.append("[ -f "+ INIT_SCRIPT_FILE + " ] && sh " + INIT_SCRIPT_FILE); sb.append("\n");
 		sb.append("rm -f " + INIT_SCRIPT_FILE); sb.append("\n"); // optional
+		sb.append("echo '  'Fragment init time: $((`date +\"%s%3N\"` - ${FRAGMENT_INIT_TIME}))ms >> " + DELTA_LOG_FILE + "\n");
 		return sb.toString();
 	}
 }
