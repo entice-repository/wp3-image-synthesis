@@ -2,7 +2,11 @@ Prerequisites
 =============
 # java, maven, git
 apt-get install -y default-jdk git-all maven curl
-# docker engine
+
+# docker, docker-compose on Ubuntu 16
+apt-get install -y docker docker-compose
+
+# docker engine Ubuntu 14
 apt-get update
 sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
 echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" | sudo tee /etc/apt/sources.list.d/docker.list
@@ -12,7 +16,7 @@ apt-cache policy docker-engine
 apt-get install linux-image-extra-$(uname -r) linux-image-extra-virtual
 apt-get install docker-engine
 service docker status
-# docker-compose
+# docker-compose Ubuntu 14
 curl -L "https://github.com/docker/compose/releases/download/1.8.1/docker-compose-$(uname -s)-$(uname -m)" > /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
@@ -29,12 +33,12 @@ tar -xvf wp3-image-synthesis/image-fragmentation-service/image-synthesis-docker-
 
 3. Copy war files
 =================
-cp wp3-image-synthesis/image-fragmentation-service/installer-storage/target/installer-storage.war image-synthesis-docker/tomcat/webapps/
-cp wp3-image-synthesis/image-fragmentation-service/virtual-image-composer/target/virtual-image-composer.war image-synthesis-docker/tomcat/webapps/
-cp wp3-image-synthesis/image-fragmentation-service/virtual-image-decomposer/target/virtual-image-decomposer.war image-synthesis-docker/tomcat/webapps/
-cp wp3-image-synthesis/image-fragmentation-service/virtual-image-launcher/target/virtual-image-launcher.war image-synthesis-docker/tomcat/webapps/
-cp wp3-image-synthesis/image-fragmentation-service/virtual-image-manager/target/virtual-image-manager.war image-synthesis-docker/tomcat/webapps/
-cp wp3-image-synthesis/image-optimizer-service/image-optimizer-service/target/image-optimizer-service.war image-synthesis-docker/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/installer-storage/target/installer-storage.war image-synthesis-docker-compose/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-composer/target/virtual-image-composer.war image-synthesis-docker-compose/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-decomposer/target/virtual-image-decomposer.war image-synthesis-docker-compose/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-launcher/target/virtual-image-launcher.war image-synthesis-docker-compose/tomcat/webapps/
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-manager/target/virtual-image-manager.war image-synthesis-docker-compose/tomcat/webapps/
+cp wp3-image-synthesis/image-optimizer-service/target/image-optimizer-service.war image-synthesis-docker-compose/tomcat/webapps/
 
 4. Create Virtual Image Decomposer VM
 =====================================
@@ -53,17 +57,30 @@ Create these directories with chown tomcat7:tomcat7:
 Make tomcat7 sudoer:
   sudo adduser tomcat7 sudo
   echo 'tomcat7 ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers  
+  
+# vi /usr/share/tomcat7/bin/setenv.sh
+#!/bin/sh
+export FRAGMENT_STORAGE_URL=http://<fragement-storage-host>:8080/fragment-storage/rest/fragments
+export FRAGMENT_STORAGE_PATH=/mnt/fragments
+export FRAGMENT_STORAGE_TOKEN=entice
+export VIRTUAL_IMAGE_COMPOSER_REST_URL=http://<virtual-image-manager-host>:8080/virtual-image-composer/rest
+export INSTALLER_STORAGE_URL=http://<virtual-image-manager-host>:8080/installer-storage/rest
+  
 Deploy: virtual-image-decomposer.war
 
 5. Configure services
 =====================
-vi image-synthesis-docker/env-docker-compose
-...set: PUBLIC_VIRTUAL_IMAGE_COMPOSER_REST_URL, VIRTUAL_IMAGE_DECOMPOSER_REST_URL (see step 4), FRAGMENT_STORAGE_URL (S3 or KB url?)
+vi image-synthesis-docker-compose/env-docker-compose
+PUBLIC_VIRTUAL_IMAGE_COMPOSER_REST_URL=http://<virtual-image-manager-host>:8080/virtual-image-composer/rest
+VIRTUAL_IMAGE_DECOMPOSER_REST_URL=http://<virtual-image-decomposer-host>:8080/virtual-image-decomposer/rest
 
 6. Start
 ========
-docker-compose build
-docker-compose up
+
+NOTE: change in docker-compose.yml: image: mysql:5.7
+
+docker-compose create
+docker-compose start
 
 7. Test
 ========
