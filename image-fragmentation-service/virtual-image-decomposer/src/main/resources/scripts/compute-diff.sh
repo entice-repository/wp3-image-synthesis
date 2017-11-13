@@ -54,7 +54,7 @@ if [ -f "$INIT_FILE" ]; then
 fi
 
 # watermark target image
-# remove potential previous cloud-init history from /var/lib/cloud/ (can occur in the case of snapthot)
+# remove potential previous cloud-init history from /var/lib/cloud/ (can occur in the case of snapshot)
 rm -rf "${DELTA_DIR}"/var/lib/cloud/
 mkdir -p "${DELTA_DIR}"/var/lib/cloud/
 echo "${TARGET_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}""${ID_FILE}" || echo "Cannot save virtual image id" 

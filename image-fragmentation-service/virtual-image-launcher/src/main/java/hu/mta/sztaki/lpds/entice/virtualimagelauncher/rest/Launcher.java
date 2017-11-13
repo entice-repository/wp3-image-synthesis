@@ -95,6 +95,7 @@ public class Launcher {
 	        // create contextualization (with runcmd section to install fragments)
 	        String userDataBase64 = "";
 	        if (!"".equals(requestBody.optString(CONTEXTUALIZATION))) {
+	        	// FIXME check cloud-init merging
 	        	String userData = base64Decode(requestBody.optString(CONTEXTUALIZATION));
 	    		String emtyRuncmdPattern = "^#cloud-config[\\s\\S]*runcmd:[\\s]*[\\w][\\s\\S]*"; // empty runcmd section
 	    		if (userData.matches(emtyRuncmdPattern)) {
@@ -104,7 +105,7 @@ public class Launcher {
 	    		}        	
 	        	if (!userData.contains("runcmd:")) {
 	        		userData += "\nruncmd:\n";
-	        		userData += "- wget -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh\n";
+	        		userData += "- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh || echo 'Cannot download fragment assembly script' > .delta-failure\n";
 	        		userDataBase64 = base64Encode(userData);
 	        	} else {
 	        		String runcmdWithItem = "^#cloud-config[\\s\\S]*runcmd:[\\s]*-[\\s\\S]*"; // non-empty runcmd section
@@ -117,19 +118,19 @@ public class Launcher {
 		        	StringBuilder newUserData = new StringBuilder();
 		        	newUserData.append(userData.substring(0, runcmdPosition + runcmd.length()));
 		        	newUserData.append(tab);
-		        	newUserData.append("- wget -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh");
+		        	newUserData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh || echo 'Cannot download fragment assembly script' > .delta-failure");
 		        	newUserData.append(userData.substring(runcmdPosition + runcmd.length()));
 		        	userDataBase64 = base64Encode(newUserData.toString());
 	        	}
-	        } else {
+	        } else { // No user-defined contextualization, just create a brand new
+	        	
 	        	StringBuilder userData = new StringBuilder();
 	        	userData.append("#cloud-config\n");
+	        	// we assume wget is available on base OS
+//	        	userData.append("packages:\n");
+//	        	userData.append("- wget\n");
 	        	userData.append("runcmd:\n");
-//	        	String msg = "Merging fragments of VVMI " + virtualImageId;
-//	        	userData.append("- echo \"" + msg + "\" >> /var/lib/cloud/vvmi.log || echo \"" + msg + "\"\n");
-	        	userData.append("- wget -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh\n");
-//	        	msg = "Fragments merged";
-//	        	userData.append("- echo \"" + msg + "\" >> /var/lib/cloud/vvmi.log || echo \"" + msg + "\"\n");
+	        	userData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh && test ${PIPESTATUS[0]} == 0 || echo 'Could not download or execute fragment assembly script' >> /var/log/image-assembly.log\n");
 	        	userDataBase64 = base64Encode(userData.toString());
 	        }
 	        

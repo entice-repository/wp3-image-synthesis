@@ -15,7 +15,7 @@
 </style>
 <body>
 <h2>ENTICE Image Optimizer Service</h2>
-<h3>version: <%=Configuration.version%>, codename: 'wt'</h3>
+<h3>version: <%=Configuration.version%>, codename: 'deimos'</h3>
 
 <h4>Configuration:</h4>
 <table>

@@ -61,6 +61,7 @@ public class VirtualImages {
 			String body) {
 		logRequest("POST", headers, request);
 		if (Configuration.virtualImageManagerToken != null && !Configuration.virtualImageManagerToken.equals(token)) return Response.status(Status.BAD_REQUEST).entity("Missing authentication token").build();
+		log.debug(body);
 		
 		// parse input
 		log.debug("Parsing JSON entity body...");
