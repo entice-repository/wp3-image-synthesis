@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
@@ -71,6 +72,44 @@ public class FragmentStorage {
 						 .header("Content-Disposition", "attachment; filename=\"" + id + ".tar.gz" + "\"" )
 						 .build();
 	} 	 
+
+	@DELETE @Path("{id}")
+	public Response deleteFragment(
+			@Context HttpHeaders headers,
+			@Context HttpServletRequest request,
+			@HeaderParam(CustomHTTPHeaders.HTTP_HEADER_TOKEN) String token,
+			@PathParam("id") String id) {
+		logRequest("DELETE", headers, request);
+		if (Configuration.fragmentStorageToken != null && !Configuration.fragmentStorageToken.equals(token)) return Response.status(Status.BAD_REQUEST).entity("Missing authentication token").build();
+
+		if (!id.matches("[-_a-zA-Z0-9]+")) return Response.status(Status.BAD_REQUEST).entity("Invalid id syntax").build();
+		log.debug("Fragment dir: " + Configuration.fragmentStoragePath + "/" + id + "/");
+		if (!new File (Configuration.fragmentStoragePath).exists()) return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Storage path " + Configuration.fragmentStoragePath + " does not exist").build(); 
+		if (!new File(Configuration.fragmentStoragePath + "/" + id).exists()) return Response.status(Status.BAD_REQUEST).entity("Fragment id not found: " + id).build();
+		File fragmentDir = new File(Configuration.fragmentStoragePath + "/" + id + "/");
+		try {
+			deleteDir(fragmentDir);
+		} catch (Exception x) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Cannot delete fragment dir: " + fragmentDir.getAbsolutePath() + ": " + x.getMessage()).build();
+		}
+		return Response.status(Status.OK).build();
+	}
+	
+	private boolean deleteDir(File file) {
+	    File[] contents = file.listFiles();
+	    if (contents != null) { 
+	    	for (File f : contents) {
+		    	if (!deleteDir(f)) {
+		    		return false;
+		    	}
+		    }
+	    }
+	    if (!file.delete()) {
+	    	log.warn("Cannot delete file or folder: " + file.getAbsolutePath());
+	    	return false;
+	    }
+	    return true;
+	}
 	
 	@POST @Consumes({MediaType.APPLICATION_OCTET_STREAM, "application/gzip"})
 	public Response storeFragment(

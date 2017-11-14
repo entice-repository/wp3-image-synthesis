@@ -17,6 +17,9 @@ public class Configuration {
 	public static String virtualImageDecomposerToken;
 	public static String virtualImageDecomposerRestURL;
 	public static String installerStorageURL;
+	
+	public static String fragmentStorageURL;
+	public static String fragmentStorageToken;
 
 	static {
 		Properties prop = new Properties();
@@ -32,6 +35,7 @@ public class Configuration {
 				virtualImageDecomposerToken = prop.getProperty("virtualImageDecomposerToken");
 				virtualImageDecomposerRestURL = prop.getProperty("virtualImageDecomposerRestURL");
 				installerStorageURL = prop.getProperty("installerStorageURL");
+				fragmentStorageURL = prop.getProperty("fragmentStorageURL");
 			} catch (IOException e) { log.error("Cannot read properties file: " + PROPERTIES_FILE_NAME, e); }
 		} 
 		
@@ -40,6 +44,8 @@ public class Configuration {
 		virtualImageDecomposerToken = getSystemProperty("VIRTUAL_IMAGE_DECOMPOSER_TOKEN", virtualImageDecomposerToken);
 		virtualImageDecomposerRestURL = getSystemProperty("VIRTUAL_IMAGE_DECOMPOSER_REST_URL", virtualImageDecomposerRestURL);
 		installerStorageURL = getSystemProperty("INSTALLER_STORAGE_URL", installerStorageURL);
+		fragmentStorageURL = getSystemProperty("FRAGMENT_STORAGE_URL", fragmentStorageURL);
+		fragmentStorageToken = getSystemProperty("FRAGMENT_STORAGE_TOKEN", fragmentStorageToken);
 		
 		// use default virtualImageManagerToken if unspecified
 		if (virtualImageManagerToken == null) {
@@ -65,11 +71,22 @@ public class Configuration {
 			log.warn("Using default installerStorageURL");
 		}
 
+		if (fragmentStorageURL == null) {
+			log.warn("No framentStorageURL, fragments will not be deleted");
+		}
+
+		if (fragmentStorageToken == null) {
+			log.warn("No fragmentStorageToken, using default");
+		}
+		
 		log.info("virtualImageManagerToken: " + virtualImageManagerToken);
 		log.info("virtualImageDecomposerRestURL: " + virtualImageDecomposerRestURL);
 		log.info("virtualImageDecomposerToken: " + virtualImageDecomposerToken);
 		log.info("installerStorageURL: " + installerStorageURL);
+		log.info("fragmentStorageURL: " + fragmentStorageURL);
+		log.info("fragmentStorageToken: " + fragmentStorageToken);
 	}
+	
 	private static String getSystemProperty(String propertyName, String defaultValue) {
 		return System.getProperty(propertyName) != null ? System.getProperty(propertyName) : 
 			(System.getenv(propertyName) != null ? System.getenv(propertyName) : defaultValue); 

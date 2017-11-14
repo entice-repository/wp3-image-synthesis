@@ -15,6 +15,7 @@ SCRIPT_DIR="`pwd`"
 MERGE_SCRIPT=".source-image-assembly.sh"
 INSTALLER_FILE=".delta-install.sh"
 INIT_FILE=".delta-init.sh"
+PRE_ASSEMBLY_FILE=".delta-pre.sh"
 
 DELTA_DIR="delta"
 CHANGE_LOG="delta.changelog"

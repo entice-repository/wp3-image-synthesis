@@ -265,7 +265,7 @@ public class VirtualImages {
 		if (virtualImage == null) return Response.status(Status.BAD_REQUEST).entity("Invalid virtual image id: " + id).build();
 		log.debug("Virtual image found");
 		if (!"admin".equals(user) && !virtualImage.getOwner().equals(user))  return Response.status(Status.BAD_REQUEST).entity("Header field " + CustomHTTPHeaders.HTTP_HEADER_OWNER + " differs from owner: " + user).build();
-		if (virtualImage.getOutgoingEdges().size() > 0) return Response.status(Status.BAD_REQUEST).entity("Virtual image has child virtual image(s)").build();
+		if (virtualImage.getOutgoingEdges().size() > 0) return Response.status(Status.BAD_REQUEST).entity("Cannot delete virtual image with children (" + virtualImage.getOutgoingEdges().get(0).getId() + ")").build();
         // do the deletion
 		try {
 			EntityManager entityManager = DBManager.getInstance().getEntityManager();
@@ -279,6 +279,23 @@ public class VirtualImages {
 					parent.getOutgoingEdges().remove(edge);
 					entityManager.remove(edge);
 					pendingFragmentComputations.remove(edge.getId());
+					// try to remove fragment file
+					if (Configuration.fragmentStorageURL != null && Configuration.fragmentStorageToken != null) {
+						String fragmentId = edge.getFragmentComputationTaskId();
+						Client client = Client.create();
+						try {
+							String service = Configuration.fragmentStorageURL + "/" + fragmentId;
+							log.debug("Sending DELETE to '" + service + "'");
+							WebResource webResource = client.resource(service);
+							ClientResponse response = webResource.header(CustomHTTPHeaders.HTTP_HEADER_TOKEN, Configuration.fragmentStorageToken).delete(ClientResponse.class);
+							if (response.getStatus() != 200) log.warn("fragmentStorage " + service + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
+							else log.debug("Fragment file deleted");
+						} 
+						catch (Exception ex) { log.warn("Cannot delete fragment: " + fragmentId);	}
+						finally { client.destroy(); }
+					} else {
+						log.debug("Fragment file will not be deleted (no fragmentStorageURL or fragmentStorageToken)");
+					}
 				}
 				virtualImage.getIncomingEdges().clear();
 			}

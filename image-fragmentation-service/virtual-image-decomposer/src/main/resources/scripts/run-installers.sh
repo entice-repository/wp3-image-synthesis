@@ -57,6 +57,8 @@ do
 	echo Preparing init script $INSTALLER_ID
 	INIT_URL="${INSTALLER_STORAGE_URL}installers/${INSTALLER_ID}/init"
 	curl ${CURL_OPTIONS} "${INIT_URL}" >> ${INIT_FILE}
+	PRE_URL="${INSTALLER_STORAGE_URL}installers/${INSTALLER_ID}/pre"
+	curl ${CURL_OPTIONS} "${PRE_URL}" >> ${PRE_ASSEMBLY_FILE} || { echo "No pre-assembly script file" ; }
 done
 
 chrootUmounts

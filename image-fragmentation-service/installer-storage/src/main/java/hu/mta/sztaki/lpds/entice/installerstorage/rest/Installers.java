@@ -35,6 +35,7 @@ public class Installers {
 //	private static final int DEFAULT_BUFFER_SIZE = 16 * 1024; // 16k
 	static final String INSTALLER_INSTALL_SCRIPT_FILE_NAME = "install.sh";
 	static final String INSTALLER_INIT_SCRIPT_FILE_NAME = "init.sh";
+	static final String PRE_ASSEMBLY_SCRIPT_FILE_NAME = "pre.sh";
 	static final String INSTALLER_METADATA_FILE_NAME = "metadata.json";
 
 	@SuppressWarnings("unused")	private final static String ID = "id";
@@ -98,6 +99,27 @@ public class Installers {
 		}
 	} 	 
 
+	@GET @Path("{id}/pre") @Produces("text/x-shellscript")
+	public Response getPreAssemblyScript (
+			@Context HttpHeaders headers,
+			@Context HttpServletRequest request,
+			@HeaderParam(CustomHTTPHeaders.HTTP_HEADER_TOKEN) String token,
+			@PathParam("id") String id) {
+		logRequest("GET INIT", headers, request);
+		if (!installerMetadata.containsKey(id)) return Response.status(Status.BAD_REQUEST).entity("Invalid installer id: " + id).build();
+		File preFile = new File(Configuration.installerStoragePath + "/" + id + "/" + Installers.PRE_ASSEMBLY_SCRIPT_FILE_NAME);
+		if (!preFile.exists()) { 
+			return Response.ok()
+				 .header("Content-Disposition", "attachment; filename=\"" + id + "-init.sh" + "\"" )
+				 .entity("#!/bin/sh\n")
+				 .build();
+		} else {
+			return Response.ok(preFile, "text/x-shellscript")
+						 .header("Content-Disposition", "attachment; filename=\"" + id + "-init.sh" + "\"" )
+						 .build();
+		}
+	} 	
+	
 	// TODO
 	@POST @Consumes({"multipart/form-data"})
 	// store a new install script

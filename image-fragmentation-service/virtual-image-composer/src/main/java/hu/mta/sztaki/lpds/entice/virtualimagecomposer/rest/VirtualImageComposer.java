@@ -31,6 +31,7 @@ public class VirtualImageComposer {
 		log.info("" + method);
 	}
 
+	private static final String PRE_ASSEMBLY_SCRIPT_FILE = ".delta-pre.sh";
 	private static final String DELETIONS_SCRIPT_FILE = ".delta-delete.sh";
 	private static final String INIT_SCRIPT_FILE = ".delta-init.sh";
 	private static final String DELTA_PACKAGE_FILE = "delta-package.tar.gz";
@@ -112,6 +113,7 @@ public class VirtualImageComposer {
 		sb.append("FRAGMENT_ASSEMBLY_TIME=`date +\"%s%3N\"`\n");
 		sb.append("tar -xf " + DELTA_PACKAGE_FILE + " || echo 'Cannot unpack fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
 		sb.append("rm -f " + DELTA_PACKAGE_FILE); sb.append("\n");
+		sb.append("[ -f "+ PRE_ASSEMBLY_SCRIPT_FILE + " ] && sh " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n");
 		sb.append("[ -f "+ DELETIONS_SCRIPT_FILE + " ] && sh " + DELETIONS_SCRIPT_FILE); sb.append("\n");
 		sb.append("rm -f " + DELETIONS_SCRIPT_FILE); sb.append("\n"); // optional
 		sb.append("echo '  'Fragment assembly time: $((`date +\"%s%3N\"` - ${FRAGMENT_ASSEMBLY_TIME}))ms >> " + DELTA_LOG_FILE + "\n");
