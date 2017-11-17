@@ -25,6 +25,7 @@ DEBUG_FILE="debug"
 IMAGE_SIZE_FILE="imageSize"
 FRAGMENT_SIZE_FILE="fragmentSize"
 
+
 # check parameters
 if [ "$#" -ne 2 ]; then
 	echo "$(date) ERROR: Invalid number of parameters: $#. Usage: $0 <WORKING_DIR> <DEVICE_NUMBER>" >> decomposer.log

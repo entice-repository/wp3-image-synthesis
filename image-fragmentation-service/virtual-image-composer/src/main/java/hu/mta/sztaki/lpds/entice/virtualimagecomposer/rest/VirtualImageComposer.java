@@ -86,13 +86,16 @@ public class VirtualImageComposer {
 		// create response script
 		StringBuilder sb = new StringBuilder();
 		sb.append("#!/bin/sh\n");
+		sb.append("date >> " + DELTA_LOG_FILE + "\n");
 		sb.append("START_TIME=`date +\"%s\"`\n");
 		boolean withInit = !"no".equals(init);
 		for (int i = 0; i < fragmentUrlsJson.length(); i++) {
 			String fragmentUrls = fragmentUrlsJson.getString(i);
 			if (!"".equals(fragmentUrls)) sb.append(getFragmentInstaller(fragmentUrls, cloud, withInit));
 		}
-		sb.append("echo Overall assembly time: $((`date +\"%s\"` - ${START_TIME}))s >> " + DELTA_LOG_FILE + "\n");
+		if (fragmentUrlsJson.length() == 0) sb.append("echo \"No fragments to merge\" >> " + DELTA_LOG_FILE + "\n");
+		else sb.append("echo Overall assembly time: $((`date +\"%s\"` - ${START_TIME})) s >> " + DELTA_LOG_FILE + "\n");
+		sb.append("date >> " + DELTA_LOG_FILE + "\n");
 		return Response.status(Status.OK).entity(sb.toString())
 //						.header("Content-Disposition", "attachment; filename=\"" + id + ".sh" + "\"" )
 						.build();
@@ -109,18 +112,18 @@ public class VirtualImageComposer {
 		sb.append("echo \"Merging fragment: " + fragmentUrl + cloudPostfix + "\" >> " + DELTA_LOG_FILE + "\n");
 		sb.append("DOWNLOAD_TIME=`date +\"%s%3N\"`\n");
 		sb.append("wget --tries=3 -q -O " + DELTA_PACKAGE_FILE + " " + fragmentUrl + cloudPostfix + " || echo 'Cannot download fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
-		sb.append("echo '  'Fragment download time: $((`date +\"%s%3N\"` - ${DOWNLOAD_TIME}))ms >> " + DELTA_LOG_FILE + "\n");
+		sb.append("echo '  'Fragment download time: $((`date +\"%s%3N\"` - ${DOWNLOAD_TIME})) ms >> " + DELTA_LOG_FILE + "\n");
 		sb.append("FRAGMENT_ASSEMBLY_TIME=`date +\"%s%3N\"`\n");
 		sb.append("tar -xf " + DELTA_PACKAGE_FILE + " || echo 'Cannot unpack fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
 		sb.append("rm -f " + DELTA_PACKAGE_FILE); sb.append("\n");
 		sb.append("[ -f "+ PRE_ASSEMBLY_SCRIPT_FILE + " ] && sh " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n");
 		sb.append("[ -f "+ DELETIONS_SCRIPT_FILE + " ] && sh " + DELETIONS_SCRIPT_FILE); sb.append("\n");
 		sb.append("rm -f " + DELETIONS_SCRIPT_FILE); sb.append("\n"); // optional
-		sb.append("echo '  'Fragment assembly time: $((`date +\"%s%3N\"` - ${FRAGMENT_ASSEMBLY_TIME}))ms >> " + DELTA_LOG_FILE + "\n");
+		sb.append("echo '  'Fragment extraction time: $((`date +\"%s%3N\"` - ${FRAGMENT_ASSEMBLY_TIME})) ms >> " + DELTA_LOG_FILE + "\n");
 		sb.append("FRAGMENT_INIT_TIME=`date +\"%s%3N\"`\n");
 		if (init) sb.append("[ -f "+ INIT_SCRIPT_FILE + " ] && sh " + INIT_SCRIPT_FILE); sb.append("\n");
 		sb.append("rm -f " + INIT_SCRIPT_FILE); sb.append("\n"); // optional
-		sb.append("echo '  'Fragment init time: $((`date +\"%s%3N\"` - ${FRAGMENT_INIT_TIME}))ms >> " + DELTA_LOG_FILE + "\n");
+		sb.append("echo '  'Fragment init time: $((`date +\"%s%3N\"` - ${FRAGMENT_INIT_TIME})) ms >> " + DELTA_LOG_FILE + "\n");
 		return sb.toString();
 	}
 }
