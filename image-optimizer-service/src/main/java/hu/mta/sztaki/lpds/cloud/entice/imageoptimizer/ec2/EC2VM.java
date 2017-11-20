@@ -98,6 +98,7 @@ public class EC2VM extends VM {
 		ClientConfiguration clientConfiguration = new ClientConfiguration();
 		amazonEC2Client = new AmazonEC2Client(awsCredentials, clientConfiguration);
 		amazonEC2Client.setEndpoint(this.endpoint);
+		log.debug("amazonEC2Client created: " + this.endpoint + " " + this.accessKey + " " + (this.secretKey != null && this.secretKey.length() > 3 ? this.secretKey.substring(0, 3) : "-"));
 	}
 
 	// just to reconnect to a VM, not for starting it (run throws exception)
@@ -121,8 +122,8 @@ public class EC2VM extends VM {
 	public static final String AVAILABILITY_ZONE = "availabilityZone";
 	
 	public void run(Map<String, String> pars) throws Exception {
-		run(pars.get(IMAGE_KEY_PAIR), pars.get(USER_DATA_BASE64), pars.get(AVAILABILITY_ZONE));
-		
+		if (pars != null) run(pars.get(IMAGE_KEY_PAIR), pars.get(USER_DATA_BASE64), pars.get(AVAILABILITY_ZONE));
+		else run(null, null, null);
 	}
 	
 	private void run(String keyPairName, String userDataBase64, String availabilityZone) throws Exception {
@@ -279,10 +280,14 @@ public class EC2VM extends VM {
 	}
 	
 	public static void main(String[] args) throws Exception {
-//		VM vm = new VM("http://cfe2.lpds.sztaki.hu:4567", "ahajnal@sztaki.hu", "60a...", "m1.medium", "ami-00001082", "ahajnal_keypair");
-//		vm.run(null, ResourceUtils.getResorceBase64Encoded("optimizer.cloud-init"));
-//		vm.run(null, ResourceUtils.getFileBase64Encoded("c:/LPDS/Entice/optimizer-cloud-init.txt"), null);
-//		vm.run(null, null, "ami-00001459");
+//		EC2VM vm = new EC2VM("https://opennebula.lpds.sztaki.hu:4567", "a...", "60a...", "t2.medium", "ami-00000252", "a-keypair");
+//		vm.run("ahajnal", ResourceUtils.getFileBase64Encoded("/Users/ahajnal/cloud-init"), null);
+//		DescribeInstancesResult describeInstancesResult = vm.amazonEC2Client.describeInstances();
+//		for (Reservation reservation : describeInstancesResult.getReservations()) 
+//			for (Instance instance : reservation.getInstances()) System.out.println(instance.getInstanceId());
+//		RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
+//		runInstancesRequest.withImageId(vm.imageId);
+//		RunInstancesResult runInstancesResult = vm.amazonEC2Client.runInstances(runInstancesRequest);
 	}
 	
 	@Override public void reboot() throws Exception {

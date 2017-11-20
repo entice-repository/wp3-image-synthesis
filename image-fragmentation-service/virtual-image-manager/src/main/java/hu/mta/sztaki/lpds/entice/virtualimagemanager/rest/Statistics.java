@@ -98,9 +98,12 @@ public class Statistics {
 		result.put("sizeOfBaseImages", sizeOfBaseImages);
 		result.put("sizeOfVirtualImages", sizeOfVirtualImages);
 		result.put("sizeOfFragments", sizeOfFragments);
+
+		result.put("storageSpaceFragments", sizeOfBaseImages + sizeOfFragments);
+		result.put("storageSpaceImages", sizeOfBaseImages + sizeOfVirtualImages);
 		
 		result.put("reductionRatioPercent", 0f);
-		if (sizeOfBaseImages!=0l) {
+		if (sizeOfBaseImages != 0l) {
 			result.put("reductionRatioPercent", 100 - 100*((double)sizeOfBaseImages + (double)sizeOfFragments)/((double)sizeOfBaseImages + (double)sizeOfVirtualImages));
 		}
 				
