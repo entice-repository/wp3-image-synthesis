@@ -96,15 +96,15 @@ public class Statistics {
 		result.put("numberOfVirtualImages", numberOfVirtualImages);
 		result.put("numberOfFragments", numberOfFragments);
 		result.put("sizeOfBaseImages", sizeOfBaseImages);
-		result.put("sizeOfVirtualImages", sizeOfVirtualImages);
+		result.put("sizeOfCompositeImages", sizeOfVirtualImages);
 		result.put("sizeOfFragments", sizeOfFragments);
 
-		result.put("storageSpaceFragments", sizeOfBaseImages + sizeOfFragments);
-		result.put("storageSpaceImages", sizeOfBaseImages + sizeOfVirtualImages);
+		result.put("fragmentedImageStorageSpace", sizeOfBaseImages + sizeOfFragments);
+		result.put("compositeImageStorageSpace", sizeOfBaseImages + sizeOfVirtualImages);
 		
 		result.put("reductionRatioPercent", 0f);
 		if (sizeOfBaseImages != 0l) {
-			result.put("reductionRatioPercent", 100 - 100*((double)sizeOfBaseImages + (double)sizeOfFragments)/((double)sizeOfBaseImages + (double)sizeOfVirtualImages));
+			result.put("reductionRatioPercentage", 100 - 100*((double)sizeOfBaseImages + (double)sizeOfFragments)/((double)sizeOfBaseImages + (double)sizeOfVirtualImages));
 		}
 				
 		return Response.status(Status.OK).entity(result.toString()).build();
