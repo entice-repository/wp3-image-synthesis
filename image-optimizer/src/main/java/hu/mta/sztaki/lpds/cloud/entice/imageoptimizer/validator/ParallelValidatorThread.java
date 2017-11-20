@@ -137,6 +137,10 @@ public class ParallelValidatorThread extends Thread {
 			Shrinker.myLogger.info("Number of available groups after purge: " + groups.size());
 			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ParallelValidatorThread: number of groups after purge: " + groups.size() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 
+			// TODO query previous trials and alter ranks accordingly
+			// rank is originally a number in [0, 1]
+			//
+			
 			Comparator<Group> comp = new Comparator<Group>() {
 				public int compare(Group o1, Group o2) {
 					Ranker r = Ranker.getRankerInstance();
@@ -172,11 +176,14 @@ public class ParallelValidatorThread extends Thread {
 					Group failedGroup = validator.removables.get(0);
 					if (SingleValidatorThread.ValidationState.FAILURE.equals(currentState)) {
 						failedGroup.setTestState(Group.GroupState.REMOVAL_FAILURE);
+						// TODO report failure for this group to KB
 					}
 					if (!removables.remove(failedGroup)) {
 						Shrinker.myLogger.severe("Could not remove failed group.");
 					}
 
+				} else {
+					// TODO report success for this group to KB
 				}
 			}
 			if (newthread != null) {
