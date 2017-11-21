@@ -163,7 +163,8 @@ public class BaseImages {
 		if (baseImage == null) return Response.status(Status.BAD_REQUEST).entity("Invalid base image id: " + id).build();
 		log.debug("Base image found");
 		if (!"admin".equals(user) && !baseImage.getOwner().equals(user))  return Response.status(Status.BAD_REQUEST).entity("Header field user differs from author: " + user).build();
-		if (baseImage.getOutgoingEdges().size() > 0) return Response.status(Status.BAD_REQUEST).entity("Base image has child virtual image(s)").build();
+
+		if (baseImage.getOutgoingEdges().size() > 0) return Response.status(Status.BAD_REQUEST).entity("Cannot delete a base image having children (" + baseImage.getOutgoingEdges().get(0).getToImage().getId() + ")").build();
         try {
 			EntityManager entityManager = DBManager.getInstance().getEntityManager();
 			entityManager.getTransaction().begin();

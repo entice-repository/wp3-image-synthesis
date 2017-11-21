@@ -102,7 +102,7 @@ public class Statistics {
 		result.put("fragmentedImageStorageSpace", sizeOfBaseImages + sizeOfFragments);
 		result.put("compositeImageStorageSpace", sizeOfBaseImages + sizeOfVirtualImages);
 		
-		result.put("reductionRatioPercent", 0f);
+		result.put("reductionRatioPercentage", 0f);
 		if (sizeOfBaseImages != 0l) {
 			result.put("reductionRatioPercentage", 100 - 100*((double)sizeOfBaseImages + (double)sizeOfFragments)/((double)sizeOfBaseImages + (double)sizeOfVirtualImages));
 		}

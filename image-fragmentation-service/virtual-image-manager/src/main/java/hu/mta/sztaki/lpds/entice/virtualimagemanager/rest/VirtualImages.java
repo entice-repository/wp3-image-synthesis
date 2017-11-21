@@ -265,7 +265,7 @@ public class VirtualImages {
 		if (virtualImage == null) return Response.status(Status.BAD_REQUEST).entity("Invalid virtual image id: " + id).build();
 		log.debug("Virtual image found");
 		if (!"admin".equals(user) && !virtualImage.getOwner().equals(user))  return Response.status(Status.BAD_REQUEST).entity("Header field " + CustomHTTPHeaders.HTTP_HEADER_OWNER + " differs from owner: " + user).build();
-		if (virtualImage.getOutgoingEdges().size() > 0) return Response.status(Status.BAD_REQUEST).entity("Cannot delete virtual image with children (" + virtualImage.getOutgoingEdges().get(0).getId() + ")").build();
+		if (virtualImage.getOutgoingEdges().size() > 0) return Response.status(Status.BAD_REQUEST).entity("Cannot delete a virtual image having children (" + virtualImage.getOutgoingEdges().get(0).getToImage().getId() + ")").build();
         // do the deletion
 		try {
 			EntityManager entityManager = DBManager.getInstance().getEntityManager();

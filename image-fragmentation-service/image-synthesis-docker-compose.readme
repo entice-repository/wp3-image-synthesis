@@ -23,7 +23,8 @@ chmod +x /usr/local/bin/docker-compose
 1. Build war files
 ===================
 git clone https://github.com/entice-repository/wp3-image-synthesis.git
-(git checkout develop)
+git checkout -b develop origin/develop
+
 mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-fragmentation-service/pom.xml
 mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-optimizer-service/pom.xml
 
