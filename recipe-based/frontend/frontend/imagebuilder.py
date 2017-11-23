@@ -8,6 +8,7 @@ import glob
 import shutil
 import urllib2
 import contextlib
+import base64
 
 request_dir_states = ['P', 'I', 'R', 'F']
 request_dir_states_str = {'P': 'prepare',
@@ -78,7 +79,7 @@ def deploy_data(request_dir, content, target):
         'input', dict()).get('zipdata', None)
     if data:
         fd = open(os.path.join(target_dir, target + ".zip"), "wb")
-        fd.write(json.dumps(data, indent=4))
+        fd.write(base64.b64decode(data))
         fd.close()
     else:
         url = content.get(target, dict()).get(

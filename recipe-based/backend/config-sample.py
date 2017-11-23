@@ -29,8 +29,7 @@ class BaseConfiguration(object):
     # Root folder for storing incoming build requests. Must be the same as for
     # the frontend.
     DATADIR = "/tmp/entice-builder/datadir"
-    # Folder for the builder module (working directory). Must be the same as
-    # for the frontend.
+    # Folder for the builder module (working directory).
     SCRIPTDIR = "/tmp/entice-builder/scriptdir"
     # Security configuration (not used here).
     SECURITY_PASSWORD_HASH = ""

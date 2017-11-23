@@ -2,6 +2,7 @@ import logging
 import glob
 import signal
 import os
+import shutil
 import time
 import subprocess
 import errno
@@ -86,7 +87,7 @@ def handle_init_requests(fullreqdir):
     if not os.path.exists(os.path.join(fullreqdir, FILE_BUILD_PID)):
         fullreqdir = change_reqdir_state(fullreqdir, "R")
         prepare_build(fullreqdir)
-        start_build_process(fullreqdir)
+        fullreqdir = start_build_process(fullreqdir)
 
 
 def handle_running_requests(fullreqdir):
@@ -127,7 +128,21 @@ def start_build_process(fullreqdir):
     sandboxdir = os.path.join(builddir, "sandbox")
     module = read_content(os.path.join(builddir, "module"))
     version = read_content(os.path.join(builddir, "version"))
-    exepath = os.path.join(config.SCRIPTDIR, module + "-" + version)
+    modulename = module + "-" + version
+    exepath = os.path.join(config.SCRIPTDIR, modulename)
+    # Make sure module is deployed to config.SCRIPTDIR and is executable
+    if not os.path.isfile(exepath):
+        if not os.path.isdir(config.SCRIPTDIR):
+            os.mkdir(config.SCRIPTDIR, 0755)
+        modulepath = os.path.join("modules", modulename)
+        if not os.path.isfile(modulepath):
+            message = "Module '" + modulepath + "' not found. Halting build."
+            log.error(message)
+            fullreqdir = change_reqdir_state(fullreqdir, "F")
+            return
+        shutil.copy(modulepath, exepath)
+    os.chmod(exepath, 0755)
+    #
     command = "nohup " + exepath + " >../" + FILE_BUILD_STDOUT + " 2>../" + FILE_BUILD_STDERR + \
         "; echo $?>../" + FILE_BUILD_RETCODE + " &"
     log.debug("Executing command: %s", command)
