@@ -104,26 +104,26 @@ def deploy_data(request_dir, content, target):
             raise Exception("Invalid url specified: \""+url+"\"")
         '''
     # Save varfile content (optional, json format assumed)
-    ##varfile_filename = content.get(target, dict()).get('varfile', dict()).get('filename', None)
-    # if not varfile_filename:
-    ##    raise Exception("varfile specified, but missing filename.")
     # '__varfile__' contains the data of the varfile. If this file is present a varfile is assumed
     # for the command line.
     varfile_filename = "__varfile__"
-    varfile_data = content.get(target, dict()).get(
-        'varfile', dict()).get('data', None)
-    if varfile_data:
-        fd = open(os.path.join(target_dir, varfile_filename), "wb")
-        fd.write(json.dumps(varfile_data, indent=4))
-        fd.close()
-    else:
-        # data key not found in varfile, let's look for url
-        varfile_url = content.get(target, dict()).get(
-            'varfile', dict()).get('url', None)
-        outfilename = os.path.join(target_dir, varfile_filename)
-        if not varfile_url:
-            raise Exception("Neither data nor url is specified for varfile")
-        download_file(varfile_url, outfilename)
+
+    varfile = content.get(target, dict()).get('varfile', None)
+    if varfile:
+        varfile_data = content.get(target, dict()).get(
+            'varfile', dict()).get('data', None)
+        if varfile_data:
+            fd = open(os.path.join(target_dir, varfile_filename), "wb")
+            fd.write(json.dumps(varfile_data, indent=4))
+            fd.close()
+        else:
+            # data key not found in varfile, let's look for url
+            varfile_url = content.get(target, dict()).get(
+                'varfile', dict()).get('url', None)
+            outfilename = os.path.join(target_dir, varfile_filename)
+            if not varfile_url:
+                raise Exception("Neither data nor url is specified for varfile")
+            download_file(varfile_url, outfilename)
 
 
 def deploy_request_content(datadir, request_id, content):
