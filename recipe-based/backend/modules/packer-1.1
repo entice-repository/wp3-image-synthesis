@@ -1,0 +1,49 @@
+#!/usr/bin/python
+
+import json
+import subprocess
+import sys
+import os
+
+TARGET_JSON = 'build-updated.json'
+# TODO: this is also defined in imagebuilder.py of the frontend
+VAR_FILE = '__varfile__'
+
+with open('build.json') as data_file:
+    data = json.load(data_file)
+
+# default builder is qemu
+name = data['builders'][0].get('type', "qemu")
+
+if name == "qemu":
+	data['builders'][0]['headless'] = True
+	data['builders'][0]['qemuargs'].append(["-nographic"])
+
+
+output_directory = data['builders'][0].get('output_directory', None)
+if not output_directory:
+    output_directory = "output-" + name
+output_vmname = data['builders'][0].get('vm_name', None)
+if not output_vmname:
+    output_vmname = "packer-" + name
+
+with open(TARGET_JSON, 'w') as outfile:
+    json.dump(data, outfile, indent=4)
+
+# Check for variables file named __varfile__ and use it if present.
+varfile_command = ""
+if os.path.isfile(VAR_FILE):
+    varfile_command = "-var-file={}".format(VAR_FILE)
+
+command = "export PACKER_LOG=1; packer build {} {}".format(
+    varfile_command, TARGET_JSON)
+retval = subprocess.call(command, shell=True)
+
+if retval is not 0:
+    sys.exit(retval)
+
+if not os.path.isfile("../cancel"):
+    with open('../build.image_url', 'w') as image_url_file:
+        image_url_file.write(output_directory + '/' + output_vmname)
+
+sys.exit(0)
