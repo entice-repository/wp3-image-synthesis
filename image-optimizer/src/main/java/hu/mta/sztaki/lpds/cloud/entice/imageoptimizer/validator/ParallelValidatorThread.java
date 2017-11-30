@@ -27,6 +27,18 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.Vector;
 
+import javax.ws.rs.core.MediaType;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientHandlerException;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.Shrinker;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.grouping.Group;
 import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.grouping.Group.GroupState;
@@ -35,6 +47,11 @@ import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ranking.Ranker;
 public class ParallelValidatorThread extends Thread {
 	public static final int parallelVMs;
 	public static final String threadPrefix = "ParallelValidator";
+	public static final String REMOVABLES_HISTORY_URL = "REMOVABLES_HISTORY_URL";
+	public static final int REMOVABLES_HISTORY_LIMIT = 0; // 0: no limit, query stats of all removables, x: query only the first x best removables
+	public static final String REMOVABLES_HISTORY_QUERY_POSTFIX = "/history";
+	public static final String REMOVABLES_HISTORY_SUCCESS_POSTFIX = "/success";
+	public static final String REMOVABLES_HISTORY_FAILURE_POSTFIX = "/failure";
 
 	private static TreeMap<String, Vector<ParallelValidatorThread>> parallelvalidators = new TreeMap<String, Vector<ParallelValidatorThread>>();
 
@@ -137,9 +154,8 @@ public class ParallelValidatorThread extends Thread {
 			Shrinker.myLogger.info("Number of available groups after purge: " + groups.size());
 			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] ParallelValidatorThread: number of groups after purge: " + groups.size() + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 
-			// TODO query previous trials and alter ranks accordingly
-			// rank is originally a number in [0, 1]
-			//
+			// query previous trials for groups and alter ranks accordingly
+			queryKBHistoryAndAlterWeights(groups);
 			
 			Comparator<Group> comp = new Comparator<Group>() {
 				public int compare(Group o1, Group o2) {
@@ -148,6 +164,7 @@ public class ParallelValidatorThread extends Thread {
 				}
 			};
 			Collections.sort(groups, comp);
+
 			List<Group> removables = groups.subList(0, groups.size() > parallelVMs ? parallelVMs : groups.size());
 			Shrinker.myLogger.info(removables.toString());
 			
@@ -176,14 +193,17 @@ public class ParallelValidatorThread extends Thread {
 					Group failedGroup = validator.removables.get(0);
 					if (SingleValidatorThread.ValidationState.FAILURE.equals(currentState)) {
 						failedGroup.setTestState(Group.GroupState.REMOVAL_FAILURE);
-						// TODO report failure for this group to KB
+						// report failure for this group to KB
+						reportRemovableStatusToKB(failedGroup.getId(), false);
 					}
 					if (!removables.remove(failedGroup)) {
 						Shrinker.myLogger.severe("Could not remove failed group.");
 					}
 
 				} else {
-					// TODO report success for this group to KB
+					// report success for this group to KB
+					if (validator.removables != null && validator.removables.size() > 0)
+						reportRemovableStatusToKB(validator.removables.get(0).getId(), true);
 				}
 			}
 			if (newthread != null) {
@@ -252,5 +272,115 @@ public class ParallelValidatorThread extends Thread {
 				parallelvalidators.remove(tgname);
 			}
 		}
+	}
+	
+	private void reportRemovableStatusToKB(String path, boolean status) {
+		if (path == null || "".equals(path)) return;
+		String queryUrl = getSystemProperty(REMOVABLES_HISTORY_URL, null);
+		if (queryUrl == null) return; // Shrinker.myLogger.info("Removable status not reported. Environment variable is not defined: " + REMOVABLES_HISTORY_URL);
+		Client client = null;
+		try {
+			client = Client.create();
+			WebResource webResource = client.resource(queryUrl + (status ? REMOVABLES_HISTORY_SUCCESS_POSTFIX : REMOVABLES_HISTORY_FAILURE_POSTFIX));
+			ClientResponse response = webResource
+					.type(MediaType.TEXT_PLAIN_TYPE)
+					.post(ClientResponse.class, path);
+			if (response.getStatus() != 200) {
+				Shrinker.myLogger.severe(queryUrl + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
+			} 
+		} catch (ClientHandlerException x) { // thrown at get
+			Shrinker.myLogger.severe("KB API exzeption");
+		} finally {
+			if (client != null) client.destroy();
+		}
+	}
+	
+	private void queryKBHistoryAndAlterWeights(List<Group> groups) {
+		if (groups == null || groups.size() == 0) return;
+		String queryUrl = getSystemProperty(REMOVABLES_HISTORY_URL, null);
+		if (queryUrl == null) {
+			Shrinker.myLogger.info("Removables history not queried. Environment variable is not defined: " + REMOVABLES_HISTORY_URL);
+			return;
+		}
+		
+		@SuppressWarnings("unused")
+		final int limit = REMOVABLES_HISTORY_LIMIT > 0 ? Math.min(REMOVABLES_HISTORY_LIMIT, groups.size()) : groups.size(); // set limit if not to send all groups, or send all
+		
+		JSONArray queryList = new JSONArray();
+		for (int i = 0; i < Math.min(groups.size(),  limit); i++) {
+			queryList.put(groups.get(i).getId());
+		}
+		Shrinker.myLogger.info("Paths to query: " + queryList.toString());
+		
+		Client client = null;
+		try {
+			client = Client.create();
+			WebResource webResource = client.resource(queryUrl + REMOVABLES_HISTORY_QUERY_POSTFIX);
+			ClientResponse response = webResource
+					.type(MediaType.APPLICATION_JSON)
+					.accept(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, queryList.toString());
+			if (response.getStatus() != 200) {
+				Shrinker.myLogger.severe(queryUrl + " returned HTTP error code: " + response.getStatus() + " " + response.getEntity(String.class));
+			} else {
+				String responseString = response.getEntity(String.class);
+				JSONObject responseJSON = null;
+		    	try { 
+		    		responseJSON = new JSONObject(new JSONTokener(responseString));
+		    		// response is like: {"path1": [3,4], "path2":[0,0], ...} where 3 is successful deletions, 4 failed deletions
+		    		for (int i = 0; i < Math.min(groups.size(),  limit); i++) {
+		    			Group g = groups.get(i);
+		    			String path = g.getId();
+		    			try {
+		    				JSONArray trials = responseJSON.getJSONArray(path);
+		    				if (trials.length() == 2) {
+		    					try {
+		    						int successes = trials.getInt(0);
+		    						int failures = trials.getInt(1);
+		    						g.setWeight(getWeigth(successes, failures));
+		    					} catch (JSONException x) {
+		    						Shrinker.myLogger.severe("Invalid JSON: value must be int array [2]");
+		    						break;
+		    					}
+		    				} else {
+		    					Shrinker.myLogger.severe("Invalid JSON: value must be int array [2]");
+		    					break;
+		    				}
+		    			} catch (JSONException x) {
+		    				// key not found == no remove attempts so far
+		    			}
+		    		}
+		    	} catch (JSONException e) { 
+		    		Shrinker.myLogger.severe("Invalid JSON: " + e.getMessage());
+		    	}
+			}
+		} catch (ClientHandlerException x) { // thrown at get
+			Shrinker.myLogger.severe("KB API exzeption");
+		} finally {
+			if (client != null) client.destroy();
+		}
+	}
+	float getWeigth(int successes, int failures) {
+		float weight;
+		float defaultValue = 1.0f;
+		if (failures == successes) {
+			weight = defaultValue;
+		} else if (failures > successes) {
+			// more failures
+			int delta = failures - successes + 1; 
+			if (delta > 10) delta = 10; // delta in [2, 3, ..., 10]
+			weight = defaultValue / delta; // decrease weight: 0.5, 0.3, ..., 0.1
+		} else {
+			// more successes
+			int delta = successes - failures;
+			if (delta > 9) delta = 9; // delta in [1, 2, ..., 9]
+			weight = defaultValue + delta; // increase weight: 2.0, 3.0, ..., 10.0 
+		} 
+		return weight;
+	}
+	
+	private static String getSystemProperty(String propertyName, String defaultValue) {
+		return System.getProperty(propertyName) != null ? System.getProperty(propertyName) : 
+			(System.getenv(propertyName) != null ? System.getenv(propertyName) : defaultValue); 
 	}
 }
