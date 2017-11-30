@@ -23,7 +23,9 @@ public class SizeBasedRanker extends Ranker {
 
 	@Override
 	public double rank(Group g) {
-		return (double) g.getSize() / ItemPool.getInstance().getOverallSize();
+//		return (double) g.getSize() / ItemPool.getInstance().getOverallSize();
+		double sizeRank = (double) g.getSize() / ItemPool.getInstance().getOverallSize();
+		return sizeRank * g.getWeight();
 	}
 
 }

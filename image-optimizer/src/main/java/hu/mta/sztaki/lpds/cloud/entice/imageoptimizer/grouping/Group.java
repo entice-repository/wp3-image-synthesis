@@ -44,6 +44,7 @@ public class Group {
 	public final Set<Group> children = new HashSet<Group>();
 	private List<File> groupped = new Vector<File>();
 	private long size = 0;
+	private float weight = 1f;
 	private GroupState state = GroupState.NOT_TESTED;
 
 	public void print() {
@@ -56,6 +57,14 @@ public class Group {
 		System.out.println();
 	}
 	
+	public float getWeight() {
+		return weight;
+	}
+
+	public void setWeight(float weight) {
+		this.weight = weight;
+	}
+
 	public GroupState getGroupState() {
 		return state;
 	}
