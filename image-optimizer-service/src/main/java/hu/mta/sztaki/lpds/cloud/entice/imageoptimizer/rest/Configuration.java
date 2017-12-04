@@ -120,6 +120,11 @@ public class Configuration {
 				}
 				
 				knowledgeBaseURL = prop.getProperty("knowledgeBaseURL");
+				knowledgeBaseURL = getSystemProperty("KNOWLEDGE_BASE_URL", knowledgeBaseURL);
+				if (knowledgeBaseURL == null) {
+					log.warn("No knowledgeBaseURL defined");
+					knowledgeBaseURL = "";
+				}
 				
 				// misc optimizer options
 				rankerToUse = prop.getProperty("rankerToUse") != null ? prop.getProperty("rankerToUse") : "hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ranking.GroupFactorBasedRanker";

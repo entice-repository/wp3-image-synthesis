@@ -47,7 +47,7 @@ import hu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ranking.Ranker;
 public class ParallelValidatorThread extends Thread {
 	public static final int parallelVMs;
 	public static final String threadPrefix = "ParallelValidator";
-	public static final String REMOVABLES_HISTORY_URL = "REMOVABLES_HISTORY_URL";
+	public static final String KNOWLEDGE_BASE_URL = "KNOWLEDGE_BASE_URL";
 	public static final int REMOVABLES_HISTORY_LIMIT = 0; // 0: no limit, query stats of all removables, x: query only the first x best removables
 	public static final String REMOVABLES_HISTORY_QUERY_POSTFIX = "/history";
 	public static final String REMOVABLES_HISTORY_SUCCESS_POSTFIX = "/success";
@@ -276,7 +276,7 @@ public class ParallelValidatorThread extends Thread {
 	
 	private void reportRemovableStatusToKB(String path, boolean status) {
 		if (path == null || "".equals(path)) return;
-		String queryUrl = getSystemProperty(REMOVABLES_HISTORY_URL, null);
+		String queryUrl = getSystemProperty(KNOWLEDGE_BASE_URL, null);
 		if (queryUrl == null) return; // Shrinker.myLogger.info("Removable status not reported. Environment variable is not defined: " + REMOVABLES_HISTORY_URL);
 		Client client = null;
 		try {
@@ -297,9 +297,9 @@ public class ParallelValidatorThread extends Thread {
 	
 	private void queryKBHistoryAndAlterWeights(List<Group> groups) {
 		if (groups == null || groups.size() == 0) return;
-		String queryUrl = getSystemProperty(REMOVABLES_HISTORY_URL, null);
+		String queryUrl = getSystemProperty(KNOWLEDGE_BASE_URL, null);
 		if (queryUrl == null) {
-			Shrinker.myLogger.info("Removables history not queried. Environment variable is not defined: " + REMOVABLES_HISTORY_URL);
+			Shrinker.myLogger.info("Removables history not queried. Environment variable is not defined: " + KNOWLEDGE_BASE_URL);
 			return;
 		}
 		
