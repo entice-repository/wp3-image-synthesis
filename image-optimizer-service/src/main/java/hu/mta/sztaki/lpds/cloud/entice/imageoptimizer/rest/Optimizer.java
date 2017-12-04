@@ -186,7 +186,7 @@ public class Optimizer {
         if ("".equals(requestBody.optString(ID))) log.warn("No parameter " + ID + " provided for knowledge base. Optimized image will not be uploaded.");
         if (Configuration.knowledgeBaseURL == null) log.warn("knowledgeBaseURL not defined in properties file: " + Configuration.PROPERTIES_FILE_NAME + ". Optimized image will not be uploaded.");
         parameters.put(ID, requestBody.optString(ID)); // REQUIRED
-        parameters.put(KNOWLEDGE_BASE_URL, requestBody.optString(KNOWLEDGE_BASE_URL)); // OPTIONAL
+        parameters.put(KNOWLEDGE_BASE_URL, requestBody.optString(KNOWLEDGE_BASE_URL, Configuration.knowledgeBaseURL)); // OPTIONAL
         parameters.put(OPTIMIZED_IMAGE_UPLOAD_COMMAND, requestBody.optString(OPTIMIZED_IMAGE_UPLOAD_COMMAND)); // OPTIONAL
         
         if ("".equals(requestBody.optString(IMAGE_ID))) return Response.status(Status.BAD_REQUEST).entity("Missing parameter: " + IMAGE_ID + "").build();
@@ -1034,6 +1034,7 @@ public class Optimizer {
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.iaashandler.VMFactory." + vmFactoryClass + ".loginName=" + parameters.get(IMAGE_USER_NAME) + " \\"); sb.append("\n");
 		sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.targetimagefilename=" + OPTIMIZED_IMAGE_FILE); sb.append(" \\" + "\n");
 		if (!"".equals(parameters.get(OVF_URL))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.ovfURL=" + parameters.get(OVF_URL)); sb.append(" \\" + "\n"); }
+		if (!"".equals(parameters.get(KNOWLEDGE_BASE_URL))) { sb.append("    -DKNOWLEDGE_BASE_URL=" + parameters.get(KNOWLEDGE_BASE_URL)); sb.append(" \\" + "\n"); }
 		
 		if (!"".equals(parameters.get(MAX_ITERATIONS_NUM)) && !"0".equals(parameters.get(MAX_ITERATIONS_NUM))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxIterationsNum=" + parameters.get(MAX_ITERATIONS_NUM)); sb.append(" \\" + "\n"); }
 		if (!"".equals(parameters.get(MAX_NUMBER_OF_VMS)) && !"0".equals(parameters.get(MAX_NUMBER_OF_VMS))) { sb.append("    -Dhu.mta.sztaki.lpds.cloud.entice.imageoptimizer.maxNumberOfVMs=" + parameters.get(MAX_NUMBER_OF_VMS)); sb.append(" \\" + "\n"); }
