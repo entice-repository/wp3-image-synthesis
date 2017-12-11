@@ -32,6 +32,9 @@ qemu-nbd --read-only -c $DEVICE $IMAGE_FILE || { echo "ERROR: Could not attach $
 # wait 3 seconds for attach
 sleep 3
 
+# for newer versions of qemu-nbd we have to scan partitions
+partprobe $DEVICE &> /dev/null || { echo "pastprobe failed" ; }
+
 if [ "$#" -lt 4 ]; then
 
   PARTITION_NUMBER=1
