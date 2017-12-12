@@ -51,6 +51,8 @@ qemu-nbd -c $DEVICE $IMAGE_FILE || { echo "ERROR: Could not attach $DEVICE" ; ex
 sleep 3
 echo '  '$DEVICE attached 
 
+partprobe $DEVICE &> /dev/null || { echo "pastprobe failed" ; }
+
 DEVICE_PARTITION=$DEVICE
 if [ "$#" -lt 4 ]; then
   PARTITION_NUMBER=1
