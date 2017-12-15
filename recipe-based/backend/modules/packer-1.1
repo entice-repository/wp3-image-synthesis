@@ -14,6 +14,8 @@ with open('build.json') as data_file:
 
 # default builder is qemu
 name = data['builders'][0].get('type', "qemu")
+with open('../builder', 'w') as image_url_file:
+    image_url_file.write(name)
 
 if name == "qemu":
 	data['builders'][0]['headless'] = True
