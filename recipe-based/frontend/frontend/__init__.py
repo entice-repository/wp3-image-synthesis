@@ -2,7 +2,7 @@ from flask import Flask, redirect
 from flask_restful import Resource, Api
 
 from agro_log_handler import AgroLogHandler
-from rest import Build, Request, Result, Image, Log
+from rest import Build, Request, Result, Image, Log, Output
 
 app = Flask(__name__)
 
@@ -21,6 +21,7 @@ def init_application(app, config):
     api.add_resource(Request, config.WSPATH + '/<request_id>')
     api.add_resource(Result, config.WSPATH + '/<request_id>/result')
     api.add_resource(Image, config.WSPATH + '/<request_id>/result/image')
+    api.add_resource(Output, config.WSPATH + '/<request_id>/result/output/<int:output_id>')
     api.add_resource(Log, config.WSPATH + '/<request_id>/result/log')
 
     AgroLogHandler(app).init()

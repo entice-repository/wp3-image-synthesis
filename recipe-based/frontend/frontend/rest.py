@@ -1,6 +1,6 @@
 import json
 from flask_restful import abort, Api, Resource, request
-from flask import send_from_directory
+from flask import send_from_directory, current_app
 from imagebuilder import ImageBuilder
 
 
@@ -72,6 +72,20 @@ class Image(Resource):
             return result, 200
         else:
             return send_from_directory(imgdir, imgfile, as_attachment=True)
+
+
+class Output(Resource):
+
+    def get(self, request_id, output_id):
+        imgdir, imgfile, outputs = ImageBuilder().getOutputs(request_id)
+        if not imgdir or not imgfile or output_id > len(outputs)-1:
+            result = {'status': 'failed',
+                      'message': 'Requested image does not exist!'}
+            return result, 200
+        else:
+            current_app.logger.debug("Serving file '{}/{}'".format(imgdir, outputs[output_id]))
+            return send_from_directory(imgdir, outputs[output_id],
+                as_attachment=True)
 
 
 class Log(Resource):

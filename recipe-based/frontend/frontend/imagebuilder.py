@@ -1,14 +1,17 @@
 import os
 import sys
-import frontend
 import uuid
 import json
-import wget
 import glob
 import shutil
+import operator
 import urllib2
 import contextlib
 import base64
+import scandir
+import wget
+from flask import current_app
+import frontend
 
 request_dir_states = ['P', 'I', 'R', 'F']
 request_dir_states_str = {'P': 'prepare',
@@ -24,8 +27,12 @@ request_outcome_str = {'S': 'success',
 
 
 def read_content(filename):
-    with file(filename) as f:
-        content = f.read()
+    try:
+        with file(filename) as f:
+            content = f.read()
+    except IOError as e:
+        current_app.logger.error("ERROR: IOError for file '{}': {}".format(filename, e))
+        return None
     return content
 
 
@@ -258,41 +265,82 @@ class ImageBuilder(object):
         except Exception, e:
             return False, "Error: " + str(e)
 
-    def result(self, request_id):
-        try:
-            dirname = find_dir_by_request_id(self.datadir, request_id)
-            if not dirname:
-                return False, "Unknown request ID!", None
-            state = get_state_by_dirname(dirname)
-            if state not in ['F']:
-                return False, "Get result operation not allowed in current state (" + \
-                    request_dir_states_str[state] + ")!", None
-            '''
-            TODO: Handle CANCELLED request
-            '''
-            image_info = collect_image_info(request_id)
-            log_info = collect_log_info(request_id)
-            result = {'request_id': request_id,
-                      'image': image_info,
-                      'log_url': log_info}
-            return True, "", result
-        except Exception, e:
-            return False, "Error: " + str(e), None
 
-    def getImagePath(self, request_id):
+    def getOutputs(self, request_id):
         reqdir = find_dir_by_request_id(self.datadir, request_id)
         if not reqdir:
-            return None, None
+            return None, None, None
         builddir = os.path.join(reqdir, "build")
-        '''
-        TODO: handle non-finished request!
-        '''
-        imgsubpath = read_content(os.path.join(
-            builddir, "build.image_url")).strip()
+        try:
+            imgsubpath = read_content(os.path.join(
+                builddir, "build.image_url")).strip()
+        except AttributeError:
+            # in case of no such file: strip() on NoneType returned by read_content
+            self.log.error("file containing image location 'build.image_url' was not found")
+            return "", "", {}
         imgpath = os.path.join(builddir, "sandbox", imgsubpath)
-        imgfile = os.path.basename(imgpath)
-        imgdir = os.path.dirname(imgpath)
+        imgfile = ""
+        imgdir = ""
+        image_size = 0
+        outputs = {}
+        if os.path.isdir(imgpath):
+            _outputs = {}
+            counter = 0
+            for root,dirs,files in scandir.walk(imgpath):
+                for entry in files:
+                    _outputs[entry] = os.path.getsize(os.path.join(root, entry))
+                    counter += 1
+                    if counter >= 10:
+                        break
+                if counter >= 10:
+                    break
+            _outputs = sorted(_outputs.items(), key=operator.itemgetter(1), reverse=True)
+            counter = 0
+            for _output in _outputs:
+                outputs[counter] = _output[0]
+                counter += 1
+            imgdir = imgpath
+            imgfile = outputs[0]
+        elif os.path.isfile(imgpath):
+            imgfile = os.path.basename(imgpath)
+            imgdir = os.path.dirname(imgpath)
+            outputs[0] = imgfile
+        #self.log.info("outputs: {}".format(json.dumps(outputs)))
+        return imgdir, imgfile, outputs
+
+
+    def result(self, request_id):
+        dirname = find_dir_by_request_id(self.datadir, request_id)
+        if not dirname:
+            return False, "Unknown request ID!", None
+        state = get_state_by_dirname(dirname)
+        if state not in ['F']:
+            return False, "Get result operation not allowed in current state (" + \
+                request_dir_states_str[state] + ")!", None
+        '''
+        TODO: Handle CANCELLED request
+        '''
+        image_info = collect_image_info(request_id)
+        log_info = collect_log_info(request_id)
+        output_info = {}
+        image_dir, image_file, outputs = self.getOutputs(request_id)
+        endpoint = frontend.app.config.get("ENDPOINT")
+        wspath = frontend.app.config.get("WSPATH")
+        for _output in outputs.iteritems():
+            self.log.debug("output: {}".format(json.dumps(_output)))
+            url = "{}{}/{}/result/output/{}".format(endpoint, wspath, request_id, _output[0])
+            output_info[_output[1]] = url
+        result = {'request_id': request_id,
+                  'image': image_info,
+                  'outputs': output_info,
+                  'log_url': log_info}
+        return True, "", result
+
+
+    def getImagePath(self, request_id):
+        imgdir, imgfile, outputs = self.getOutputs(request_id)
         return imgdir, imgfile
+
 
     def getLogPath(self, request_id):
         reqdir = find_dir_by_request_id(self.datadir, request_id)
