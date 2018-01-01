@@ -1,0 +1,22 @@
+version: '3'
+services:
+  entice-recipe-based-backend:
+    build:
+      context: ./backend
+      args:
+        - ENV GIT_BRANCH=develop
+        - ENV GIT_REPO=https://github.com/entice-repository/wp3-image-synthesis.git
+    volumes:
+      - ./_datadir:/tmp/datadir
+  entice-recipe-based-frontend:
+    build:
+      context: ./frontend
+      args:
+        - ENV GIT_BRANCH=develop
+        - ENV GIT_REPO=https://github.com/entice-repository/wp3-image-synthesis.git
+    volumes:
+      - ./_datadir:/tmp/datadir
+    environment:
+      WEBSERVICE_ENDPOINT: "http://localhost:4000"
+    ports:
+      - 4000:4000
