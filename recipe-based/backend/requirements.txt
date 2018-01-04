@@ -1,3 +1,3 @@
-pyyaml
-psutil
+psutil==5.4.0
+PyYAML==3.12
 
