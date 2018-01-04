@@ -6,5 +6,7 @@ if [ $# -eq 0 ]
     exit 1
 fi
 
-curl -H "Content-Type: application/json" -X GET http://localhost:4000/api/imagebuilder/build/$1 
+. ./config.sh
+
+curl -H "Content-Type: application/json" -X GET ${E_BUILD_URL}/$1
 

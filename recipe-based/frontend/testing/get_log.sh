@@ -8,5 +8,5 @@ fi
 
 . ./config.sh
 
-curl -H "Content-Type: application/json" -X GET ${E_BUILD_URL}/$1/result
+curl -H "Content-Type: application/json" -X GET ${E_BUILD_URL}/$1/result/log
 
