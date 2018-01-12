@@ -7,7 +7,7 @@ if [ -n "$S3_ENDPOINT" ] && [ -n "$S3_BUCKET_NAME" ]; then
 	mv ${FRAGMENT_ID} ${DELTA_FILE}
 else
 	FRAGMENT_URL="${FRAGMENT_STORAGE_URL}${FRAGMENT_ID}"
-	curl ${CURL_OPTIONS} -X POST --data-binary @${DELTA_FILE} -H "Token: ${FRAGMENT_STORAGE_TOKEN}" -H "Content-Type: application/gzip" ${FRAGMENT_URL} || error ${LINENO} "ERROR: Cannot upload fragment: ${FRAGMENT_URL}" 41
+	curl ${CURL_OPTIONS} -X POST --upload-file ${DELTA_FILE} -H "Token: ${FRAGMENT_STORAGE_TOKEN}" -H "Content-Type: application/gzip" ${FRAGMENT_URL} || error ${LINENO} "ERROR: Cannot upload fragment: ${FRAGMENT_URL}" 41
 fi
 
 echo "${FRAGMENT_URL}" > url

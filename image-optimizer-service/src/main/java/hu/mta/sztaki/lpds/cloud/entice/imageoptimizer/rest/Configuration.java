@@ -158,6 +158,7 @@ public class Configuration {
 					} else log.error("Private SSH key not found for optimizer VM: " + Optimizer.OPTIMIZER_SSH_PRIVATE_KEY_RESOURCE + "");
 				} catch (Throwable x) {}
 			}
+			log.info("SSH keypath: " + sshKeyPath);
 		} 
 	}
 	private static String getSystemProperty(String propertyName, String defaultValue) {

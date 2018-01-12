@@ -23,7 +23,9 @@ chmod +x /usr/local/bin/docker-compose
 1. Build war files
 ===================
 git clone https://github.com/entice-repository/wp3-image-synthesis.git
+cd wp3-image-synthesis
 git checkout -b develop origin/develop
+cd ..
 
 mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-fragmentation-service/pom.xml
 mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-optimizer-service/pom.xml
@@ -68,6 +70,12 @@ export VIRTUAL_IMAGE_COMPOSER_REST_URL=http://<virtual-image-manager-host>:8080/
 export INSTALLER_STORAGE_URL=http://<virtual-image-manager-host>:8080/installer-storage/rest
   
 Deploy: virtual-image-decomposer.war
+git clone https://github.com/entice-repository/wp3-image-synthesis.git
+cd wp3-image-synthesis
+git checkout -b develop origin/develop
+cd ..
+mvn install -Dmaven.test.skip=true -f wp3-image-synthesis/image-fragmentation-service/pom.xml
+cp wp3-image-synthesis/image-fragmentation-service/virtual-image-decomposer/target/virtual-image-decomposer.war /var/lib/tomcat7/webapps/
 
 5. Configure services
 =====================

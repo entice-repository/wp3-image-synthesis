@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class ItemPool {
 	public static final HashMap<String, ItemPool> itemPools = new HashMap<String, ItemPool>();
 
-	public static final int POOLSIZE = 200000;
+	public static final int POOLSIZE = 300000;
 
 	private final Vector<File> itemPool = new Vector<File>(POOLSIZE);
 	private Itemizer itemSource;
