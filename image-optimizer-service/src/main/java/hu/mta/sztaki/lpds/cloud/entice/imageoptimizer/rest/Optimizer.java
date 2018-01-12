@@ -1159,19 +1159,18 @@ public class Optimizer {
 		
 		String optimizedImageFileName = OPTIMIZED_IMAGE_FILE;
 		
-		// convert back optimized image to the input format
-		/*
+		// convert back optimized image to the input format as well
 		if (parameters.get(IMAGE_FORMAT) != null && !"".equals(parameters.get(IMAGE_FORMAT)) && !"qcow2".equals(parameters.get(IMAGE_FORMAT))) {
 			sb.append("    echo 'Converting optimized image' > phase"); sb.append("\n");
-			String useCompression = "vmdk".equals(parameters.get(IMAGE_FORMAT)) ? "-c " : ""; 
-			sb.append("    qemu-img convert -O " + parameters.get(IMAGE_FORMAT) + " -f qcow2 " + useCompression +  OPTIMIZED_IMAGE_FILE + " " + OPTIMIZED_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT));
+//			String useCompression = "vmdk".equals(parameters.get(IMAGE_FORMAT)) ? "-c " : ""; 
+			sb.append("    qemu-img convert -O " + parameters.get(IMAGE_FORMAT) + " -f qcow2 -c " +  OPTIMIZED_IMAGE_FILE + " " + OPTIMIZED_IMAGE_FILE.replaceAll(".qcow2", "." + parameters.get(IMAGE_FORMAT)));
 			sb.append(" || { ");
 			sb.append("echo 'Cannot convert optimized image to "+  parameters.get(IMAGE_FORMAT) + "' > failure");
 			sb.append(" ; exit 1 ; }"); sb.append("\n");
-			optimizedImageFileName = OPTIMIZED_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT); 
-			sb.append("    rm " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
+//			optimizedImageFileName = OPTIMIZED_IMAGE_FILE + "." + parameters.get(IMAGE_FORMAT); 
+//			sb.append("    rm " + OPTIMIZED_IMAGE_FILE); sb.append("\n");
 		}
-		*/
+		
 		
 		// upload optimized image to S3
 		sb.append("    echo 'Uploading optimized image' > phase"); sb.append("\n");
