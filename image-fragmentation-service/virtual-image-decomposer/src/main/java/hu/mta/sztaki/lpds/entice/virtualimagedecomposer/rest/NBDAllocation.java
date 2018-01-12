@@ -37,4 +37,10 @@ public class NBDAllocation {
 		allocations[allocation] = false;
 		log.debug("NBD released: " + allocation);
 	}
+	
+	static int numberOfAllocations() {
+		int numberOfallocations = 0;
+		for (int i = 0; i < SIZE; i++ ) if (allocations[i]) numberOfallocations++;
+		return numberOfallocations;
+	}
 }
