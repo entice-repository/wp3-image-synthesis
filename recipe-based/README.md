@@ -2,8 +2,6 @@
 
 This service allow the automated creation of VM images using pre-made descriptors (recipes).
 
-The service relies on [Packer](http://packer.io), and for QEMU/KVM based images requires a physical host with KVM available.
-
 The directories contain the following:
 
 * _backend_ : Backend part of the service. The backend is responsible for building the requested images. This is a Python application.
@@ -14,3 +12,4 @@ The directories contain the following:
 
 The service directories (_backend_ and _frontend_) contain additional README files for the REST API and configuration. The recommended way for deployment is using the Ansible playbooks or via docker-compose.
 
+NOTE: For QEMU/KVM based images requires a physical host with KVM available, Docker based deployment is for non-KVM based builds.
