@@ -1,9 +1,4 @@
 * ===================================================================================================
-* This file is part of:  Entice Repository Environment
-* Release version: 0.2
-* ===========================================================================================================
-* Developer: Nishant Saurabh, University of Innsbruck, DIstributed and Parallel Systems,  Innsbruck, Austria.
-* @author : nishant.dps.uibk.ac.at
 * 
 * The project leading to this application has received funding
 * from the European Union's Horizon 2020 research and innovation
