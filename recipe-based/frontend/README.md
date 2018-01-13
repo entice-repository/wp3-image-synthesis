@@ -67,7 +67,7 @@ Input JSON format
 ```
 {
     "build": {
-        "description": "description",    // give a description for oyur build
+        "description": "description",    // give a description for your build
         "tags": ["tag1", "tag2", "..."], // attach tags to annotate your build
         "module": "packer",
         "version": "1.1", // Either 1.0 or 1.1, 1.1 recommended
