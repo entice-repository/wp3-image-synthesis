@@ -130,7 +130,8 @@ public class Launcher {
 //	        	userData.append("packages:\n");
 //	        	userData.append("- wget\n");
 	        	userData.append("runcmd:\n");
-	        	userData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh && test ${PIPESTATUS[0]} == 0 || echo 'Could not download or execute fragment assembly script' >> /var/log/image-assembly.log\n");
+//	        	userData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh && test ${PIPESTATUS[0]} == 0 || echo 'Could not download or execute fragment assembly script' >> /var/log/image-assembly.log\n");
+	        	userData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh\n");
 	        	userDataBase64 = base64Encode(userData.toString());
 	        }
 	        
@@ -147,7 +148,7 @@ public class Launcher {
 	        				.withKeypair(requestBody.optString(KEYPAIR_NAME))
 	        				.build();  
 	        		vm.run(userDataBase64);
-	        		instanceId = vm.getInstanceId();vm.run(userDataBase64);
+	        		instanceId = vm.getInstanceId();
 	        	} else if (cloudInterface.equalsIgnoreCase(WTVM.cloudInterface)) {
 	        		instanceId = WTVM.runInstance(requestBody.optString(EC2_ENDPOINT), requestBody.optString(ACCESS_KEY), requestBody.optString(SECRET_KEY), userDataBase64, cloudImageId);
 	        	} else {

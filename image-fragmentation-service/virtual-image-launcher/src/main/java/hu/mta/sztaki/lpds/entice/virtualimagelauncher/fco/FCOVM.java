@@ -289,18 +289,21 @@ public class FCOVM {
 		VMStarterThread(FCOVM vm) throws DatatypeConfigurationException { this.vm = vm;	}
 		@Override public void run() {
 			log.debug("Server starter thread started");
-			// run
-			try { runServer(); } 
+			// run server
+			try { 
+				runServer(); 
+
+				// run cloud-init
+				try { emulateCloudInitWithRetries(); }
+				catch (Exception x) {
+					log.error("Cannot run cloud-init: " + x.getMessage());
+//					try { vm.terminate(); } catch (Exception e) { log.error("Cannot terminate VM", e); }
+					vm.status = TERMINATED;
+				}
+			} 
 			catch (Exception x) {
 				log.error("Cannot run server: " + x.getMessage());
-				try { vm.terminate(); } catch (Exception e) { log.error("Cannot terminate VM", e); }
-				vm.status = TERMINATED;
-			}
-			// run cloud-init
-			try { emulateCloudInitWithRetries(); }
-			catch (Exception x) {
-				log.error("Cannot run cloud-init: " + x.getMessage());
-				try { vm.terminate(); } catch (Exception e) { log.error("Cannot terminate VM", e); }
+//				try { vm.terminate(); } catch (Exception e) { log.error("Cannot terminate VM", e); }
 				vm.status = TERMINATED;
 			}
 			
@@ -556,20 +559,6 @@ public class FCOVM {
 		
 		return base64Encode(sb.toString());
 	}	
-	
-	private void terminate() throws Exception {
-		log.debug("Delete server: " + serverUUID);
-		if (serverUUID == null) throw new Exception("Server UUID is null");
-		Job deleteJob = service.deleteResource(serverUUID, true, null);
-		if (deleteJob == null) throw new Exception("Server UUID not found: " + serverUUID + " (null job)");
-		deleteJob.setStartTime(datatypeFactory.newXMLGregorianCalendar(new GregorianCalendar()));
-		log.debug("Waiting for Delete server job to complete...");
-		Job response = service.waitForJob(deleteJob.getResourceUUID(), true);
-		log.debug("Delete server job completed");
-		if (response.getErrorCode() == null) {
-			log.info("Server deleted: " + serverUUID);
-		} else throw new Exception("Cannot terminate server: " + response.getErrorCode());
-	}
 	
 	private void attachSSHKey(String keypairName) throws Exception {
 		log.debug("Attach ssh key: " + keypairName);
