@@ -39,7 +39,9 @@ export EXTRA_CXXFLAGS="-I/usr/local/opt/openssl/include"
 
 Deployment
 ----------
-Use the Ansible playbook in `../deployment`.
+Use the Ansible playbook in `../deployment`. 
+
+NOTE: During the first run the playbook may fail, as the application needs a working configuration file in the shared/ directory (created by ansistrano). If this is the case, create a config file (see section `Configuring the application`), and rerun the deployment.
 
 
 Configuring the application
@@ -48,7 +50,9 @@ The application needs a working configuration file names `config.py` in the dire
 
 In the configuration file you can specify several configurations (e.g., `DebugConfiguration`, `TestConfiguration` and `LiveConfiguration`). The `LiveConfiguration` supports reading configuration data from a `.json` file.
 
-In the start scripts (`run-builder-*.py`) you can modify which configuration it should use.
+In the start scripts (`run-builder-*.py`) you can modify which configuration it should use. Recommended to use the run-\*-dev.py for development and run-\*-prod.py for production runs.
+
+See the sample configuration file for description of the configuration items.
 
 
 Running tests
@@ -63,8 +67,10 @@ Input JSON format
 ```
 {
     "build": {
+        "description": "description",    // give a description for your build
+        "tags": ["tag1", "tag2", "..."], // attach tags to annotate your build
         "module": "packer",
-        "version": "1.0",
+        "version": "1.1", // Either 1.0 or 1.1, 1.1 recommended
         "input": {
             "zipdata": ..., // content of packer data .zip base64 encoded
             // OR
@@ -79,7 +85,7 @@ Input JSON format
         }
     },
     "test": {
-        "module": "exec-internal",
+        "module": "exec-internal", // test will be run on the VM as the last build step
         "version": "1.0",
         "input": {
             "command" : "run_test.sh",
@@ -95,9 +101,3 @@ Sample submission
 -----------------
 
 See testing directory for samples.
-
-
-TODO
-----
-
-* Test module is not fully implemented.
