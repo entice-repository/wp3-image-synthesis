@@ -538,7 +538,7 @@ public class FCOVM {
 			log.debug("Running runcmd...");
 			// optimize.sh starts by cloud-init
 			stdout.clear(); stderr.clear();
-			exitCode = ssh.executeCommand("sudo sh /var/lib/cloud/instance/scripts/runcmd", stdout, stderr);
+			exitCode = ssh.executeCommand("cd / ; sudo sh /var/lib/cloud/instance/scripts/runcmd", stdout, stderr);
 			if (exitCode != 0) {
 				log.error("Cannot run /var/lib/cloud/instance/scripts/runcmd on host " + ip + ": " + stderr.toString());
 				throw new Exception("Cannot run /var/lib/cloud/instance/scripts/runcmd on host: " + ip);
