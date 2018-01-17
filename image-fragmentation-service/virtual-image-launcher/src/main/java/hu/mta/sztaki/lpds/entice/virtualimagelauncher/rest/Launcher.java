@@ -69,7 +69,6 @@ public class Launcher {
 	        String cloud = requestBody.optString(CLOUD);
 	        String cloudImageId = requestBody.optString(CLOUD_IMAGE_ID);
 	        String cloudPostfix = "".equals(cloud) ? "" : "/" + cloud;
-
 	        
 	        String cloudInterface = requestBody.optString(CLOUD_INTERFACE, EC2VM.cloudInterface);
 	        
@@ -94,6 +93,7 @@ public class Launcher {
 	        
 	        // create contextualization (with runcmd section to install fragments)
 	        String userDataBase64 = "";
+	        String runCommand = "wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh";
 	        if (!"".equals(requestBody.optString(CONTEXTUALIZATION))) {
 	        	// FIXME check cloud-init merging
 	        	String userData = base64Decode(requestBody.optString(CONTEXTUALIZATION));
@@ -131,7 +131,7 @@ public class Launcher {
 //	        	userData.append("- wget\n");
 	        	userData.append("runcmd:\n");
 //	        	userData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh && test ${PIPESTATUS[0]} == 0 || echo 'Could not download or execute fragment assembly script' >> /var/log/image-assembly.log\n");
-	        	userData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh\n");
+	        	userData.append("- " + runCommand + "\n");
 	        	userDataBase64 = base64Encode(userData.toString());
 	        }
 	        
@@ -150,7 +150,7 @@ public class Launcher {
 	        		vm.run(userDataBase64);
 	        		instanceId = vm.getInstanceId();
 	        	} else if (cloudInterface.equalsIgnoreCase(WTVM.cloudInterface)) {
-	        		instanceId = WTVM.runInstance(requestBody.optString(EC2_ENDPOINT), requestBody.optString(ACCESS_KEY), requestBody.optString(SECRET_KEY), userDataBase64, cloudImageId);
+	        		instanceId = WTVM.runInstance(requestBody.optString(EC2_ENDPOINT), requestBody.optString(ACCESS_KEY), requestBody.optString(SECRET_KEY), cloudImageId, "cd / ; " + runCommand);
 	        	} else {
 	        		return Response.status(Status.BAD_REQUEST).entity("Unsupported cloud interface: " + cloudInterface).build();
 	        	}
