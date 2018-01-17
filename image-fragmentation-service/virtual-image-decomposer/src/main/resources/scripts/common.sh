@@ -59,6 +59,7 @@ function mountSourceImage() {
   modprobe -a nbd &> /dev/null || echo "WARNING: Cannot load NBD kernel module"
   if [ -n "$PARTITION" ]; then
     qemu-nbd -c $SOURCE_DEVICE $SOURCE_IMAGE_FILE || error ${LINENO} "ERROR: Cannot attach source device" 2
+    partprobe $SOURCE_DEVICE
 	if [ -e "$SOURCE_DEVICE" ]; then sleep 1; fi
     mount $SOURCE_DEVICE"p"$PARTITION $SOURCE_IMAGE_DIR || error ${LINENO} "ERROR: Cannot mount source device " 2
     echo '  source image mounted'
@@ -76,6 +77,7 @@ function mountTargetImage() {
   mkdir -p $TARGET_IMAGE_DIR
   if [ -n "$PARTITION" ]; then
     qemu-nbd -c $TARGET_DEVICE $TARGET_IMAGE_FILE || error ${LINENO} "ERROR: Cannot attach target device" 2
+    partprobe $TARGET_DEVICE
 	if [ -e "$TARGET_DEVICE" ]; then sleep 1; fi
     mount $TARGET_DEVICE"p"$PARTITION $TARGET_IMAGE_DIR || error ${LINENO} "ERROR: Cannot mount target device " 2
     echo '  'target image mounted
