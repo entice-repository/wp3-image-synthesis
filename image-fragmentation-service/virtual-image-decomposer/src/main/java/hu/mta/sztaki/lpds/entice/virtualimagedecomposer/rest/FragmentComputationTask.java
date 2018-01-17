@@ -42,6 +42,7 @@ public class FragmentComputationTask implements Runnable {
 					try { 
 						int exitCode = p.waitFor();
 						log.info("Script finished with exit code: " + exitCode);
+						// FIXME handle non-0 exit code
 					} catch (InterruptedException e) {
 						log.error("InterruptedException during running script", e);
 					}

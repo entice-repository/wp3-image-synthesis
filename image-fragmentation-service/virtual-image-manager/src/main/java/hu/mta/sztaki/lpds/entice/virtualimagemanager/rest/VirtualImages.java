@@ -278,6 +278,7 @@ public class VirtualImages {
 					Image parent = edge.getFromImage();
 					parent.getOutgoingEdges().remove(edge);
 					entityManager.remove(edge);
+					// TODO abort fragment computation is pending
 					pendingFragmentComputations.remove(edge.getId());
 					// try to remove fragment file
 					if (Configuration.fragmentStorageURL != null && Configuration.fragmentStorageToken != null) {
