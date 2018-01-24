@@ -13,7 +13,7 @@ function chrootMounts() {
 	mount --bind /dev ${TARGET_IMAGE_DIR}/dev || error ${LINENO} "ERROR: Cannot mount chroot dir" 31
 	mount --bind /sys ${TARGET_IMAGE_DIR}/sys || error ${LINENO} "ERROR: Cannot mount chroot dir" 32
 	mount --bind /proc ${TARGET_IMAGE_DIR}/proc || error ${LINENO} "ERROR: Cannot mount chroot dir" 33
-	mount --bind /run ${TARGET_IMAGE_DIR}/run || error ${LINENO} "ERROR: Cannot mount chroot dir" 34
+	# mount --bind /run ${TARGET_IMAGE_DIR}/run || error ${LINENO} "ERROR: Cannot mount chroot dir" 34
 	mount --bind /etc/resolv.conf ${TARGET_IMAGE_DIR}/etc/resolv.conf || error ${LINENO} "ERROR: Cannot mount chroot dir" 35
 	mount --bind /dev/pts ${TARGET_IMAGE_DIR}/dev/pts || error ${LINENO} "ERROR: Cannot mount chroot dir" 22
 }
@@ -25,7 +25,7 @@ function chrootUmounts() {
 	umount -l ${TARGET_IMAGE_DIR}/dev || error ${LINENO} "ERROR: Cannot umount chroot dir" 31
 	umount -l ${TARGET_IMAGE_DIR}/sys || error ${LINENO} "ERROR: Cannot umount chroot dir" 32
 	umount -l ${TARGET_IMAGE_DIR}/proc || error ${LINENO} "ERROR: Cannot umount chroot dir" 33
-	umount -l ${TARGET_IMAGE_DIR}/run || error ${LINENO} "ERROR: Cannot umount chroot dir" 34
+	# umount -l ${TARGET_IMAGE_DIR}/run || error ${LINENO} "ERROR: Cannot umount chroot dir" 34
 }
 
 chrootMounts
