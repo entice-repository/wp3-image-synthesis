@@ -86,8 +86,8 @@ public class VirtualImageComposer {
 		// create response script
 		StringBuilder sb = new StringBuilder();
 		sb.append("#!/bin/sh\n");
-		sb.append("cd /");
-		sb.append("mkdir -p var/log");
+		sb.append("cd /\n");
+//		sb.append("mkdir -p var/log\n");
 		sb.append("date >> " + DELTA_LOG_FILE + "\n");
 		sb.append("START_TIME=`date +\"%s\"`\n");
 		boolean withInit = !"no".equals(init);
