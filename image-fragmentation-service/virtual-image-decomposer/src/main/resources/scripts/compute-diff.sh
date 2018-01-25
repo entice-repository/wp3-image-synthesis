@@ -23,11 +23,15 @@ function explode() {
 }
 
 echo Creating delta package...
-RSYNC_OPTIONS="--recursive --acls --perms --xattrs --owner --group --times --links --hard-links --super --one-file-system --devices"
+# dont track --hard-links
+RSYNC_OPTIONS="--recursive --acls --perms --xattrs --owner --group --times --links --super --one-file-system --devices"
 
 # rsync files (NOTE: it creates empty dirs for every directories even if nothing changed there)
 # echo '  'copying additions and updates (creates empty dirs)
 # rsync $RSYNC_OPTIONS --compare-dest=../$SOURCE_IMAGE_DIR $TARGET_IMAGE_DIR/ $DELTA_DIR &> /dev/null || error ${LINENO} "ERROR: Cannot create update delta" 41
+
+# flush caches
+# echo 3 > /proc/sys/vm/drop_caches || echo Warning: Cannot flush caches
 
 # optimized solution: create only changed directories
 echo '  'creating list of updates
@@ -66,7 +70,7 @@ fi
 # remove potential previous cloud-init history from /var/lib/cloud/ (can occur in the case of snapshot)
 rm -rf "${DELTA_DIR}"/var/lib/cloud/
 mkdir -p "${DELTA_DIR}"/var/lib/cloud/
-echo "${TARGET_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}""${ID_FILE}" || echo "Cannot save virtual image id" 
+# echo "${TARGET_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}""${ID_FILE}" || echo "Cannot save virtual image id" 
 # echo "${SOURCE_VIRTUAL_IMAGE_ID}" >> "${DELTA_DIR}"/var/lib/cloud/vvmi.parent.id || echo "Cannot save parent virtual image id" 
 # remove previous image assembly log
 rm -rf "${DELTA_DIR}""${IMAGE_ASSEMBLY_LOG_FILE}"

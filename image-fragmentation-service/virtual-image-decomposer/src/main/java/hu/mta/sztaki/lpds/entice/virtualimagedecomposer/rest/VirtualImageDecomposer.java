@@ -8,6 +8,7 @@ import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -83,7 +84,7 @@ public class VirtualImageDecomposer {
 		@HeaderParam(CustomHTTPHeaders.HTTP_HEADER_TOKEN) String token,
 		String body) {
 		logRequest("POST", headers, request);		
-		if (Configuration.virtualImageDecomposerToken != null && !Configuration.virtualImageDecomposerToken.equals(token)) return Response.status(Status.BAD_REQUEST).entity("Missing authentication token").build();
+		if (Configuration.virtualImageDecomposerToken != null && !Configuration.virtualImageDecomposerToken.equals(token)) return Response.status(Status.BAD_REQUEST).entity("Missing or wrong authentication token").build();
 		if (!new File (Configuration.virtualImageDecomposerPath).exists()) return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Working dir " + Configuration.virtualImageDecomposerPath + " does not exist").build();
 		if (!new File (Configuration.scriptsDir).exists()) return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Scripts dir " + Configuration.scriptsDir + " does not exist").build();
 		
@@ -196,7 +197,9 @@ public class VirtualImageDecomposer {
 		
 		
 		// queue fragment computation
-		if (!fragmentComputationTasksQueue.isShutdown()) fragmentComputationTasksQueue.execute(new FragmentComputationTask(workingDir));
+		if (!fragmentComputationTasksQueue.isShutdown()) {
+			fragmentComputationTasksQueue.execute(new FragmentComputationTask(workingDir));
+		}
 		else {
 			log.info("fragmentComputationTasksQueue is down");
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("VirtualImageDecomposer is shutting down").build() ;
