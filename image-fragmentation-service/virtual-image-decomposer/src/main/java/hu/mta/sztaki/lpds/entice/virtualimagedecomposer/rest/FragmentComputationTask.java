@@ -15,6 +15,7 @@ public class FragmentComputationTask implements Runnable {
 	private static final Logger log = LoggerFactory.getLogger(VirtualImageDecomposer.class);
 	
 	private static final String BUILD_LOG_FILE = "build.log";
+	private static final String BUILD_OUT_FILE = "build.out";
 
 	private final String workingDir;
 	FragmentComputationTask(String workingDir) {
@@ -32,17 +33,23 @@ public class FragmentComputationTask implements Runnable {
 			} else {
 				// run main script 
 				String script = Configuration.MAIN_SCRIPT;
+				// FIXME set timeout for process
 				String command = "sudo /bin/bash " + Configuration.scriptsDir + "/" + script + " " + workingDir + " " + nbdAllocation;
 				// note, redirection will not work:  " &> " + workingDir + "build.log" 
 				try {
 					log.info("Executing: '" + command + "' in dir: '" + Configuration.scriptsDir +"/'");
 					Process p = Runtime.getRuntime().exec(command, null, new File(Configuration.scriptsDir + "/"));
 					new ConsumeOutput(p.getErrorStream(), new File(workingDir + BUILD_LOG_FILE)); // write error stream to build file
-					new ConsumeOutput(p.getInputStream());
+					new ConsumeOutput(p.getInputStream(), new File(workingDir + BUILD_OUT_FILE));
 					try { 
 						int exitCode = p.waitFor();
-						log.info("Script finished with exit code: " + exitCode);
-						// FIXME handle non-0 exit code
+						// handle non-0 exit code
+						if (exitCode != 0) {
+							log.error("Script finished with exit code: " + exitCode);
+							p.destroy();
+						} else {
+							log.info("Script finished with exit code: " + exitCode);
+						}
 					} catch (InterruptedException e) {
 						log.error("InterruptedException during running script", e);
 					}

@@ -36,7 +36,7 @@ public class VirtualImageComposer {
 	private static final String INIT_SCRIPT_FILE = ".delta-init.sh";
 	private static final String DELTA_PACKAGE_FILE = "delta-package.tar.gz";
 
-	private static final String DELTA_LOG_FILE = "/var/log/image-assembly.log";
+	private static final String DELTA_LOG_FILE = "var/log/image-assembly.log";
 
 	@GET @Path("{id}") @Produces("application/x-shellscript")
 	public Response getInstallScript(
