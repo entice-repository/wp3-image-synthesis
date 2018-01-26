@@ -494,6 +494,10 @@ public class FCOVM {
 		// mkdir -p /var/lib/cloud/instance/ 
 		// /var/lib/cloud/instance/user-data.txt
 		// sudo "/usr/bin/cloud-init -d modules || /usr/bin/cloud-init start"
+		
+		// TODO we got IP, wait 10 secs to allow FCO cloud-init to complete
+		// try { Thread.sleep(10000); } catch (Exception x) {}
+		
 		SshSession ssh = null;
 		try {
 			ssh = new SshSession(ip, login, sshKeyPath);

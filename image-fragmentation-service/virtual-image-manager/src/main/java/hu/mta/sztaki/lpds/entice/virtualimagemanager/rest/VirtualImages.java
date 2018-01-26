@@ -266,6 +266,8 @@ public class VirtualImages {
 		log.debug("Virtual image found");
 		if (!"admin".equals(user) && !virtualImage.getOwner().equals(user))  return Response.status(Status.BAD_REQUEST).entity("Header field " + CustomHTTPHeaders.HTTP_HEADER_OWNER + " differs from owner: " + user).build();
 		if (virtualImage.getOutgoingEdges().size() > 0) return Response.status(Status.BAD_REQUEST).entity("Cannot delete a virtual image having children (" + virtualImage.getOutgoingEdges().get(0).getToImage().getId() + ")").build();
+		if (virtualImage.getStatus() == ImageStatus.PENDING) return Response.status(Status.BAD_REQUEST).entity("Cannot delete a virtual image under build (" + virtualImage.getStatus() + ")").build();
+		
         // do the deletion
 		try {
 			EntityManager entityManager = DBManager.getInstance().getEntityManager();
@@ -433,7 +435,7 @@ public class VirtualImages {
 					.header(CustomHTTPHeaders.HTTP_HEADER_TOKEN, Configuration.virtualImageDecomposerToken)
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, request.toString());
-			if (response.getStatus() != 200) throw new Exception("Cannot POST to virtual image decomposer. Service " + service + " returned HTTP error code: " + response.getStatus() + ".");
+			if (response.getStatus() != 200) throw new Exception("Cannot POST to virtual image decomposer. Service " + service + " returned HTTP error code: " + response.getStatus() + " (" + response.getEntity(String.class) + ")");
 			String fragmentComputationTaskId = response.getEntity(String.class).trim();
 			log.info("Fragment computation task id: '" + fragmentComputationTaskId + "'");
 			return fragmentComputationTaskId;

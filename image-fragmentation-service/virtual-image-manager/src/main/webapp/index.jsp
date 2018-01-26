@@ -118,10 +118,10 @@ for (Image image: baseList) {
 	    <th style="min-width:320px">Image id</th>
 	    <th style="min-width:130px">Created</th>
 	    <th>Name</th>
+	    <th>Tags</th>
 	    <th>Status</th>
 	    <th>Message</th>
 	    <th>Parent</th>
-	    <th>Tags</th>
 	    <th>Owner</th>
 	    <th>Description</th>
 	    <th>Size</th>
@@ -139,10 +139,10 @@ for (Image image: virtualList) {
 	    <td><a href="rest/virtualimages/<%=image.getId()%>"><%=image.getId()%></a></td>
 		<td><fmt:formatDate type="both" value="${created}" pattern="yyyy.MM.dd HH:mm" /></td>
 	    <td><%=image.getName()%></td>
+	    <td><%=aggregatedTags.toString()%></td>
 	    <td><%=image.getStatus()%></td>
 	    <td><%=image.getMessage()%></td>
 	    <td><a href="rest/virtualimages/<%=image.getIncomingEdges().get(0).getFromImage().getId()%>"><%=image.getIncomingEdges().get(0).getFromImage().getId()%></a></td>
-	    <td><%=aggregatedTags.toString()%></td>
 	    <td><%=image.getOwner()%></td>
 	    <td><%=image.getDescription()%></td>
 	    <td><%=image.getImageSize()%></td>
@@ -168,14 +168,15 @@ for (Image image: virtualList) {
 %>
 <table>
 	<tr>
-	    <th style="min-width:320px">To image</th>
-	    <th>Parent image</th>
 	    <th>Edge id</th>
+	    <th style="min-width:320px">To image</th>
+	    <th>From image</th>
+	    
 	    <th>Installers</th>
 	    <th>Installer tags</th>
 	    <th>Fragment URL</th>
 	    <th>Snapshot URL</th>
-	    <th>Task id</th>
+	    <th>Decomposer id</th>
 	    <th>Fragment size</th>
 	</tr>
 <%
@@ -184,9 +185,9 @@ for (Edge edge: edgeList) {
 	if (edge.getFragmentSize() != null) sizeOfFragments += edge.getFragmentSize();
 %>
 	<tr>
+	    <td><%=edge.getId()%></td>
 		<td><a href="rest/virtualimages/<%=edge.getToImage().getId()%>"><%=edge.getToImage().getId()%></a></td>
 		<td><a href="rest/virtualimages/<%=edge.getFromImage().getId()%>"><%=edge.getFromImage().getId()%></a></td>
-	    <td><%=edge.getId()%></td>
 	    <td><%=edge.getInstallerIds()%></td>
 	    <td><%=edge.getTags()%></td>
 	    <td><a href="<%=edge.getFragmentUrl()%>"><%=edge.getFragmentUrl()!=null?edge.getFragmentUrl():""%></a></td>
