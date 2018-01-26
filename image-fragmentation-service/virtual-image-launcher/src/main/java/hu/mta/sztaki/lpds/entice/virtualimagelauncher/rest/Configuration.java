@@ -21,7 +21,9 @@ public class Configuration {
 	
 	private static final Logger log = LoggerFactory.getLogger(Configuration.class);
 	public final static String PROPERTIES_FILE_NAME = "virtual-image-launcher.properties";
-	
+
+	public final static String CLOUD_INIT = "cloud-init";
+
 	public static String version = "0.1";
 	public static String virtualImageManagerRestURL;
 	public static String virtualImageComposerRestURL;
@@ -35,6 +37,7 @@ public class Configuration {
 	public static String rootLogin = "root";
 	public static String sshKeyPath;
 	public static String sshPubPath;
+	public static String contextualization = CLOUD_INIT;
 	public static boolean hostnameVerification = true;
 	
 	static {
@@ -62,13 +65,19 @@ public class Configuration {
 					hostnameVerification = false;
 					disableHostnameVerification();
 				}
-
+				contextualization = prop.getProperty("contextualization");
 			} catch (IOException e) { log.error("Cannot read properties file: " + PROPERTIES_FILE_NAME, e); }
 		}
 		
 		virtualImageManagerRestURL = getSystemProperty("VIRTUAL_IMAGE_MANAGER_REST_URL", virtualImageManagerRestURL);
 		virtualImageComposerRestURL = getSystemProperty("PUBLIC_VIRTUAL_IMAGE_COMPOSER_REST_URL", virtualImageComposerRestURL);
 
+		contextualization = getSystemProperty("VIRTUAL_IMAGE_LAUNCHER_CONTEXTUALIZATION", contextualization); 
+		if (contextualization == null) {
+			contextualization = CLOUD_INIT;
+			log.warn("Using default contextualization");
+		}
+		
 		// use default virtualImageManagerRestURL if unspecified
 		if (virtualImageManagerRestURL == null) {
 			virtualImageManagerRestURL = "http://localhost:8080/virtual-image-manager/rest";
@@ -111,6 +120,7 @@ public class Configuration {
 		
 		log.info("virtualImageManagerRestURL: " + virtualImageManagerRestURL);
 		log.info("virtualImageComposerRestURL: " + virtualImageComposerRestURL);
+		log.info("contextualization: " + contextualization);
 	}
 	private static String getSystemProperty(String propertyName, String defaultValue) {
 		return System.getProperty(propertyName) != null ? System.getProperty(propertyName) : 
