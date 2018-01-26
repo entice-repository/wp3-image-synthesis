@@ -37,6 +37,7 @@ public class VirtualImageComposer {
 	private static final String DELTA_PACKAGE_FILE = "delta-package.tar.gz";
 
 	private static final String DELTA_LOG_FILE = "var/log/image-assembly.log";
+	private static final String DELTA_ASSEMBLY_FILE = ".image-assembly";
 
 	@GET @Path("{id}") @Produces("application/x-shellscript")
 	public Response getInstallScript(
@@ -87,8 +88,10 @@ public class VirtualImageComposer {
 		StringBuilder sb = new StringBuilder();
 		sb.append("#!/bin/sh\n");
 		sb.append("cd /\n");
-//		sb.append("mkdir -p var/log\n");
 		sb.append("date >> " + DELTA_LOG_FILE + "\n");
+		sb.append("Assembling virtual image: " + id + " >> " + DELTA_LOG_FILE + "\n");
+		sb.append("if [ -f " + DELTA_ASSEMBLY_FILE + " ]; then exit 0; fi\n"); // avoid simultaneous image assembly
+		sb.append("touch " + DELTA_ASSEMBLY_FILE + "\n");
 		sb.append("START_TIME=`date +\"%s\"`\n");
 		boolean withInit = !"no".equals(init);
 		for (int i = 0; i < fragmentUrlsJson.length(); i++) {
@@ -98,6 +101,7 @@ public class VirtualImageComposer {
 		if (fragmentUrlsJson.length() == 0) sb.append("echo \"No fragments to merge\" >> " + DELTA_LOG_FILE + "\n");
 		else sb.append("echo Overall assembly time: $((`date +\"%s\"` - ${START_TIME})) s >> " + DELTA_LOG_FILE + "\n");
 		sb.append("date >> " + DELTA_LOG_FILE + "\n");
+		sb.append("rm " + DELTA_ASSEMBLY_FILE + "\n");
 		return Response.status(Status.OK).entity(sb.toString())
 //						.header("Content-Disposition", "attachment; filename=\"" + id + ".sh" + "\"" )
 						.build();
