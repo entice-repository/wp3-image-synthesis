@@ -51,6 +51,7 @@ public class WebApplicationContextListener implements ServletContextListener {
 	        		log.info("Adding PENDING fragment computation of edge: " + i.getId());
 	        	} else {
 	        		log.warn("Fragment computation on edge " + i.getId() + " is too old. Dropping.");
+	        		log.debug("" + (i.getCreated() + Edge.BUILD_TIMEOUT * 1000) + " > " + now);
 	        		i.setStatus(Edge.EdgeStatus.FAILED);
 	        		i.getToImage().setStatus(ImageStatus.FAILED);
 	        		i.getToImage().setMessage("Fragment computation timeout. (started: " + i.getCreated() + ")");

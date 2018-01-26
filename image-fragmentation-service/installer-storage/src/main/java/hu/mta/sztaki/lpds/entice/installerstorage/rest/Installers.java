@@ -110,12 +110,12 @@ public class Installers {
 		File preFile = new File(Configuration.installerStoragePath + "/" + id + "/" + Installers.PRE_ASSEMBLY_SCRIPT_FILE_NAME);
 		if (!preFile.exists()) { 
 			return Response.ok()
-				 .header("Content-Disposition", "attachment; filename=\"" + id + "-init.sh" + "\"" )
+				 .header("Content-Disposition", "attachment; filename=\"" + id + "-pre.sh" + "\"" )
 				 .entity("#!/bin/sh\n")
 				 .build();
 		} else {
 			return Response.ok(preFile, "text/x-shellscript")
-						 .header("Content-Disposition", "attachment; filename=\"" + id + "-init.sh" + "\"" )
+						 .header("Content-Disposition", "attachment; filename=\"" + id + "-pre.sh" + "\"" )
 						 .build();
 		}
 	} 	

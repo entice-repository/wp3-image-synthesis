@@ -87,7 +87,7 @@ public class VirtualImageComposer {
 		// create response script
 		StringBuilder sb = new StringBuilder();
 		sb.append("#!/bin/sh\n");
-//		sb.append("cd /\n");
+//		sb.append("cd /\n"); dont ever fucking dare to do it again
 		sb.append("date >> " + DELTA_LOG_FILE + "\n");
 		sb.append("Assembling virtual image: " + id + " >> " + DELTA_LOG_FILE + "\n");
 		sb.append("if [ -f " + DELTA_ASSEMBLY_FILE + " ]; then exit 0; fi\n"); // avoid simultaneous image assembly
@@ -122,7 +122,7 @@ public class VirtualImageComposer {
 		sb.append("FRAGMENT_ASSEMBLY_TIME=`date +\"%s%3N\"`\n");
 		sb.append("tar -xf " + DELTA_PACKAGE_FILE + " || echo 'Cannot unpack fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
 		sb.append("rm -f " + DELTA_PACKAGE_FILE); sb.append("\n");
-		sb.append("[ -f "+ PRE_ASSEMBLY_SCRIPT_FILE + " ] && sh " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n");
+		if (init) sb.append("[ -f "+ PRE_ASSEMBLY_SCRIPT_FILE + " ] && sh " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n");
 		sb.append("[ -f "+ DELETIONS_SCRIPT_FILE + " ] && sh " + DELETIONS_SCRIPT_FILE); sb.append("\n");
 		sb.append("rm -f " + DELETIONS_SCRIPT_FILE); sb.append("\n"); // optional
 		sb.append("echo '  'Fragment extraction time: $((`date +\"%s%3N\"` - ${FRAGMENT_ASSEMBLY_TIME})) ms >> " + DELTA_LOG_FILE + "\n");
