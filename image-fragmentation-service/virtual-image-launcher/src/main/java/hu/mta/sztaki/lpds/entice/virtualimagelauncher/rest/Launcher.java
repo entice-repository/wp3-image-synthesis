@@ -92,47 +92,56 @@ public class Launcher {
 	        }        
 	        
 	        // create contextualization (with runcmd section to install fragments)
-	        String userDataBase64 = "";
+	        String userDataBase64;
 	        String runCommand = "wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh";
-	        if (!"".equals(requestBody.optString(CONTEXTUALIZATION))) {
-	        	// FIXME check cloud-init merging
-	        	String userData = base64Decode(requestBody.optString(CONTEXTUALIZATION));
-	    		String emtyRuncmdPattern = "^#cloud-config[\\s\\S]*runcmd:[\\s]*[\\w][\\s\\S]*"; // empty runcmd section
-	    		if (userData.matches(emtyRuncmdPattern)) {
-	    			log.debug("Empty runcmd section");
-	    			// delete runcmd line
-	    			userData = userData.replaceAll("runcmd:", "");
-	    		}        	
-	        	if (!userData.contains("runcmd:")) {
-	        		userData += "\nruncmd:\n";
-	        		userData += "- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh || echo 'Cannot download fragment assembly script' > .delta-failure\n";
-	        		userDataBase64 = base64Encode(userData);
-	        	} else {
-	        		String runcmdWithItem = "^#cloud-config[\\s\\S]*runcmd:[\\s]*-[\\s\\S]*"; // non-empty runcmd section
-	        		if (!userData.matches(runcmdWithItem)) return Response.status(Status.BAD_REQUEST).entity("Contextualization has invalid sytax (must match: " + runcmdWithItem + ")").build();	
-	        		log.debug("runcmd section with item(s)");
-	        		String runcmd = "runcmd:";
-	        		int runcmdPosition = userData.indexOf(runcmd);
-		        	int runcmdItemPosition = userData.indexOf("-", runcmdPosition);
-		        	String tab = userData.substring(runcmdPosition + runcmd.length(), runcmdItemPosition);
-		        	StringBuilder newUserData = new StringBuilder();
-		        	newUserData.append(userData.substring(0, runcmdPosition + runcmd.length()));
-		        	newUserData.append(tab);
-		        	newUserData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh || echo 'Cannot download fragment assembly script' > .delta-failure");
-		        	newUserData.append(userData.substring(runcmdPosition + runcmd.length()));
-		        	userDataBase64 = base64Encode(newUserData.toString());
-	        	}
-	        } else { // No user-defined contextualization, just create a brand new
-	        	
-	        	StringBuilder userData = new StringBuilder();
-	        	userData.append("#cloud-config\n");
-	        	// we assume wget is available on base OS
-//	        	userData.append("packages:\n");
-//	        	userData.append("- wget\n");
-	        	userData.append("runcmd:\n");
-//	        	userData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh && test ${PIPESTATUS[0]} == 0 || echo 'Could not download or execute fragment assembly script' >> /var/log/image-assembly.log\n");
-	        	userData.append("- " + runCommand + "\n");
-	        	userDataBase64 = base64Encode(userData.toString());
+	        
+	        if (Configuration.contextualization.equals(Configuration.CLOUD_INIT)) {
+	        	log.info("Using cloud-init contextualization");
+		        if (!"".equals(requestBody.optString(CONTEXTUALIZATION))) {
+		        	// FIXME check cloud-init merging
+		        	String userData = base64Decode(requestBody.optString(CONTEXTUALIZATION));
+		    		String emtyRuncmdPattern = "^#cloud-config[\\s\\S]*runcmd:[\\s]*[\\w][\\s\\S]*"; // empty runcmd section
+		    		if (userData.matches(emtyRuncmdPattern)) {
+		    			log.debug("Empty runcmd section");
+		    			// delete runcmd line
+		    			userData = userData.replaceAll("runcmd:", "");
+		    		}        	
+		        	if (!userData.contains("runcmd:")) {
+		        		userData += "\nruncmd:\n";
+		        		userData += "- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh || echo 'Cannot download fragment assembly script' > .delta-failure\n";
+		        		userDataBase64 = base64Encode(userData);
+		        	} else {
+		        		String runcmdWithItem = "^#cloud-config[\\s\\S]*runcmd:[\\s]*-[\\s\\S]*"; // non-empty runcmd section
+		        		if (!userData.matches(runcmdWithItem)) return Response.status(Status.BAD_REQUEST).entity("Contextualization has invalid sytax (must match: " + runcmdWithItem + ")").build();	
+		        		log.debug("runcmd section with item(s)");
+		        		String runcmd = "runcmd:";
+		        		int runcmdPosition = userData.indexOf(runcmd);
+			        	int runcmdItemPosition = userData.indexOf("-", runcmdPosition);
+			        	String tab = userData.substring(runcmdPosition + runcmd.length(), runcmdItemPosition);
+			        	StringBuilder newUserData = new StringBuilder();
+			        	newUserData.append(userData.substring(0, runcmdPosition + runcmd.length()));
+			        	newUserData.append(tab);
+			        	newUserData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh || echo 'Cannot download fragment assembly script' > .delta-failure");
+			        	newUserData.append(userData.substring(runcmdPosition + runcmd.length()));
+			        	userDataBase64 = base64Encode(newUserData.toString());
+		        	}
+		        } else { // No user-defined contextualization, just create a brand new
+		        	
+		        	StringBuilder userData = new StringBuilder();
+		        	userData.append("#cloud-config\n");
+		        	// we assume wget is available on base OS
+	//	        	userData.append("packages:\n");
+	//	        	userData.append("- wget\n");
+		        	userData.append("runcmd:\n");
+	//	        	userData.append("- wget --tries=3 -qO- " + Configuration.virtualImageComposerRestURL + "/scripts/" + virtualImageId + cloudPostfix + " | sh && test ${PIPESTATUS[0]} == 0 || echo 'Could not download or execute fragment assembly script' >> /var/log/image-assembly.log\n");
+		        	userData.append("- " + runCommand + "\n");
+		        	userDataBase64 = base64Encode(userData.toString());
+		        }
+	        } else {
+	        	log.info("Using script contextualization");
+	        	// OpenNebula contextualization
+	        	String userData = "#!/bin/sh\ncd / ; " + runCommand + "\n";
+		    	userDataBase64 = base64Encode(userData.toString());
 	        }
 	        
 	        // launch VM
