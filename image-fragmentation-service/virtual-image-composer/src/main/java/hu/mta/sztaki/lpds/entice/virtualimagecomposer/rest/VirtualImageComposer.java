@@ -87,7 +87,7 @@ public class VirtualImageComposer {
 		// create response script
 		StringBuilder sb = new StringBuilder();
 		sb.append("#!/bin/sh\n");
-		sb.append("cd /\n");
+//		sb.append("cd /\n");
 		sb.append("date >> " + DELTA_LOG_FILE + "\n");
 		sb.append("Assembling virtual image: " + id + " >> " + DELTA_LOG_FILE + "\n");
 		sb.append("if [ -f " + DELTA_ASSEMBLY_FILE + " ]; then exit 0; fi\n"); // avoid simultaneous image assembly
