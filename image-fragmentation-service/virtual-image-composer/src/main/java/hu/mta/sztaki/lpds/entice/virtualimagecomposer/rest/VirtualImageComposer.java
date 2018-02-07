@@ -89,7 +89,7 @@ public class VirtualImageComposer {
 		sb.append("#!/bin/sh\n");
 //		sb.append("cd /\n"); dont ever fucking dare to do it again
 		sb.append("date >> " + DELTA_LOG_FILE + "\n");
-		sb.append("Assembling virtual image: " + id + " >> " + DELTA_LOG_FILE + "\n");
+		sb.append("echo Assembling virtual image: " + id + " >> " + DELTA_LOG_FILE + "\n");
 		sb.append("if [ -f " + DELTA_ASSEMBLY_FILE + " ]; then exit 0; fi\n"); // avoid simultaneous image assembly
 		sb.append("touch " + DELTA_ASSEMBLY_FILE + "\n");
 		sb.append("START_TIME=`date +\"%s\"`\n");
@@ -120,6 +120,7 @@ public class VirtualImageComposer {
 		sb.append("wget --tries=3 -q -O " + DELTA_PACKAGE_FILE + " " + fragmentUrl + cloudPostfix + " || echo 'Cannot download fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
 		sb.append("echo '  'Fragment download time: $((`date +\"%s%3N\"` - ${DOWNLOAD_TIME})) ms >> " + DELTA_LOG_FILE + "\n");
 		sb.append("FRAGMENT_ASSEMBLY_TIME=`date +\"%s%3N\"`\n");
+		if (init) sb.append("tar -xf " + DELTA_PACKAGE_FILE + " ./" + PRE_ASSEMBLY_SCRIPT_FILE + " || echo 'No pre-assembly file' >> " + DELTA_LOG_FILE); sb.append("\n");
 		if (init) sb.append("[ -f "+ PRE_ASSEMBLY_SCRIPT_FILE + " ] && sh " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n");
 		sb.append("rm -f " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n"); // optional
 		sb.append("tar -xf " + DELTA_PACKAGE_FILE + " || echo 'Cannot unpack fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
