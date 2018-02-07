@@ -120,10 +120,12 @@ public class VirtualImageComposer {
 		sb.append("wget --tries=3 -q -O " + DELTA_PACKAGE_FILE + " " + fragmentUrl + cloudPostfix + " || echo 'Cannot download fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
 		sb.append("echo '  'Fragment download time: $((`date +\"%s%3N\"` - ${DOWNLOAD_TIME})) ms >> " + DELTA_LOG_FILE + "\n");
 		sb.append("FRAGMENT_ASSEMBLY_TIME=`date +\"%s%3N\"`\n");
-		if (init) sb.append("tar -xf " + DELTA_PACKAGE_FILE + " ./" + PRE_ASSEMBLY_SCRIPT_FILE + " || echo 'No pre-assembly file' >> " + DELTA_LOG_FILE); sb.append("\n");
-		if (init) sb.append("[ -f "+ PRE_ASSEMBLY_SCRIPT_FILE + " ] && sh " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n");
-		sb.append("rm -f " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n"); // optional
+		if (init) { 
+			sb.append("tar -zxf " + DELTA_PACKAGE_FILE + " ./" + PRE_ASSEMBLY_SCRIPT_FILE + " 2>/dev/null || echo 'No pre-assembly file' >> " + DELTA_LOG_FILE); sb.append("\n");
+			sb.append("[ -f "+ PRE_ASSEMBLY_SCRIPT_FILE + " ] && sh " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n");
+		}
 		sb.append("tar -xf " + DELTA_PACKAGE_FILE + " || echo 'Cannot unpack fragment' >> " + DELTA_LOG_FILE); sb.append("\n");
+		sb.append("rm -f " + PRE_ASSEMBLY_SCRIPT_FILE); sb.append("\n"); // optional
 		sb.append("rm -f " + DELTA_PACKAGE_FILE); sb.append("\n");
 		sb.append("[ -f "+ DELETIONS_SCRIPT_FILE + " ] && sh " + DELETIONS_SCRIPT_FILE); sb.append("\n");
 		sb.append("rm -f " + DELETIONS_SCRIPT_FILE); sb.append("\n"); // optional
