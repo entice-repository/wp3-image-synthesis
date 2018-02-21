@@ -31,7 +31,8 @@ def read_content(filename):
         with file(filename) as f:
             content = f.read()
     except IOError as e:
-        current_app.logger.error("ERROR: IOError for file '{}': {}".format(filename, e))
+        current_app.logger.error(
+            "ERROR: IOError for file '{}': {}".format(filename, e))
         return None
     return content
 
@@ -60,9 +61,9 @@ def download_file(url, target_file):
 
 def deploy_data(request_dir, content, target):
     '''
-    This function deploys the requested parts found in either the 'build' or 'test'
-    part of the request (it only gets either the 'build' or 'test' part. See
-    deploy_request_content().
+    This function deploys the requested parts found in either the 'build' or
+    'test' part of the request (it only gets either the 'build' or 'test' part.
+    See deploy_request_content().
 
     Sample complete request can be found in README.md.
     '''
@@ -94,28 +95,38 @@ def deploy_data(request_dir, content, target):
         outfilename = os.path.join(target_dir, target + ".zip")
         if url:
             download_file(url, outfilename)
-        '''
-        try:
-            url = content.get(target,dict()).get('input',dict()).get('zipurl',None)
-            if url:
-                zipfile = urllib2.urlopen(url)
-                outfilename = os.path.join(target_dir,target+".zip")
-                with open(outfilename,'wb') as output:
-                    output.write(zipfile.read())
-        except urllib2.HTTPError, e:
-            log.debug("ERROR: cannot download data from url \""+url+
-                "\" for request"+request_dir+" .")
-            raise Exception("Cannot download from "+url)
-        except urllib2.URLError, e:
-            log.debug("ERROR: invalid url specified \""+url+
-                "\" for request"+request_dir+" .")
-            raise Exception("Invalid url specified: \""+url+"\"")
-        '''
-    # Save varfile content (optional, json format assumed)
-    # '__varfile__' contains the data of the varfile. If this file is present a varfile is assumed
-    # for the command line.
-    varfile_filename = "__varfile__"
+    # Download optionals (if available)
+    components_dict = content.get(target, dict()).get(
+        'input', dict()).get('optional', None)
+    if components_dict:
+        counter = 0
+        for component in components_dict:
+            # TODO: zipdata
+            component_url = component.get('zipurl', None)
+            outfilename = os.path.join(target_dir,
+                '__component-{}.zip'.format(counter))
+            counter += 1
+            if component_url:
+                download_file(component_url, outfilename)
+            else:
+                log.debug("ERROR: zipurl not found for component {}" \
+                    .format(outfilename))
+                break
+    else:
+        log.debug("DEBUG: No optional section found")
 
+    # Download optimization script
+    optimization_url = content.get(target, dict()). \
+        get('input', dict()).get('optimization', dict()).get("url", None)
+    if optimization_url:
+        outfilename = os.path.join(target_dir, '__optimization.sh')
+        download_file(optimization_url, outfilename)
+    else:
+        log.debug("DEBUG: No optimization script found")
+    # Save varfile content (optional, json format assumed). '__varfile__'
+    # contains the data of the varfile. If this file is present a varfile is
+    # assumed for the command line.
+    varfile_filename = "__varfile__"
     varfile = content.get(target, dict()).get('varfile', None)
     if varfile:
         varfile_data = content.get(target, dict()).get(
@@ -130,7 +141,8 @@ def deploy_data(request_dir, content, target):
                 'varfile', dict()).get('url', None)
             outfilename = os.path.join(target_dir, varfile_filename)
             if not varfile_url:
-                raise Exception("Neither data nor url is specified for varfile")
+                raise Exception(
+                    "Neither data nor url is specified for varfile")
             download_file(varfile_url, outfilename)
 
 
@@ -226,7 +238,8 @@ class ImageBuilder(object):
         try:
             dirname = find_dir_by_request_id(self.datadir, request_id)
             if not dirname:
-                return False, "Unknown request ID!", "unknown", request_outcome_str['U']
+                return False, "Unknown request ID!", "unknown", \
+                    request_outcome_str['U']
             state = get_state_by_dirname(dirname)
             state_str = request_dir_states_str[state]
             outcome_str = request_outcome_str[get_outcome_by_dirname(dirname)]
@@ -241,7 +254,9 @@ class ImageBuilder(object):
                 return False, "Unknown request ID!"
             state = get_state_by_dirname(dirname)
             if state not in ['I', 'R']:
-                return False, "Cancel operation not allowed in current state (" + request_dir_states_str[state] + ")!"
+                return False, \
+                    "Cancel operation not allowed in current state (" + \
+                    request_dir_states_str[state] + ")!"
             fd = open(os.path.join(dirname, "build", "cancel"), "wb")
             fd.write("Cancel request by frontend")
             fd.close()
@@ -259,7 +274,9 @@ class ImageBuilder(object):
                 return False, "Unknown request ID!"
             state = get_state_by_dirname(dirname)
             if state not in ['F']:
-                return False, "Delete operation not allowed in current state (" + request_dir_states_str[state] + ")!"
+                return False, \
+                    "Delete operation not allowed in current state (" + \
+                    request_dir_states_str[state] + ")!"
             shutil.rmtree(dirname, ignore_errors=True, onerror=None)
             return True, ""
         except Exception, e:
@@ -275,8 +292,10 @@ class ImageBuilder(object):
             imgsubpath = read_content(os.path.join(
                 builddir, "build.image_url")).strip()
         except AttributeError:
-            # in case of no such file: strip() on NoneType returned by read_content
-            self.log.error("file containing image location 'build.image_url' was not found")
+            # in case of no such file: strip() on NoneType returned by
+            # read_content
+            self.log.error("file containing image location " \
+                "'build.image_url' was not found")
             return "", "", {}
         imgpath = os.path.join(builddir, "sandbox", imgsubpath)
         imgfile = ""
@@ -288,13 +307,15 @@ class ImageBuilder(object):
             counter = 0
             for root,dirs,files in scandir.walk(imgpath):
                 for entry in files:
-                    _outputs[entry] = os.path.getsize(os.path.join(root, entry))
+                    _outputs[entry] = os.path.getsize(
+                        os.path.join(root, entry))
                     counter += 1
                     if counter >= 10:
                         break
                 if counter >= 10:
                     break
-            _outputs = sorted(_outputs.items(), key=operator.itemgetter(1), reverse=True)
+            _outputs = sorted(_outputs.items(),
+                key=operator.itemgetter(1), reverse=True)
             counter = 0
             for _output in _outputs:
                 outputs[counter] = _output[0]
@@ -315,7 +336,8 @@ class ImageBuilder(object):
             return False, "Unknown request ID!", None
         state = get_state_by_dirname(dirname)
         if state not in ['F']:
-            return False, "Get result operation not allowed in current state (" + \
+            return False, \
+                "Get result operation not allowed in current state (" + \
                 request_dir_states_str[state] + ")!", None
         '''
         TODO: Handle CANCELLED request
@@ -328,7 +350,8 @@ class ImageBuilder(object):
         wspath = frontend.app.config.get("WSPATH")
         for _output in outputs.iteritems():
             self.log.debug("output: {}".format(json.dumps(_output)))
-            url = "{}{}/{}/result/output/{}".format(endpoint, wspath, request_id, _output[0])
+            url = "{}{}/{}/result/output/{}".format(endpoint, wspath,
+                request_id, _output[0])
             output_info[_output[1]] = url
         result = {'request_id': request_id,
                   'image': image_info,

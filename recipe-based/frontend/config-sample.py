@@ -34,11 +34,13 @@ class BaseConfiguration(object):
     # Root folder for storing incoming build requests. Must be the same as for
     # the frontend.
     DATADIR = "/tmp/entice-builder/datadir"
-    # Protocol+host+port part of the public address of the service. This is used for
-    # returning the URL of the finished image for download
+    # Protocol+host+port part of the public address of the service. This is
+    # used for returning the URL of the finished image for download
     ENDPOINT = "https://localhost:5000"
     # Prefix for all webservice endpoints
     WSPATH = "/api/imagebuilder/build"
+    # TODO: component storage default path prefix
+    COMPONENT_STORAGE_URL="http://entice.lpds.sztaki.hu/synth/"
 
 
 class DebugConfiguration(BaseConfiguration):
@@ -68,10 +70,10 @@ class TestConfiguration(BaseConfiguration):
 class LiveConfiguration(BaseConfiguration):
     """
     Live configuration.
-    Tries to load from .json configuration file. If not found
-    values defined in BaseConfiguration are used.
-    This is to separate live configuration values from this file. Most of the
-    time setting values in BaseConfiguration instead of here is fine.
+    Tries to load from .json configuration file. If not found values defined
+    in BaseConfiguration are used. This is to separate live configuration
+    values from this file. Most of the time setting values in
+    BaseConfiguration instead of here is fine.
     """
     print("Loading config from JSON file.\n", file=sys.stderr)
     try:

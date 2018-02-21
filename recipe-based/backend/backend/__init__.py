@@ -116,12 +116,41 @@ def prepare_build(fullreqdir):
     sandboxdir = os.path.join(builddir, "sandbox")
     log.debug("Preparation in: " + sandboxdir)
     os.makedirs(sandboxdir)
+    # Extract main build zip
     zipfilepath = os.path.join(builddir, "build.zip")
     log.debug("Extracting zip file: " + zipfilepath)
     zip_ref = zipfile.ZipFile(zipfilepath, 'r')
     zip_ref.extractall(sandboxdir)
     zip_ref.close()
-
+    # Extract and move components (if present), max 99 assumed
+    for i in xrange(99):
+        component_zipfilepath = os.path.join(builddir, 
+            "__component-{}.zip".format(i))
+        if os.path.isfile(component_zipfilepath):
+            log.debug("Extracting component {}".format(i))
+            zip_ref = zipfile.ZipFile(component_zipfilepath, 'r')
+            zip_ref.extractall(sandboxdir)
+            zip_ref.close()
+            component_filepath = os.path.join(sandboxdir, "provision.json")
+            component_filepath_rename = os.path.join(sandboxdir, 
+                "provision-{}.json".format(i))
+            if os.path.isfile(component_filepath):
+                os.rename(component_filepath, component_filepath_rename)
+            else:
+                log.debug("provision.json not found in zip for component {}".
+                    format(i))
+                continue
+        else:
+            log.debug("No __component-{}.zip found in {}".format(i, builddir))
+            break
+    # Copy optimization script to sandbox directory
+    optimization_path = os.path.join(builddir, "__optimization.sh")
+    if os.path.isfile(optimization_path):
+        optimization_destination_path = os.path.join(sandboxdir, 
+            "__optimization.sh")
+        log.debug("Copying {} to {}".format(optimization_path, 
+            optimization_destination_path))
+        shutil.copyfile(optimization_path, optimization_destination_path)
 
 def start_build_process(fullreqdir):
     builddir = os.path.join(fullreqdir, "build")
@@ -142,9 +171,8 @@ def start_build_process(fullreqdir):
             return
         shutil.copy(modulepath, exepath)
     os.chmod(exepath, 0755)
-    #
-    command = "nohup " + exepath + " >../" + FILE_BUILD_STDOUT + " 2>../" + FILE_BUILD_STDERR + \
-        "; echo $?>../" + FILE_BUILD_RETCODE + " &"
+    command = "nohup " + exepath + " >../" + FILE_BUILD_STDOUT + " 2>../" + \
+        FILE_BUILD_STDERR + "; echo $?>../" + FILE_BUILD_RETCODE + " &"
     log.debug("Executing command: %s", command)
     process = subprocess.Popen(command, cwd=sandboxdir, shell=True)
     log.debug("PID: %s", str(process.pid))
