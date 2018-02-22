@@ -59,6 +59,36 @@ def download_file(url, target_file):
         raise Exception("Invalid url specified: \"" + url + "\"")
 
 
+def complete_url(url_fragment, is_recipe=True, is_test=False):
+    '''
+    Generates complete URL from fragment (functionality) for downloading
+    recipes and tests.
+
+    Parameters is_recipe and is_test are mutual exclusive, and one should be
+    set to True.
+    '''
+
+    # Check if URL starts with 'http' and/or finishes with '.zip'
+    if url_fragment.startswith("http") or url_fragment.endswith(".zip"):
+        log.debug("DEBUG: url_fragment starts with http or ends with .zip, " \
+            "returning it as is: '{}'".format(url_fragment))
+        return url_fragment
+    # Generate complete URL
+    url_base = frontend.app.config.get("COMPONENT_STORAGE_URL").rstrip("/")
+    url_suffix = ""
+    if is_recipe:
+        url_suffix = "build.zip"
+    elif is_test:
+        url_suffix = "test.zip"
+    else:
+        log.debug("DEBUG: neither is_recipe or is_test is set, returning " \
+            "url_fragment as is: '{}'".format(url_fragment))
+        return url_fragment
+    url = "{}/{}/{}".format(url_base, url_fragment, url_suffix)
+    log.debug("DEBUG: complete_url is '{}'".format(url))
+    return url
+
+
 def deploy_data(request_dir, content, target):
     '''
     This function deploys the requested parts found in either the 'build' or
@@ -67,6 +97,7 @@ def deploy_data(request_dir, content, target):
 
     Sample complete request can be found in README.md.
     '''
+    # TODO: Split this function into smaller parts
     # Create subdir
     target_dir = os.path.join(request_dir, target)
     os.makedirs(target_dir)
@@ -82,19 +113,24 @@ def deploy_data(request_dir, content, target):
         fd = open(os.path.join(target_dir, "version"), "wb")
         fd.write(str(version))
         fd.close()
-    # Save input content
+    # Input: save inline content
     data = content.get(target, dict()).get(
         'input', dict()).get('zipdata', None)
     if data:
         fd = open(os.path.join(target_dir, target + ".zip"), "wb")
         fd.write(base64.b64decode(data))
         fd.close()
+    # Input: download from URL
     else:
         url = content.get(target, dict()).get(
             'input', dict()).get('zipurl', None)
         outfilename = os.path.join(target_dir, target + ".zip")
         if url:
-            download_file(url, outfilename)
+            download_file(
+                complete_url(url,
+                    is_recipe=True if target == "build" else False,
+                    is_test=True if target == "test" else False),
+                outfilename)
     # Download optionals (if available)
     components_dict = content.get(target, dict()).get(
         'input', dict()).get('optional', None)
@@ -123,9 +159,11 @@ def deploy_data(request_dir, content, target):
         download_file(optimization_url, outfilename)
     else:
         log.debug("DEBUG: No optimization script found")
-    # Save varfile content (optional, json format assumed). '__varfile__'
-    # contains the data of the varfile. If this file is present a varfile is
-    # assumed for the command line.
+    '''
+    Save varfile content (optional, json format assumed). '__varfile__'
+    contains the data of the varfile. If this file is present a varfile is
+    assumed for the command line.
+    '''
     varfile_filename = "__varfile__"
     varfile = content.get(target, dict()).get('varfile', None)
     if varfile:
