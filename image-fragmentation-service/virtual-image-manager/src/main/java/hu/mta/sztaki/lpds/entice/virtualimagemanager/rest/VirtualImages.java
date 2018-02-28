@@ -49,6 +49,7 @@ public class VirtualImages {
 	}
 
 	private final static String KNOWLEDGE_BASE_REF = "knowledgeBaseRef";
+	private final static String PARENT_VMI_ID = "parentVMIId";
 	private final static String DEBUG = "debug"; // for devops only
 
 	static Map<String, Long> pendingFragmentComputations = new ConcurrentHashMap<String, Long>();
@@ -426,6 +427,7 @@ public class VirtualImages {
 			if (requestBody.optJSONArray(Edge.INSTALLER_IDS) != null) request.put(Edge.INSTALLER_IDS, requestBody.getJSONArray(Edge.INSTALLER_IDS));
 			if (!"".equals(requestBody.optString(Edge.SNAPSHOT_URL))) request.put(Edge.SNAPSHOT_URL, requestBody.optString(Edge.SNAPSHOT_URL));
 			if (!"".equals(knowledgeBaseRef)) request.put(KNOWLEDGE_BASE_REF, knowledgeBaseRef);
+			request.put(PARENT_VMI_ID, parent.getId());
 			if (debug) request.put(DEBUG, Boolean.TRUE);
 			
 			// send request

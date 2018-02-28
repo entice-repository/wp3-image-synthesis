@@ -53,6 +53,7 @@ public class VirtualImageDecomposer {
 	
 	private final static String SNAPSHOT_URL = "snapshotUrl";
 	private final static String KNOWLEDGE_BASE_REF = "knowledgeBaseRef";
+	private final static String PARENT_VMI_ID = "parentVMIId";
 	private final static String DEBUG = "debug"; // for devops only
 	private final static String DEBUG_FILE = "debug"; // for devops only
 	private final static String PARTITION = "partition";
@@ -158,6 +159,7 @@ public class VirtualImageDecomposer {
 			out.println("INSTALLER_STORAGE_URL" + "=\"" + Configuration.installerStorageUrl + "/\""); // must use / at the end
 			out.println("FRAGMENT_STORAGE_URL" + "=\"" + fragmentStorageUrl + "/\""); // must use / at the end
 			out.println("KNOWLEDGE_BASE_REF" + "=\"" + requestBody.optString(KNOWLEDGE_BASE_REF) + "\"");
+			out.println("PARENT_VMI_ID" + "=\"" + requestBody.optString(PARENT_VMI_ID) + "\"");
 			out.println("FRAGMENT_STORAGE_TOKEN" + "=\"" + fragmentStorageToken + "\"");
 			out.println("FRAGMENT_ID" + "=\"" + taskId + "\"");
 			out.println("DEBUG" + "=\"" + (requestBody.optBoolean(DEBUG) ? "true" : "false") + "\"");
