@@ -166,12 +166,15 @@ public class EC2VirtualMachine extends VirtualMachine {
 			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM started: " + instanceIds.get(0) + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
 			return instanceIds.get(0);
 		} catch (AmazonServiceException x) {
+			reqCounter.decrementAndGet();
 			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
 			throw new VMManagementException("runInstance exception", x);
 		} catch (AmazonClientException x) {
+			reqCounter.decrementAndGet();
 			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
 			throw new VMManagementException("runInstance exception", x);
 		} catch (Exception x) {
+			reqCounter.decrementAndGet();
 			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
 			throw new VMManagementException("runInstance exception", x);
 		}

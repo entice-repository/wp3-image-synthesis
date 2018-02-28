@@ -157,9 +157,9 @@ public class VirtualImageDecomposer {
 			out.println("INSTALLER_IDS" + "=\"" + jsonArrayToSpaceSeparatedList(requestBody.optJSONArray(INSTALLER_IDS)) + "\"");
 			out.println("INSTALLER_STORAGE_URL" + "=\"" + Configuration.installerStorageUrl + "/\""); // must use / at the end
 			out.println("FRAGMENT_STORAGE_URL" + "=\"" + fragmentStorageUrl + "/\""); // must use / at the end
-			out.println("KNOWLEDGE_BASE_REF" + "=\"" + requestBody.optString(KNOWLEDGE_BASE_REF, taskId) + "\"");
+			out.println("KNOWLEDGE_BASE_REF" + "=\"" + requestBody.optString(KNOWLEDGE_BASE_REF) + "\"");
 			out.println("FRAGMENT_STORAGE_TOKEN" + "=\"" + fragmentStorageToken + "\"");
-			out.println("FRAGMENT_ID" + "=\"" + requestBody.optString(KNOWLEDGE_BASE_REF, taskId) + "\"");
+			out.println("FRAGMENT_ID" + "=\"" + taskId + "\"");
 			out.println("DEBUG" + "=\"" + (requestBody.optBoolean(DEBUG) ? "true" : "false") + "\"");
 			out.println("S3_ENDPOINT" + "=\"" + Configuration.s3Endpoint + "\"");
 			out.println("S3_BUCKET_NAME" + "=\"" + Configuration.s3BucketName + "\"");
