@@ -72,20 +72,36 @@ Input JSON format
         "module": "packer",
         "version": "1.1", // Either 1.0 or 1.1, 1.1 recommended
         "input": {
-            "zipdata": ..., // content of packer data .zip base64 encoded
+            "zipdata": ..., // Content of packer data .zip base64 encoded
             // OR
-            "zipurl": ... // url containing packer data .zip
+            "zipurl": ... // URL containing packer data .zip
+            optional: [ // additional build steps
+                {
+                    "description": "description",
+                    "tags": ["tag1", "tag2", "..."], // Tags for the build component
+                    "zipdata": ..., // Content of additional packer data .zip base64 
+                                    //     encoded
+                                    // OR
+                    "zipurl": ...   // URL containing packer data .zip
+                }, ... // up to 99
+            ],
+            optimization: { // Script from a previous optimization, this will be run 
+                            //     after all inputs.
+                data : ..., // script base64 encoded.
+                // OR
+                url: ... // URL containing the script.
+            }
         },
         // Optional variables file. If specified it is automatically used and packer will
         // see it as a file named '__varfile__'.
         varfile {
-            data : ..., // varfile base64_encoded
+            data : ..., // Variables file base64 encoded.
             // OR
-            url: ... // url containing the varfile
+            url: ... // URL containing the variables file.
         }
     },
     "test": {
-        "module": "exec-internal", // test will be run on the VM as the last build step
+        "module": "exec-internal", // Test will be run on the VM as the last build step.
         "version": "1.0",
         "input": {
             "command" : "run_test.sh",

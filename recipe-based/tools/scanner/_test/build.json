@@ -1,0 +1,73 @@
+{
+    "builders":
+    [
+        {
+        "type": "qemu",
+        "iso_url": "http://mirror.nsc.liu.se/centos-store/7.2.1511/isos/x86_64/CentOS-7-x86_64-Minimal-1511.iso",
+        "iso_checksum": "88c0437f0a14c6e2c94426df9d43cd67",
+        "shutdown_command" : "shutdown -P now",
+        "iso_checksum_type": "md5",
+        "disk_discard": "unmap",
+        "output_directory": "output_centos_tdhtest",
+        "disk_size": 5000,
+        "format": "qcow2",
+        "headless": false,
+        "accelerator": "kvm",
+        "http_directory": "httpdir",
+        "http_port_min": 10082,
+        "http_port_max": 10089,
+        "ssh_host_port_min": 2222,
+        "ssh_host_port_max": 2229,
+        "ssh_username": "root",
+        "ssh_password": "alma",
+        "ssh_port": 22,
+        "ssh_timeout": "30m",
+        "vm_name": "tdhtest",
+        "net_device": "virtio-net",
+        "disk_interface": "virtio",
+        "boot_wait": "5s",
+        "boot_command":
+        [
+            "<tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/centos6-ks.cfg<enter><wait>"
+        ],
+        "qemuargs": [
+            ["-m", "1024"]
+        ]
+      }
+    ],
+    "_comment": "sudo: sorry, you must have a tty to run sudo --> remove visiblepw and requiretty from sudoers",
+    "provisioners": 
+    [
+        {
+        "type": "shell",
+        "inline": [
+            "sleep 30",
+            "yum -y update",
+            "cat /etc/sudoers | grep -v visiblepw | grep -v requiretty > /tmp/foobar", 
+            "mv -f /tmp/foobar /etc/sudoers",
+            "mkdir -p /root/.ssh",
+            "chmod 700 /root/.ssh",
+            "echo 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDOxwuKuMXkhuUfTmJxBBiR5UbsHJpWpedS88fvTy6/y60UyDyrd+A6qR/9Ef/UHQe9x8YOSXPodBUr5eHTtG5sfPcu+j9HactVvttGBzPVvXQZHvu5sUsXNzGU9kka/H0uVpbJDnT955K3JO3uV7BBtmqRCAPGiNfaZsq6Tx2Wq1fHpqBIxr6NPyRZ6PG/IXjaNhMwk4KABxqWS/ONuyIQuRc1agmjCs/dTBoO7y0SKi5DrjCyMgGlHqPLHKN6icREXI5/9ztkL+KiD022p1+onxq4n/gtujVolvOXm8EHLSCCmxPPfvF3cyPI8ox+ZECr/wPk0HEgqG19dIAt0H4t' > /root/.ssh/authorized_keys",
+            "chmod 600 /root/.ssh/authorized_keys"
+            ]
+        },
+        {
+        "type": "chef-solo",
+        "cookbook_paths": ["cookbooks"],
+        "json": {
+            "wordpress": {
+                "version": "4.3.1",
+                "db": {
+                    "root_password": "aogeig0zahVo",
+                    "name": "wordpress",
+                    "user": "wordpress",
+                    "pass": "Loogeev7aepu"
+                }
+            }        
+        },
+        "version": "12.21.14",
+        "run_list": ["recipe[wordpress]"],
+	    "testrsaheader": "-----BEGIN RSA PRIVATE KEY-----"
+        }
+    ]
+}

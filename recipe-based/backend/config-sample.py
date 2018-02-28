@@ -83,10 +83,10 @@ class LiveConfiguration(BaseConfiguration):
     """
     Live configuration.
 
-    Tries to load from a .json configuration file. If it is not found then values defined
-    in BaseConfiguration are used. This is to separate live configuration values from this
-    file. Most of the time setting values in BaseConfiguration instead of here should be
-    fine.
+    Tries to load from a .json configuration file. If it is not found then
+    values defined in BaseConfiguration are used. This is to separate live
+    configuration values from this file. Most of the time setting values in
+    BaseConfiguration instead of here should be fine.
     """
     print("Loading config from JSON file.\n", file=sys.stderr)
     try:
@@ -97,9 +97,10 @@ class LiveConfiguration(BaseConfiguration):
         # Use the following to read security information in a live environment:
         #
         # SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
-        # SECURITY_PASSWORD_SALT = config_json["imagesynthesis-frontend"].get("password_salt")
+        # SECURITY_PASSWORD_SALT = config_json["imagesynthesis-frontend"] \
+        #   .get("password_salt")
         # SECRET_KEY = config_json["imagesynthesis-frontend"].get("secret_key")
     except Exception as e:
-        print('WARNING: Could not read configuration from LIVE config file: {}\n'.format(e),
-               file=sys.stderr)
+        print('WARNING: Could not read configuration' \
+              ' from LIVE config file: {}\n'.format(e), file=sys.stderr)
         pass  # DIRRRRRTY HACK!
