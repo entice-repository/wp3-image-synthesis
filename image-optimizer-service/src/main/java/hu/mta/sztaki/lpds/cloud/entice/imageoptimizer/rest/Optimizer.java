@@ -516,6 +516,8 @@ public class Optimizer {
 		Task task = retrieveTask(id);
 		if (task == null) return Response.status(Status.BAD_REQUEST).entity("Invalid task id: " + id).build();
 
+		VM optimizerVM = null;
+		
 		synchronized (task) { // in cache (running/stopping) or not (done/failed/aborted)
 
 		// Task idempotent
@@ -539,7 +541,7 @@ public class Optimizer {
 		log.debug("Instance: " + task.getInstanceId());
 		
 		// get optimizer VM
-		VM optimizerVM = retrieveVM(task); // it returns VM object from cache (not null) or re-creates the VM object
+		optimizerVM = retrieveVM(task); // it returns VM object from cache (not null) or re-creates the VM object
 		if (optimizerVM == null) { // null means: could not create AWS client 
 			log.debug("Cannot describe optimizer VM: " + task.getInstanceId() + ". Possible resons: changed AWS credentials or instance id cannot be described.");
 			task.setOptimizerPhase("Getting describe information about: " + task.getInstanceId() + "...");
@@ -864,7 +866,9 @@ public class Optimizer {
 		if (changed) persistTask(task);  
 		
 		} // end synchronized(task) 
-		return Response.status(Status.OK).entity(renderTaskToJSON(task).toString()).build();
+		JSONObject response = renderTaskToJSON(task);
+		if (optimizerVM != null) response.put("optimizerVMIP", optimizerVM.getIP());
+		return Response.status(Status.OK).entity(response.toString()).build();
 	}
 
 	private void logOuts(SshSession ssh) {
