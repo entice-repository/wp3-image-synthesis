@@ -145,7 +145,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 //			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VMs up: " + requests);
 			if (requests > totalReqLimit) {
 				Shrinker.myLogger.severe("Terminating shrinking process, too many non-terminated requests");
-				Thread.dumpStack();
+//				Thread.dumpStack();
 				System.exit(1);
 			}
 			
@@ -214,7 +214,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 			int requests = reqCounter.decrementAndGet();
 			if (requests < 0) {
 				Shrinker.myLogger.severe("Terminating shrinking process, too much VM termination requests");
-				Thread.dumpStack();
+//				Thread.dumpStack();
 			}
 
 			Shrinker.myLogger.info("Instance " + getInstanceId() + " received a terminate request");
@@ -259,7 +259,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 				
 				if (timeout >= TERMINATE_TIMEOUT) {
 					Shrinker.myLogger.info("ERROR: Cannot terminate instance: " + getInstanceId());
-					System.exit(1);
+//					System.exit(1);
 				}
 			}
 			
