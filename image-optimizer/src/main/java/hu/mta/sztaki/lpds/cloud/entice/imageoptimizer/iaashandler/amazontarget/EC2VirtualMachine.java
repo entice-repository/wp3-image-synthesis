@@ -144,7 +144,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 			int requests = reqCounter.incrementAndGet();
 //			System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VMs up: " + requests);
 			if (requests > totalReqLimit) {
-				Shrinker.myLogger.severe("Terminating shrinking process, too many non-terminated requests");
+				Shrinker.myLogger.severe("ERROR: Terminating shrinking process, too many non-terminated requests");
 //				Thread.dumpStack();
 				System.exit(1);
 			}
@@ -167,15 +167,15 @@ public class EC2VirtualMachine extends VirtualMachine {
 			return instanceIds.get(0);
 		} catch (AmazonServiceException x) {
 			reqCounter.decrementAndGet();
-			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
+			Shrinker.myLogger.info("ERROR: runInstance error: " + x.getMessage());
 			throw new VMManagementException("runInstance exception", x);
 		} catch (AmazonClientException x) {
 			reqCounter.decrementAndGet();
-			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
+			Shrinker.myLogger.info("ERROR: runInstance error: " + x.getMessage());
 			throw new VMManagementException("runInstance exception", x);
 		} catch (Exception x) {
 			reqCounter.decrementAndGet();
-			Shrinker.myLogger.info("runInstance error: " + x.getMessage());
+			Shrinker.myLogger.info("ERROR: runInstance error: " + x.getMessage());
 			throw new VMManagementException("runInstance exception", x);
 		}
 	}
@@ -213,7 +213,7 @@ public class EC2VirtualMachine extends VirtualMachine {
 		try {
 			int requests = reqCounter.decrementAndGet();
 			if (requests < 0) {
-				Shrinker.myLogger.severe("Terminating shrinking process, too much VM termination requests");
+				Shrinker.myLogger.severe("ERROR: Too much VM termination requests");
 //				Thread.dumpStack();
 			}
 
@@ -264,10 +264,10 @@ public class EC2VirtualMachine extends VirtualMachine {
 			}
 			
 		} catch (AmazonServiceException x) {
-			Shrinker.myLogger.info("terminateInstance error: " + x.getMessage());
+			Shrinker.myLogger.info("ERROR: terminateInstance error on VM " + getInstanceId() + ": " + x.getMessage());
 			throw new VMManagementException("terminateInstance exception", x);
 		} catch (AmazonClientException x) {
-			Shrinker.myLogger.info("terminateInstance error: " + x.getMessage());
+			Shrinker.myLogger.info("ERROR: terminateInstance error on VM " + getInstanceId() + ": " + x.getMessage());
 			throw new VMManagementException("terminateInstance exception", x);
 		}
 		System.out.println("[T" + (Thread.currentThread().getId() % 100) + "] VM terminated: " + getInstanceId() + " " + this.ip + " " + this.state + " (@" + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()) + ")");
