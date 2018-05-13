@@ -1,3 +1,6 @@
+
+This part of the repository is not maintained. Please use the repository at the following location: https://github.com/atisu/image-synthesis
+
 # ENTICE WP3 Recipe based Image Synthesis Service #
 
 This service allow the automated creation of VM images using pre-made descriptors (recipes).
